@@ -1,0 +1,291 @@
+******************************************************************************
+            TI ARM Clang Linker Unix v4.0.4                    
+******************************************************************************
+>> Linked Wed Jan 28 09:51:39 2026
+
+OUTPUT FILE NAME:   <EdgeTriggeredInt.out>
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00000221
+
+
+MEMORY CONFIGURATION
+
+         name            origin    length      used     unused   attr    fill
+----------------------  --------  ---------  --------  --------  ----  --------
+  FLASH                 00000000   00020000  000002f8  0001fd08  R  X
+  SRAM                  20200000   00008000  00000204  00007dfc  RW X
+  BCR_CONFIG            41c00000   00000080  00000000  00000080  R   
+  BSL_CONFIG            41c00100   00000080  00000000  00000080  R   
+
+
+SEGMENT ALLOCATION MAP
+
+run origin  load origin   length   init length attrs members
+----------  ----------- ---------- ----------- ----- -------
+00000000    00000000    000002f8   000002f8    r-x
+  00000000    00000000    000000c0   000000c0    r-- .intvecs
+  000000c0    000000c0    00000220   00000220    r-x .text
+  000002e0    000002e0    00000018   00000018    r-- .cinit
+20200000    20200000    00000004   00000000    rw-
+  20200000    20200000    00000004   00000000    rw- .bss
+20207e00    20207e00    00000200   00000000    rw-
+  20207e00    20207e00    00000200   00000000    rw- .stack
+
+
+SECTION ALLOCATION MAP
+
+ output                                  attributes/
+section   page    origin      length       input sections
+--------  ----  ----------  ----------   ----------------
+.intvecs   0    00000000    000000c0     
+                  00000000    000000c0     startup_mspm0g3507_ticlang.o (.intvecs)
+
+.text      0    000000c0    00000220     
+                  000000c0    0000007c     LaunchPad.o (.text.LaunchPad_Init)
+                  0000013c    00000044     EdgeTriggered.o (.text.EdgeTriggered_Init)
+                  00000180    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
+                  000001bc    00000038     LaunchPad.o (.text.ActivatePortA_B)
+                  000001f4    0000002c     EdgeTriggeredIntmain.o (.text.main)
+                  00000220    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
+                  00000248    00000024     EdgeTriggeredIntmain.o (.text.GROUP1_IRQHandler)
+                  0000026c    0000001c     startup_mspm0g3507_ticlang.o (.text.Default_Handler)
+                  00000288    0000001c     startup_mspm0g3507_ticlang.o (.text.HardFault_Handler)
+                  000002a4    00000016     libc.a : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset)
+                  000002ba    00000010     LaunchPad.o (.text.Delay)
+                  000002ca    00000006     libc.a : exit.c.obj (.text:abort)
+                  000002d0    00000004     libsysbm.a : hostexit.c.obj (.text.HOSTexit)
+                  000002d4    00000004     startup_mspm0g3507_ticlang.o (.text.Reset_Handler)
+                  000002d8    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
+                  000002dc    00000004     --HOLE-- [fill = 0]
+
+.cinit     0    000002e0    00000018     
+                  000002e0    00000008     (.cinit..bss.load) [load image, compression = zero_init]
+                  000002e8    00000004     (__TI_handler_table)
+                  000002ec    00000008     (__TI_cinit_table)
+                  000002f4    00000004     --HOLE-- [fill = 0]
+
+.init_array 
+*          0    00000000    00000000     UNINITIALIZED
+
+.binit     0    00000000    00000000     
+
+.bss       0    20200000    00000004     UNINITIALIZED
+                  20200000    00000004     (.common:Count)
+
+.stack     0    20207e00    00000200     UNINITIALIZED
+                  20207e00    00000004     libc.a : boot_cortex_m.c.obj (.stack)
+                  20207e04    000001fc     --HOLE--
+
+__llvm_prf_cnts 
+*          0    20200000    00000000     UNINITIALIZED
+
+__llvm_prf_bits 
+*          0    20200000    00000000     UNINITIALIZED
+
+MODULE SUMMARY
+
+       Module                         code   ro data   rw data
+       ------                         ----   -------   -------
+    ./
+       LaunchPad.o                    196    0         0      
+       EdgeTriggeredIntmain.o         80     0         4      
+       EdgeTriggered.o                68     0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         344    0         4      
+                                                              
+    ./ticlang/
+       startup_mspm0g3507_ticlang.o   60     192       0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         60     192       0      
+                                                              
+    /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/armv6m-ti-none-eabi/c/libc.a
+       autoinit.c.obj                 60     0         0      
+       boot_cortex_m.c.obj            40     0         0      
+       copy_zero_init.c.obj           22     0         0      
+       exit.c.obj                     6      0         0      
+       pre_init.c.obj                 4      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         132    0         0      
+                                                              
+    /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/armv6m-ti-none-eabi/c/libsysbm.a
+       hostexit.c.obj                 4      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         4      0         0      
+                                                              
+       Stack:                         0      0         512    
+       Linker Generated:              0      20        0      
+    +--+------------------------------+------+---------+---------+
+       Grand Total:                   540    212       516    
+
+
+LINKER GENERATED COPY TABLES
+
+__TI_cinit_table @ 000002ec records: 1, size/record: 8, table size: 8
+	.bss: load addr=000002e0, load size=00000008 bytes, run addr=20200000, run size=00000004 bytes, compression=zero_init
+
+
+LINKER GENERATED HANDLER TABLE
+
+__TI_handler_table @ 000002e8 records: 1, size/record: 4, table size: 4
+	index: 0, handler: __TI_zero_init
+
+
+GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name 
+
+address   name                          
+-------   ----                          
+0000026d  ADC0_IRQHandler               
+0000026d  ADC1_IRQHandler               
+0000026d  AES_IRQHandler                
+000001bd  ActivatePortA_B               
+000002d0  C$$EXIT                       
+0000026d  CANFD0_IRQHandler             
+20200000  Count                         
+0000026d  DAC0_IRQHandler               
+0000026d  DMA_IRQHandler                
+0000026d  Default_Handler               
+000002bb  Delay                         
+0000013d  EdgeTriggered_Init            
+0000026d  GROUP0_IRQHandler             
+00000249  GROUP1_IRQHandler             
+000002d1  HOSTexit                      
+00000289  HardFault_Handler             
+0000026d  I2C0_IRQHandler               
+0000026d  I2C1_IRQHandler               
+000000c1  LaunchPad_Init                
+0000026d  NMI_Handler                   
+0000026d  PendSV_Handler                
+0000026d  RTC_IRQHandler                
+000002d5  Reset_Handler                 
+0000026d  SPI0_IRQHandler               
+0000026d  SPI1_IRQHandler               
+0000026d  SVC_Handler                   
+0000026d  SysTick_Handler               
+0000026d  TIMA0_IRQHandler              
+0000026d  TIMA1_IRQHandler              
+0000026d  TIMG0_IRQHandler              
+0000026d  TIMG12_IRQHandler             
+0000026d  TIMG6_IRQHandler              
+0000026d  TIMG7_IRQHandler              
+0000026d  TIMG8_IRQHandler              
+0000026d  UART0_IRQHandler              
+0000026d  UART1_IRQHandler              
+0000026d  UART2_IRQHandler              
+0000026d  UART3_IRQHandler              
+20208000  __STACK_END                   
+00000200  __STACK_SIZE                  
+00000000  __TI_ATRegion0_region_sz      
+00000000  __TI_ATRegion0_src_addr       
+00000000  __TI_ATRegion0_trg_addr       
+00000000  __TI_ATRegion1_region_sz      
+00000000  __TI_ATRegion1_src_addr       
+00000000  __TI_ATRegion1_trg_addr       
+00000000  __TI_ATRegion2_region_sz      
+00000000  __TI_ATRegion2_src_addr       
+00000000  __TI_ATRegion2_trg_addr       
+000002ec  __TI_CINIT_Base               
+000002f4  __TI_CINIT_Limit              
+000002f4  __TI_CINIT_Warm               
+000002e8  __TI_Handler_Table_Base       
+000002ec  __TI_Handler_Table_Limit      
+00000181  __TI_auto_init_nobinit_nopinit
+ffffffff  __TI_pprof_out_hndl           
+ffffffff  __TI_prof_data_size           
+ffffffff  __TI_prof_data_start          
+00000000  __TI_static_base__            
+000002a5  __TI_zero_init_nomemset       
+ffffffff  __binit__                     
+UNDEFED   __mpu_init                    
+20207e00  __stack                       
+20200000  __start___llvm_prf_bits       
+20200000  __start___llvm_prf_cnts       
+20200000  __stop___llvm_prf_bits        
+20200000  __stop___llvm_prf_cnts        
+00000221  _c_int00_noargs               
+UNDEFED   _system_post_cinit            
+000002d9  _system_pre_init              
+000002cb  abort                         
+ffffffff  binit                         
+00000000  interruptVectors              
+000001f5  main                          
+
+
+GLOBAL SYMBOLS: SORTED BY Symbol Address 
+
+address   name                          
+-------   ----                          
+00000000  __TI_ATRegion0_region_sz      
+00000000  __TI_ATRegion0_src_addr       
+00000000  __TI_ATRegion0_trg_addr       
+00000000  __TI_ATRegion1_region_sz      
+00000000  __TI_ATRegion1_src_addr       
+00000000  __TI_ATRegion1_trg_addr       
+00000000  __TI_ATRegion2_region_sz      
+00000000  __TI_ATRegion2_src_addr       
+00000000  __TI_ATRegion2_trg_addr       
+00000000  __TI_static_base__            
+00000000  interruptVectors              
+000000c1  LaunchPad_Init                
+0000013d  EdgeTriggered_Init            
+00000181  __TI_auto_init_nobinit_nopinit
+000001bd  ActivatePortA_B               
+000001f5  main                          
+00000200  __STACK_SIZE                  
+00000221  _c_int00_noargs               
+00000249  GROUP1_IRQHandler             
+0000026d  ADC0_IRQHandler               
+0000026d  ADC1_IRQHandler               
+0000026d  AES_IRQHandler                
+0000026d  CANFD0_IRQHandler             
+0000026d  DAC0_IRQHandler               
+0000026d  DMA_IRQHandler                
+0000026d  Default_Handler               
+0000026d  GROUP0_IRQHandler             
+0000026d  I2C0_IRQHandler               
+0000026d  I2C1_IRQHandler               
+0000026d  NMI_Handler                   
+0000026d  PendSV_Handler                
+0000026d  RTC_IRQHandler                
+0000026d  SPI0_IRQHandler               
+0000026d  SPI1_IRQHandler               
+0000026d  SVC_Handler                   
+0000026d  SysTick_Handler               
+0000026d  TIMA0_IRQHandler              
+0000026d  TIMA1_IRQHandler              
+0000026d  TIMG0_IRQHandler              
+0000026d  TIMG12_IRQHandler             
+0000026d  TIMG6_IRQHandler              
+0000026d  TIMG7_IRQHandler              
+0000026d  TIMG8_IRQHandler              
+0000026d  UART0_IRQHandler              
+0000026d  UART1_IRQHandler              
+0000026d  UART2_IRQHandler              
+0000026d  UART3_IRQHandler              
+00000289  HardFault_Handler             
+000002a5  __TI_zero_init_nomemset       
+000002bb  Delay                         
+000002cb  abort                         
+000002d0  C$$EXIT                       
+000002d1  HOSTexit                      
+000002d5  Reset_Handler                 
+000002d9  _system_pre_init              
+000002e8  __TI_Handler_Table_Base       
+000002ec  __TI_CINIT_Base               
+000002ec  __TI_Handler_Table_Limit      
+000002f4  __TI_CINIT_Limit              
+000002f4  __TI_CINIT_Warm               
+20200000  Count                         
+20200000  __start___llvm_prf_bits       
+20200000  __start___llvm_prf_cnts       
+20200000  __stop___llvm_prf_bits        
+20200000  __stop___llvm_prf_cnts        
+20207e00  __stack                       
+20208000  __STACK_END                   
+ffffffff  __TI_pprof_out_hndl           
+ffffffff  __TI_prof_data_size           
+ffffffff  __TI_prof_data_start          
+ffffffff  __binit__                     
+ffffffff  binit                         
+UNDEFED   __mpu_init                    
+UNDEFED   _system_post_cinit            
+
+[74 symbols]

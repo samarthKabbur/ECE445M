@@ -1,0 +1,520 @@
+******************************************************************************
+            TI ARM Clang Linker Unix v4.0.4                    
+******************************************************************************
+>> Linked Wed Jan 28 09:51:50 2026
+
+OUTPUT FILE NAME:   <SSD1306.out>
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00004125
+
+
+MEMORY CONFIGURATION
+
+         name            origin    length      used     unused   attr    fill
+----------------------  --------  ---------  --------  --------  ----  --------
+  FLASH                 00000000   00020000  000042b8  0001bd48  R  X
+  SRAM                  20200000   00008000  00000818  000077e8  RW X
+  BCR_CONFIG            41c00000   00000080  00000000  00000080  R   
+  BSL_CONFIG            41c00100   00000080  00000000  00000080  R   
+
+
+SEGMENT ALLOCATION MAP
+
+run origin  load origin   length   init length attrs members
+----------  ----------- ---------- ----------- ----- -------
+00000000    00000000    000042b8   000042b8    r-x
+  00000000    00000000    000000c0   000000c0    r-- .intvecs
+  000000c0    000000c0    000023c8   000023c8    r-- .rodata
+  00002488    00002488    00001e00   00001e00    r-x .text
+  00004288    00004288    00000030   00000030    r-- .cinit
+20200000    20200000    00000618   00000000    rw-
+  20200000    20200000    00000410   00000000    rw- .bss
+  20200410    20200410    00000200   00000000    rw- .sysmem
+  20200610    20200610    00000008   00000000    rw- .data
+20207e00    20207e00    00000200   00000000    rw-
+  20207e00    20207e00    00000200   00000000    rw- .stack
+
+
+SECTION ALLOCATION MAP
+
+ output                                  attributes/
+section   page    origin      length       input sections
+--------  ----  ----------  ----------   ----------------
+.intvecs   0    00000000    000000c0     
+                  00000000    000000c0     startup_mspm0g3507_ticlang.o (.intvecs)
+
+.text      0    00002488    00001e00     
+                  00002488    00000308     SSD1306testmain.o (.text.main)
+                  00002790    00000274     SSD1306.o (.text.SSD1306_OutSDec)
+                  00002a04    00000258     SSD1306.o (.text.SSD1306_DrawBMP)
+                  00002c5c    00000230     SSD1306.o (.text.ssd1306drawFastVLineInternal)
+                  00002e8c    000001ec     SSD1306.o (.text.SSD1306_OutUDec)
+                  00003078    000001b4     Clock.o (.text.Clock_Init80MHz)
+                  0000322c    00000160     SSD1306.o (.text.SSD1306_DrawPixel)
+                  0000338c    00000134     SSD1306.o (.text.SSD1306_OutChar)
+                  000034c0    00000130     SSD1306.o (.text.ssd1306drawFastHLineInternal)
+                  000035f0    0000011c     I2C.o (.text.I2C_SendData)
+                  0000370c    000000f4     SSD1306.o (.text.SSD1306_DrawFastHLine)
+                  00003800    000000f4     SSD1306.o (.text.SSD1306_DrawFastVLine)
+                  000038f4    000000cc     SSD1306.o (.text.SSD1306_Init)
+                  000039c0    000000b0     I2C.o (.text.I2C_Send)
+                  00003a70    000000ac     SSD1306.o (.text.SSD1306_DrawChar)
+                  00003b1c    000000a8     I2C.o (.text.I2C_Send2)
+                  00003bc4    00000098     SSD1306.o (.text.SSD1306_OutUFix1)
+                  00003c5c    00000080     SSD1306.o (.text.SSD1306_SetCursor)
+                  00003cdc    0000007c     LaunchPad.o (.text.LaunchPad_Init)
+                  00003d58    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
+                  00003dd4    00000078     I2C.o (.text.I2C_Init)
+                  00003e4c    00000058     I2C.o (.text.IC2FillTxFifo)
+                  00003ea4    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
+                  00003efa    0000004a     SSD1306.o (.text.SSD1306_DrawString)
+                  00003f44    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
+                  00003f84    0000003c     SSD1306.o (.text.SSD1306_ClearBuffer)
+                  00003fc0    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
+                  00003ffc    00000038     LaunchPad.o (.text.ActivatePortA_B)
+                  00004034    00000036     SSD1306.o (.text.SSD1306_OutHex7)
+                  0000406a    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
+                  0000406c    00000034     Clock.o (.text.Clock_Delay1ms)
+                  000040a0    00000030     SSD1306.o (.text.SSD1306_DrawFullImage)
+                  000040d0    0000002c     SSD1306.o (.text.SSD1306_OutUHex7)
+                  000040fc    00000028     SSD1306.o (.text.SSD1306_OutBuffer)
+                  00004124    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
+                  0000414c    00000026     SSD1306.o (.text.SSD1306_OutString)
+                  00004172    00000002     --HOLE-- [fill = 0]
+                  00004174    0000001c     startup_mspm0g3507_ticlang.o (.text.Default_Handler)
+                  00004190    0000001c     startup_mspm0g3507_ticlang.o (.text.HardFault_Handler)
+                  000041ac    00000018     SSD1306.o (.text.ssd1306command1)
+                  000041c4    00000018     SSD1306.o (.text.ssd1306command)
+                  000041dc    00000016     SSD1306.o (.text.ssd1306commandList)
+                  000041f2    00000012     libc.a : memcpy16.S.obj (.text:TI_memcpy_small)
+                  00004204    00000012            : copy_decompress_none.c.obj (.text:decompress:none)
+                  00004216    00000010     Clock.o (.text.Clock_Delay)
+                  00004226    00000010     LaunchPad.o (.text.Delay)
+                  00004236    00000010     libc.a : copy_zero_init.c.obj (.text:decompress:ZI)
+                  00004246    0000000e            : memset16.S.obj (.text:TI_memset_small)
+                  00004254    0000000c     SSD1306.o (.text.SSD1306_OutClear)
+                  00004260    0000000c     libclang_rt.builtins.a : aeabi_memset.S.obj (.text.__aeabi_memclr)
+                  0000426c    00000008                            : aeabi_memcpy.S.obj (.text.__aeabi_memcpy)
+                  00004274    00000006     libc.a : exit.c.obj (.text:abort)
+                  0000427a    00000004     libsysbm.a : hostexit.c.obj (.text.HOSTexit)
+                  0000427e    00000004     startup_mspm0g3507_ticlang.o (.text.Reset_Handler)
+                  00004282    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
+                  00004286    00000002     --HOLE-- [fill = 0]
+
+.cinit     0    00004288    00000030     
+                  00004288    0000000c     (__TI_handler_table)
+                  00004294    0000000b     (.cinit..data.load) [load image, compression = lzss]
+                  0000429f    00000001     --HOLE-- [fill = 0]
+                  000042a0    00000008     (.cinit..bss.load) [load image, compression = zero_init]
+                  000042a8    00000010     (__TI_cinit_table)
+
+.rodata    0    000000c0    000023c8     
+                  000000c0    00000a77     SSD1306testmain.o (.rodata.cal)
+                  00000b37    00000977     SSD1306testmain.o (.rodata.logo)
+                  000014ae    00000540     SSD1306.o (.rodata.ASCII)
+                  000019ee    000004f7     SSD1306testmain.o (.rodata.ti)
+                  00001ee5    00000400     SSD1306testmain.o (.rodata.checker)
+                  000022e5    000000c7     SSD1306testmain.o (.rodata.SmallEnemy)
+                  000023ac    00000016     SSD1306testmain.o (.rodata.str1.10657158299562887811.1)
+                  000023c2    00000016     SSD1306testmain.o (.rodata.str1.304568805864418099.1)
+                  000023d8    00000016     SSD1306testmain.o (.rodata.str1.4280063560932190314.1)
+                  000023ee    00000016     SSD1306testmain.o (.rodata.str1.8473529970990705239.1)
+                  00002404    00000015     SSD1306testmain.o (.rodata.str1.12539483094986367461.1)
+                  00002419    0000000f     SSD1306testmain.o (.rodata.str1.2644223721710161924.1)
+                  00002428    00000008     SSD1306.o (.rodata.postmask)
+                  00002430    00000008     SSD1306.o (.rodata.premask)
+                  00002438    00000007     SSD1306.o (.rodata.init5)
+                  0000243f    00000007     SSD1306testmain.o (.rodata.str1.1001956498246653802.1)
+                  00002446    00000007     SSD1306testmain.o (.rodata.str1.218858024214703291.1)
+                  0000244d    00000007     SSD1306testmain.o (.rodata.str1.76527736711977797.1)
+                  00002454    00000007     SSD1306testmain.o (.rodata.str1.7766270818793153238.1)
+                  0000245b    00000005     SSD1306.o (.rodata.dlist1)
+                  00002460    00000005     SSD1306.o (.rodata.init1)
+                  00002465    00000005     SSD1306.o (.rodata.init2)
+                  0000246a    00000005     SSD1306.o (.rodata.init3)
+                  0000246f    00000005     SSD1306.o (.rodata.str1.14451269319768076594.1)
+                  00002474    00000004     SSD1306.o (.rodata.init4b)
+                  00002478    00000004     SSD1306.o (.rodata.str1.10002672771383525571.1)
+                  0000247c    00000004     SSD1306.o (.rodata.str1.12200962847391203090.1)
+                  00002480    00000004     SSD1306testmain.o (.rodata.str1.5323807822289081128.1)
+                  00002484    00000003     SSD1306.o (.rodata.str1.4784759802907365934.1)
+                  00002487    00000001     --HOLE-- [fill = 0]
+
+.init_array 
+*          0    00000000    00000000     UNINITIALIZED
+
+.binit     0    00000000    00000000     
+
+.bss       0    20200000    00000410     UNINITIALIZED
+                  20200000    00000400     (.common:buffer)
+                  20200400    00000004     (.common:I2C_error)
+                  20200404    00000004     (.common:rotation)
+                  20200408    00000004     (.common:vccstate)
+                  2020040c    00000002     (.common:StartX)
+                  2020040e    00000002     (.common:StartY)
+
+.sysmem    0    20200410    00000200     UNINITIALIZED
+                  20200410    00000010     libc.a : memory.c.obj (.sysmem)
+                  20200420    000001f0     --HOLE--
+
+.data      0    20200610    00000008     UNINITIALIZED
+                  20200610    00000004     Clock.o (.data.BusFreq)
+                  20200614    00000002     SSD1306.o (.data.CurrentX)
+                  20200616    00000002     SSD1306.o (.data.CurrentY)
+
+.stack     0    20207e00    00000200     UNINITIALIZED
+                  20207e00    00000004     libc.a : boot_cortex_m.c.obj (.stack)
+                  20207e04    000001fc     --HOLE--
+
+__llvm_prf_cnts 
+*          0    20200000    00000000     UNINITIALIZED
+
+__llvm_prf_bits 
+*          0    20200000    00000000     UNINITIALIZED
+
+MODULE SUMMARY
+
+       Module                         code   ro data   rw data
+       ------                         ----   -------   -------
+    ./
+       SSD1306testmain.o              776    7752      0      
+       SSD1306.o                      4828   1407      1040   
+       I2C.o                          836    0         4      
+       Clock.o                        504    0         4      
+       LaunchPad.o                    196    0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         7140   9159      1048   
+                                                              
+    ./ticlang/
+       startup_mspm0g3507_ticlang.o   60     192       0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         60     192       0      
+                                                              
+    /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/armv6m-ti-none-eabi/c/libc.a
+       copy_decompress_lzss.c.obj     124    0         0      
+       autoinit.c.obj                 60     0         0      
+       boot_cortex_m.c.obj            40     0         0      
+       copy_decompress_none.c.obj     18     0         0      
+       memcpy16.S.obj                 18     0         0      
+       copy_zero_init.c.obj           16     0         0      
+       memset16.S.obj                 14     0         0      
+       exit.c.obj                     6      0         0      
+       pre_init.c.obj                 4      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         300    0         0      
+                                                              
+    /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/armv6m-ti-none-eabi/c/libsysbm.a
+       hostexit.c.obj                 4      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         4      0         0      
+                                                              
+    /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/armv6m-ti-none-eabi/libclang_rt.builtins.a
+       aeabi_idivmod.S.obj            86     0         0      
+       aeabi_uidivmod.S.obj           64     0         0      
+       aeabi_memset.S.obj             12     0         0      
+       aeabi_memcpy.S.obj             8      0         0      
+       aeabi_div0.c.obj               2      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         172    0         0      
+                                                              
+       Heap:                          0      0         512    
+       Stack:                         0      0         512    
+       Linker Generated:              0      47        0      
+    +--+------------------------------+------+---------+---------+
+       Grand Total:                   7676   9398      2072   
+
+
+LINKER GENERATED COPY TABLES
+
+__TI_cinit_table @ 000042a8 records: 2, size/record: 8, table size: 16
+	.data: load addr=00004294, load size=0000000b bytes, run addr=20200610, run size=00000008 bytes, compression=lzss
+	.bss: load addr=000042a0, load size=00000008 bytes, run addr=20200000, run size=00000410 bytes, compression=zero_init
+
+
+LINKER GENERATED HANDLER TABLE
+
+__TI_handler_table @ 00004288 records: 3, size/record: 4, table size: 12
+	index: 0, handler: __TI_decompress_lzss
+	index: 1, handler: __TI_decompress_none
+	index: 2, handler: __TI_zero_init
+
+
+GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name 
+
+address   name                          
+-------   ----                          
+00004175  ADC0_IRQHandler               
+00004175  ADC1_IRQHandler               
+00004175  AES_IRQHandler                
+00003ffd  ActivatePortA_B               
+20200610  BusFreq                       
+0000427a  C$$EXIT                       
+00004175  CANFD0_IRQHandler             
+00004217  Clock_Delay                   
+0000406d  Clock_Delay1ms                
+00003079  Clock_Init80MHz               
+20200614  CurrentX                      
+20200616  CurrentY                      
+00004175  DAC0_IRQHandler               
+00004175  DMA_IRQHandler                
+00004175  Default_Handler               
+00004227  Delay                         
+00004175  GROUP0_IRQHandler             
+00004175  GROUP1_IRQHandler             
+0000427b  HOSTexit                      
+00004191  HardFault_Handler             
+00004175  I2C0_IRQHandler               
+00004175  I2C1_IRQHandler               
+00003dd5  I2C_Init                      
+000039c1  I2C_Send                      
+00003b1d  I2C_Send2                     
+000035f1  I2C_SendData                  
+20200400  I2C_error                     
+00003cdd  LaunchPad_Init                
+00004175  NMI_Handler                   
+00004175  PendSV_Handler                
+00004175  RTC_IRQHandler                
+0000427f  Reset_Handler                 
+00004175  SPI0_IRQHandler               
+00004175  SPI1_IRQHandler               
+00003f85  SSD1306_ClearBuffer           
+00002a05  SSD1306_DrawBMP               
+00003a71  SSD1306_DrawChar              
+0000370d  SSD1306_DrawFastHLine         
+00003801  SSD1306_DrawFastVLine         
+000040a1  SSD1306_DrawFullImage         
+0000322d  SSD1306_DrawPixel             
+00003efb  SSD1306_DrawString            
+000038f5  SSD1306_Init                  
+000040fd  SSD1306_OutBuffer             
+0000338d  SSD1306_OutChar               
+00004255  SSD1306_OutClear              
+00004035  SSD1306_OutHex7               
+00002791  SSD1306_OutSDec               
+0000414d  SSD1306_OutString             
+00002e8d  SSD1306_OutUDec               
+00003bc5  SSD1306_OutUFix1              
+000040d1  SSD1306_OutUHex7              
+00003c5d  SSD1306_SetCursor             
+00004175  SVC_Handler                   
+000022e5  SmallEnemy                    
+2020040c  StartX                        
+2020040e  StartY                        
+00004175  SysTick_Handler               
+00004175  TIMA0_IRQHandler              
+00004175  TIMA1_IRQHandler              
+00004175  TIMG0_IRQHandler              
+00004175  TIMG12_IRQHandler             
+00004175  TIMG6_IRQHandler              
+00004175  TIMG7_IRQHandler              
+00004175  TIMG8_IRQHandler              
+000041f3  TI_memcpy_small               
+00004247  TI_memset_small               
+00004175  UART0_IRQHandler              
+00004175  UART1_IRQHandler              
+00004175  UART2_IRQHandler              
+00004175  UART3_IRQHandler              
+20208000  __STACK_END                   
+00000200  __STACK_SIZE                  
+00000200  __SYSMEM_SIZE                 
+00000000  __TI_ATRegion0_region_sz      
+00000000  __TI_ATRegion0_src_addr       
+00000000  __TI_ATRegion0_trg_addr       
+00000000  __TI_ATRegion1_region_sz      
+00000000  __TI_ATRegion1_src_addr       
+00000000  __TI_ATRegion1_trg_addr       
+00000000  __TI_ATRegion2_region_sz      
+00000000  __TI_ATRegion2_src_addr       
+00000000  __TI_ATRegion2_trg_addr       
+000042a8  __TI_CINIT_Base               
+000042b8  __TI_CINIT_Limit              
+000042b8  __TI_CINIT_Warm               
+00004288  __TI_Handler_Table_Base       
+00004294  __TI_Handler_Table_Limit      
+00003fc1  __TI_auto_init_nobinit_nopinit
+00003d59  __TI_decompress_lzss          
+00004205  __TI_decompress_none          
+ffffffff  __TI_pprof_out_hndl           
+ffffffff  __TI_prof_data_size           
+ffffffff  __TI_prof_data_start          
+00000000  __TI_static_base__            
+00004237  __TI_zero_init                
+00003ea5  __aeabi_idiv                  
+0000406b  __aeabi_idiv0                 
+00003ea5  __aeabi_idivmod               
+00004261  __aeabi_memclr                
+00004261  __aeabi_memclr4               
+00004261  __aeabi_memclr8               
+0000426d  __aeabi_memcpy                
+0000426d  __aeabi_memcpy4               
+0000426d  __aeabi_memcpy8               
+00003f45  __aeabi_uidiv                 
+00003f45  __aeabi_uidivmod              
+ffffffff  __binit__                     
+UNDEFED   __mpu_init                    
+20207e00  __stack                       
+20200000  __start___llvm_prf_bits       
+20200000  __start___llvm_prf_cnts       
+20200000  __stop___llvm_prf_bits        
+20200000  __stop___llvm_prf_cnts        
+00004125  _c_int00_noargs               
+20200410  _sys_memory                   
+UNDEFED   _system_post_cinit            
+00004283  _system_pre_init              
+00004275  abort                         
+ffffffff  binit                         
+20200000  buffer                        
+000000c0  cal                           
+00001ee5  checker                       
+00000000  interruptVectors              
+00000b37  logo                          
+00002489  main                          
+20200404  rotation                      
+000041c5  ssd1306command                
+000041ad  ssd1306command1               
+000041dd  ssd1306commandList            
+000034c1  ssd1306drawFastHLineInternal  
+00002c5d  ssd1306drawFastVLineInternal  
+000019ee  ti                            
+20200408  vccstate                      
+
+
+GLOBAL SYMBOLS: SORTED BY Symbol Address 
+
+address   name                          
+-------   ----                          
+00000000  __TI_ATRegion0_region_sz      
+00000000  __TI_ATRegion0_src_addr       
+00000000  __TI_ATRegion0_trg_addr       
+00000000  __TI_ATRegion1_region_sz      
+00000000  __TI_ATRegion1_src_addr       
+00000000  __TI_ATRegion1_trg_addr       
+00000000  __TI_ATRegion2_region_sz      
+00000000  __TI_ATRegion2_src_addr       
+00000000  __TI_ATRegion2_trg_addr       
+00000000  __TI_static_base__            
+00000000  interruptVectors              
+000000c0  cal                           
+00000200  __STACK_SIZE                  
+00000200  __SYSMEM_SIZE                 
+00000b37  logo                          
+000019ee  ti                            
+00001ee5  checker                       
+000022e5  SmallEnemy                    
+00002489  main                          
+00002791  SSD1306_OutSDec               
+00002a05  SSD1306_DrawBMP               
+00002c5d  ssd1306drawFastVLineInternal  
+00002e8d  SSD1306_OutUDec               
+00003079  Clock_Init80MHz               
+0000322d  SSD1306_DrawPixel             
+0000338d  SSD1306_OutChar               
+000034c1  ssd1306drawFastHLineInternal  
+000035f1  I2C_SendData                  
+0000370d  SSD1306_DrawFastHLine         
+00003801  SSD1306_DrawFastVLine         
+000038f5  SSD1306_Init                  
+000039c1  I2C_Send                      
+00003a71  SSD1306_DrawChar              
+00003b1d  I2C_Send2                     
+00003bc5  SSD1306_OutUFix1              
+00003c5d  SSD1306_SetCursor             
+00003cdd  LaunchPad_Init                
+00003d59  __TI_decompress_lzss          
+00003dd5  I2C_Init                      
+00003ea5  __aeabi_idiv                  
+00003ea5  __aeabi_idivmod               
+00003efb  SSD1306_DrawString            
+00003f45  __aeabi_uidiv                 
+00003f45  __aeabi_uidivmod              
+00003f85  SSD1306_ClearBuffer           
+00003fc1  __TI_auto_init_nobinit_nopinit
+00003ffd  ActivatePortA_B               
+00004035  SSD1306_OutHex7               
+0000406b  __aeabi_idiv0                 
+0000406d  Clock_Delay1ms                
+000040a1  SSD1306_DrawFullImage         
+000040d1  SSD1306_OutUHex7              
+000040fd  SSD1306_OutBuffer             
+00004125  _c_int00_noargs               
+0000414d  SSD1306_OutString             
+00004175  ADC0_IRQHandler               
+00004175  ADC1_IRQHandler               
+00004175  AES_IRQHandler                
+00004175  CANFD0_IRQHandler             
+00004175  DAC0_IRQHandler               
+00004175  DMA_IRQHandler                
+00004175  Default_Handler               
+00004175  GROUP0_IRQHandler             
+00004175  GROUP1_IRQHandler             
+00004175  I2C0_IRQHandler               
+00004175  I2C1_IRQHandler               
+00004175  NMI_Handler                   
+00004175  PendSV_Handler                
+00004175  RTC_IRQHandler                
+00004175  SPI0_IRQHandler               
+00004175  SPI1_IRQHandler               
+00004175  SVC_Handler                   
+00004175  SysTick_Handler               
+00004175  TIMA0_IRQHandler              
+00004175  TIMA1_IRQHandler              
+00004175  TIMG0_IRQHandler              
+00004175  TIMG12_IRQHandler             
+00004175  TIMG6_IRQHandler              
+00004175  TIMG7_IRQHandler              
+00004175  TIMG8_IRQHandler              
+00004175  UART0_IRQHandler              
+00004175  UART1_IRQHandler              
+00004175  UART2_IRQHandler              
+00004175  UART3_IRQHandler              
+00004191  HardFault_Handler             
+000041ad  ssd1306command1               
+000041c5  ssd1306command                
+000041dd  ssd1306commandList            
+000041f3  TI_memcpy_small               
+00004205  __TI_decompress_none          
+00004217  Clock_Delay                   
+00004227  Delay                         
+00004237  __TI_zero_init                
+00004247  TI_memset_small               
+00004255  SSD1306_OutClear              
+00004261  __aeabi_memclr                
+00004261  __aeabi_memclr4               
+00004261  __aeabi_memclr8               
+0000426d  __aeabi_memcpy                
+0000426d  __aeabi_memcpy4               
+0000426d  __aeabi_memcpy8               
+00004275  abort                         
+0000427a  C$$EXIT                       
+0000427b  HOSTexit                      
+0000427f  Reset_Handler                 
+00004283  _system_pre_init              
+00004288  __TI_Handler_Table_Base       
+00004294  __TI_Handler_Table_Limit      
+000042a8  __TI_CINIT_Base               
+000042b8  __TI_CINIT_Limit              
+000042b8  __TI_CINIT_Warm               
+20200000  __start___llvm_prf_bits       
+20200000  __start___llvm_prf_cnts       
+20200000  __stop___llvm_prf_bits        
+20200000  __stop___llvm_prf_cnts        
+20200000  buffer                        
+20200400  I2C_error                     
+20200404  rotation                      
+20200408  vccstate                      
+2020040c  StartX                        
+2020040e  StartY                        
+20200410  _sys_memory                   
+20200610  BusFreq                       
+20200614  CurrentX                      
+20200616  CurrentY                      
+20207e00  __stack                       
+20208000  __STACK_END                   
+ffffffff  __TI_pprof_out_hndl           
+ffffffff  __TI_prof_data_size           
+ffffffff  __TI_prof_data_start          
+ffffffff  __binit__                     
+ffffffff  binit                         
+UNDEFED   __mpu_init                    
+UNDEFED   _system_post_cinit            
+
+[134 symbols]
