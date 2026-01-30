@@ -55,12 +55,8 @@ volatile uint32_t TimeMs; // in ms
 // You are free to change how this works
 void OS_ClearMsTime(void){
   // using timer g7 for this feature
-
   TimeMs = 0;
-  TIMG7->COUNTERREGS.CTR = 0;
-  NVIC->ICPR[0] = (1 << TIMG7_INT_IRQn);
-  NVIC->ISER[0] = (1 << TIMG7_INT_IRQn);
-  TIMG7->COUNTERREGS.CTRCTL |= GPTIMER_CTRCTL_EN_ENABLED;
+  TimerG7_IntArm(1000, 80, 2);
 };
 
 
@@ -72,10 +68,13 @@ void OS_ClearMsTime(void){
 // For Labs 2 and beyond, it is ok to make the resolution to match the first call to OS_AddPeriodicThread
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
+  // disable interrupts before accessing timems
+  // enable interrupts after access is over
   uint32_t currentTime;
-  NVIC->ICER[0] = (1 << TIMG7_INT_IRQn);
+  long sr;
+  sr = StartCritical();
   currentTime = TimeMs;
-  NVIC->ISER[0] = (1 << TIMG7_INT_IRQn);
+  EndCritical(sr);
   return currentTime;
 };
 

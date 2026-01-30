@@ -1879,16 +1879,6 @@ void ST7735_InitPrintf(void){int ret_val; FILE *fptr;
 
 }
 
-void ST7735_OutSDec(int32_t n){
-  if(n < 0){
-    ST7735_OutChar('-');
-
-    uint32_t positive_n = (uint32_t)(-n);
-    ST7735_OutUDec(positive_n);
-  } else {
-    ST7735_OutUDec((uint32_t)n);
-  }
-}
 
 
 /****************ST7735_sDecOut2***************
@@ -2112,27 +2102,37 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        pt      pointer to a null terminated string to be printed
 //        value   signed integer to be printed
 void ST7735_Message(uint32_t d, uint32_t l, char *pt, int32_t value){
-  if (d <0 || d > 1) {
-    d = d % 2; // converts odd to 1 and even to 0
+  // write this as part of Labs 1 and 2
+ char negative[2] = "-";
+  bool isNegative = false;
+  uint32_t unsignedValue = (uint32_t)value;
+
+ // ST7735_Message(0, 0, "The value is: ", 42);
+  char num[32];
+  int num_index = 0; 
+  if(value < 0){
+    isNegative = true;
   }
-  if (l < 0 || l > 7) {
-    l = l % 8; // bounds to [0, 7]
+  
+  if(d== 0){ // l remains unchanged 
+  ST7735_DrawString(0, l, pt, ST7735_YELLOW);
+  //ST7735_OutString(num);
+  if(isNegative){
+  ST7735_DrawString(13, l, negative, ST7735_YELLOW);
   }
 
-  // map logical line to physical line
-  int physical_line = (d * 8) + l;
-
-  // write string to screen
-  ST7735_DrawString(0, physical_line, pt, ST7735_YELLOW);
-
-  // set cursor to end of string
-  ST7735_SetCursor(strlen(pt), physical_line);
-
-  // output the signed integer
-  ST7735_OutSDec(value);
-
-  // clear the old characters
-  while(StX < 21){
-    ST7735_OutChar(' ');
+  ST7735_OutUDec2(unsignedValue, l);
+  
   }
+  else if(d == 1){ // need to add 7 + l so l is in second half of lcd
+  l = l+8;
+  ST7735_DrawString(0, l, pt, ST7735_YELLOW);
+  //ST7735_OutString(num);
+  if(isNegative){
+  ST7735_DrawString(13, l, negative, ST7735_YELLOW);
+  }
+  ST7735_OutUDec2(unsignedValue, l);
+
+  }
+
 }

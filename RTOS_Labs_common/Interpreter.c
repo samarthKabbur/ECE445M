@@ -18,57 +18,132 @@
 #include "../RTOS_Labs_common/Interpreter.h"
 
 
+
+typedef struct{
+  const char *name;
+  void (*handler)(char *args, int l);
+} Command ;
+
+void Cmd_Flush(char* args, int l);
+void Cmd_Print(char* args, int l);
+void Cmd_Lab1_Results(char* args, int l);
+void Cmd_Help(char* args, int l);
+
+Command commands[] = {
+  {"flush", Cmd_Flush},
+  {"print", Cmd_Print},
+  {"lab1results", Cmd_Lab1_Results},
+  {"?", Cmd_Help},
+};
+
+#define NUM_COMMANDS (sizeof(commands)/sizeof(Command))
+#define CARROT 62
+#define NEW_LINE 10
+#define NULL_CHAR '\0'
+
+void Cmd_Flush(char* args, int l){
+ST7735_FillScreen(ST7735_BLACK);
+}
+
+
+void Cmd_Print(char* args, int l){
+  UART_OutString(args);
+  UART_OutChar('\n');
+  ST7735_FillScreen(ST7735_BLACK);
+  ST7735_DrawString(0, l, args, ST7735_YELLOW);
+}
+
+
+void Cmd_Lab1_Results(char* args, int l){
+  Lab1_Results(1);
+  UART_OutString("\n");
+  
+  
+  
+}
+void Cmd_Help(char* args, int l){
+  UART_OutString("\r\nflush                 clears screen");
+  UART_OutString("\r\nprint *message*       prints message onto screen");
+  UART_OutString("\r\nlab1results           prints lab 1 results onto screen");
+  UART_OutString("\r\n?                     displays syntax of all commands");
+  UART_OutString("\n");
+  ST7735_FillScreen(ST7735_BLACK);
+  ST7735_DrawString(0, l, "flush", ST7735_YELLOW);
+  l++;
+  ST7735_DrawString(0, l, "print *message*", ST7735_YELLOW);
+  l++;
+  ST7735_DrawString(0, l, "lab1results", ST7735_YELLOW);
+  l++;
+  ST7735_DrawString(0, l, "?", ST7735_YELLOW);
+  
+  
+
+  
+}
+
+
+void ParseArgs(char *string, int l){
+  char *cmd = string;
+  char *args = 0;
+  int i = 0;
+  while(string[i] != NULL_CHAR){
+    if(string[i] == ' '){
+      string[i] = NULL_CHAR;
+      args = &string[i+1];
+      break;
+    }
+    i++;
+  }
+
+  for(int i = 0; i < NUM_COMMANDS; i++){
+    if(strcmp(cmd, commands[i].name) == 0){
+      commands[i].handler(args, l);
+      return;
+    }
+  }
+
+  UART_OutString("Unknown command. Enter ? to display commands\n");
+
+
+}
+
 void Interpreter(void) {  
-  UART_OutString("\r\nhello world");
 
 
-  UART_OutString("\r\nGreetings Userr\n");
-  UART_OutString("Type '?' for help.\r\n");
+char string[50]; // didnt need to do this couldve just used InString(); will change later on
+int stringIndex = 0;
+int l = 3; //line number
+
+UART_OutChar(CARROT); //begin by printing arrow
+
   while (1) {                        // Loop forever
-      UART_OutString("\r\n> "); 
-      char cmdBuffer[32];
-      uint32_t numInput;
-      // Handle input
-      UART_InString(cmdBuffer, 31);   // instring doesn't return until it sees a "carriage return"
-      UART_OutString("\r\n");
-      
-      if (strcmp(cmdBuffer, "?") == 0 || strcmp(cmdBuffer, "help") == 0) {
-          UART_OutString("Available Commands:\r\n");
-          UART_OutString("  ?       : Show help menu\r\n");
-          UART_OutString("  time    : Print current OS_MsTime\r\n");
-          UART_OutString("  results : Run Lab1_Results()\r\n");
-          UART_OutString("  num     : Test numerical I/O\r\n");
-      } 
 
-      // Time
-      else if (strcmp(cmdBuffer, "time") == 0) {
-          UART_OutString("System Time: ");
-          UART_OutUDec(OS_MsTime());
-          UART_OutString(" ms\r\n");
-      }
-      
-      // results
-      else if (strcmp(cmdBuffer, "results") == 0) {
-          UART_OutString("Running Lab1_Results:\r\n");
-          Lab1_Results(); 
-      }
+   
+   uint8_t  letter = UART_InChar();
 
-      // numerical io
-      else if (strcmp(cmdBuffer, "num") == 0) {
-          UART_OutString("Enter an integer: ");
-          
-          numInput = UART_InUDec();
-          
-          UART_OutString("\r\nNumber: ");
-          UART_OutUDec(numInput);
-          UART_OutString("\r\n");
-      }
-      
-      // Errors
-      else {
-          UART_OutString("bad command: ");
-          UART_OutString(cmdBuffer);
-          UART_OutString("\r\n");
-      }
+   if(letter == 13){ // if char is return then decide which command it is 
+    UART_OutChar(NEW_LINE);
+    
+    string[stringIndex] = NULL_CHAR;
+
+    
+    ParseArgs(string, l);
+
+    stringIndex = 0; //reset string
+    l++; // increment line index so printed on next line, not needed for most
+
+    UART_OutChar(CARROT); 
+   }
+
+
+   else {
+    UART_OutChar(letter);
+    string[stringIndex] = letter; //adds new letter to string 
+    stringIndex++; 
+
+   }
+   
+   
+
   }
 }
