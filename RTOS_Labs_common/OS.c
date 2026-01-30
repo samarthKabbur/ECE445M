@@ -56,19 +56,10 @@ volatile uint32_t TimeMs; // in ms
 void OS_ClearMsTime(void){
   // using timer g7 for this feature
 
-  // reset global counter
   TimeMs = 0;
-  
-  // reset hardware timer counter
   TIMG7->COUNTERREGS.CTR = 0;
-
-  // clear pending interrupts
   NVIC->ICPR[0] = (1 << TIMG7_INT_IRQn);
-
-  // Enable NVIC interrupt
   NVIC->ISER[0] = (1 << TIMG7_INT_IRQn);
-
-  // Start timer
   TIMG7->COUNTERREGS.CTRCTL |= GPTIMER_CTRCTL_EN_ENABLED;
 };
 
@@ -82,15 +73,9 @@ void OS_ClearMsTime(void){
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
   uint32_t currentTime;
-
-  // disable TIMG7 interrupt
   NVIC->ICER[0] = (1 << TIMG7_INT_IRQn);
-
   currentTime = TimeMs;
-
-  // re-enable interrupt
   NVIC->ISER[0] = (1 << TIMG7_INT_IRQn);
-
   return currentTime;
 };
 
