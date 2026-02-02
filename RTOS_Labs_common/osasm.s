@@ -124,9 +124,29 @@ OSStartHang:
 // Only ISR running at priority 3 guarantees it interrupts only main/foreground code
 PendSV_Handler:
 // put your code here
+CPSID I // a
+PUSH {R4-R7} // b
 
-   
-    
+// c save SP in its TCB
+LDR R0, =RunPt
+LDR R1, [R0]
+MOV R2, SP
+STR R2, [R1]    // store SP into tcb[n]->sp;
+
+// d get next thread to run
+LDR R1, [R1, #4]        // R1 = RunPt->next;
+STR R1, [R0]    // update RunPt to the new TCB
+
+// e load SP of next thread into SP
+LDR R0, [R1]
+MOV SP, R0
+
+// f
+POP {R4-R7}
+
+// g
+CPSIE I
+
     BX      LR                 // Exception return will restore remaining context   
     
 

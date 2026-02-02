@@ -474,8 +474,7 @@ void OS_Kill(void){
 // output: none
 void OS_Suspend(void){
   // put Lab 2 (and beyond) solution here
-
-
+  SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
 };
   
 
