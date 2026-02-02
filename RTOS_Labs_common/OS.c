@@ -43,10 +43,28 @@ void OSDisableInterrupts(void);
 void OSEnableInterrupts(void);
 long StartCritical(void);
 void EndCritical(long);
+void SetInitialStack(int i);
 #define  OSCRITICAL_ENTER() { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT()  { EndCritical(sr); }
 
 volatile uint32_t TimeMs; // in ms
+
+#define NUMTHREADS 3
+#define STACKSIZE 100
+
+typedef struct tcb {
+  int *sp;
+  struct tcb *next;
+  struct tcb *prev;
+  int id;
+  int sleep_st;
+  int priority;
+  int blocked_st;
+} tcb_t;
+
+tcb_t tcbs [NUMTHREADS];
+tcb_t *RunPt;
+int32_t Stacks[NUMTHREADS][STACKSIZE];
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -68,14 +86,7 @@ void OS_ClearMsTime(void){
 // For Labs 2 and beyond, it is ok to make the resolution to match the first call to OS_AddPeriodicThread
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
-  // disable interrupts before accessing timems
-  // enable interrupts after access is over
-  uint32_t currentTime;
-  long sr;
-  sr = StartCritical();
-  currentTime = TimeMs;
-  EndCritical(sr);
-  return currentTime;
+  return TimeMs;
 };
 
 void StartOS(void); // implemented in osasm.s
@@ -187,14 +198,62 @@ int OS_AddProcessThread(void(*task)(void),
    uint32_t stackSize, uint32_t priority, uint32_t pid){
 	   return 0;
    }
-int OS_AddThread(void(*task)(void), 
-   uint32_t stackSize, uint32_t priority){ 
 
-  // put Lab 2 (and beyond) solution here
+int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
+  long status;
+  static int thread_idx = 0; 
+  int i;
   
+  if (thread_idx >= NUMTHREADS) {
+      return 0; // No more threads available: fail
+  }
   
+  status = StartCritical();
+  
+  i = thread_idx;
+  thread_idx++;
+  
+  // init tcb
+  tcbs[i].id = i; 
+  tcbs[i].priority = priority;
+  tcbs[i].blocked_st = 0;
+  tcbs[i].sleep_st = 0;
 
-  return 0;
+  SetInitialStack(i);  // this func was copied from the book
+  Stacks[i][STACKSIZE - 2] = (int32_t)(task);
+
+  // insert RunPt into the LL
+  if (RunPt == (void*)0) {
+      tcbs[i].next = &tcbs[i];
+      tcbs[i].prev = &tcbs[i];
+      RunPt = &tcbs[i]; 
+  } else {
+      tcb_t *tail = RunPt->prev;
+      
+      tcbs[i].next = RunPt;
+      tcbs[i].prev = tail;
+      
+      tail->next = &tcbs[i];
+      RunPt->prev = &tcbs[i];
+  }
+
+  EndCritical(status);
+  return 1;
+}
+
+void SetInitialStack(int i) {
+  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];
+  Stacks[i][STACKSIZE-1] = 0x01000000;
+  Stacks[i][STACKSIZE-3] = 0x14141414;
+  Stacks[i][STACKSIZE-4] = 0x12121212;
+  Stacks[i][STACKSIZE-5] = 0x03030303;
+  Stacks[i][STACKSIZE-6] = 0x02020202;
+  Stacks[i][STACKSIZE-7] = 0x01010101;
+  Stacks[i][STACKSIZE-8] = 0x00000000;
+  Stacks[i][STACKSIZE-9] = 0x07070707;
+  Stacks[i][STACKSIZE-10] = 0x06060606;
+  Stacks[i][STACKSIZE-11] = 0x05050505;
+  Stacks[i][STACKSIZE-12] = 0x04040404;
 }
 
 // ******** OS_AddProcess *************** 
@@ -539,6 +598,12 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 // It is ok to limit the range of theTimeSlice to match the 24-bit SysTick
 // make PendSV priority 3, and SysTick priority 2
 void OS_Launch(uint32_t theTimeSlice){
+  // units of theTimeSlice are in bus cycles (12.5 ns)
   // put Lab 2 (and beyond) solution here
-   
+  SysTick->CTRL = 0; // disable systick during setup
+  SysTick->VAL = 0; // clear val
+  SCB->SHP[1] = ((SCB->SHP[1]&(~0xC0000000)) | (3 << 30)); // set priority 3
+  SysTick->LOAD = theTimeSlice - 1; // reload value
+  SysTick->CTRL = 0x07; // enable, core clock, and arm interrupts
+  StartOS();  // start on the first task (implemented in osasm.s)
 }

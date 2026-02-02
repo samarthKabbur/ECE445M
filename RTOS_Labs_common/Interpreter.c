@@ -28,6 +28,8 @@ void Cmd_Flush(char* args, int l);
 void Cmd_Print(char* args, int l);
 void Cmd_Lab1_Results(char* args, int l);
 void Cmd_Help(char* args, int l);
+void Lab1_Results(uint32_t d);
+void Lab2(void);
 
 Command commands[] = {
   {"flush", Cmd_Flush},
@@ -47,6 +49,10 @@ ST7735_FillScreen(ST7735_BLACK);
 
 
 void Cmd_Print(char* args, int l){
+  if(args == 0){
+      UART_OutString("Error: No message provided\n");
+      return;
+  }
   UART_OutString(args);
   UART_OutChar('\n');
   ST7735_FillScreen(ST7735_BLACK);
@@ -55,7 +61,8 @@ void Cmd_Print(char* args, int l){
 
 
 void Cmd_Lab1_Results(char* args, int l){
-  Lab1_Results(1);
+  Lab2();
+  // Lab1_Results(1);
   UART_OutString("\n");
   
   
@@ -107,43 +114,42 @@ void ParseArgs(char *string, int l){
 
 }
 
-void Interpreter(void) {  
-
-
-char string[50]; // didnt need to do this couldve just used InString(); will change later on
-int stringIndex = 0;
-int l = 3; //line number
-
-UART_OutChar(CARROT); //begin by printing arrow
-
-  while (1) {                        // Loop forever
-
-   
-   uint8_t  letter = UART_InChar();
-
-   if(letter == 13){ // if char is return then decide which command it is 
-    UART_OutChar(NEW_LINE);
-    
-    string[stringIndex] = NULL_CHAR;
-
-    
-    ParseArgs(string, l);
-
-    stringIndex = 0; //reset string
-    l++; // increment line index so printed on next line, not needed for most
+void Interpreter(void) {
+    char string[50];
+    int stringIndex = 0;
+    int l = 3; 
 
     UART_OutChar(CARROT); 
-   }
 
+    while (1) {
+        uint8_t letter = UART_InChar();
 
-   else {
-    UART_OutChar(letter);
-    string[stringIndex] = letter; //adds new letter to string 
-    stringIndex++; 
-
-   }
-   
-   
-
-  }
+        if (letter == 13 || letter == 10) { 
+            if (stringIndex > 0) {
+                UART_OutChar(NEW_LINE);
+                string[stringIndex] = NULL_CHAR;
+                
+                ParseArgs(string, l);
+                
+                stringIndex = 0;
+                l++; 
+                UART_OutChar(CARROT);
+            }
+        }
+        else if (letter == 127 || letter == 8) {
+            if (stringIndex > 0) {
+                stringIndex--;
+                UART_OutChar(8);
+                UART_OutChar(' '); // Erase char
+                UART_OutChar(8);   // Move cursor back again
+            }
+        }
+        else {
+            if (stringIndex < 49) { // Leave room for NULL terminator
+                UART_OutChar(letter);
+                string[stringIndex] = letter; 
+                stringIndex++;
+            }
+        }
+    }
 }

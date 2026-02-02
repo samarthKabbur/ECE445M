@@ -2114,6 +2114,11 @@ void ST7735_Message(uint32_t d, uint32_t l, char *pt, int32_t value){
     isNegative = true;
   }
   
+
+  
+
+  
+  
   if(d== 0){ // l remains unchanged 
   ST7735_DrawString(0, l, pt, ST7735_YELLOW);
   //ST7735_OutString(num);

@@ -1,18 +1,18 @@
 ******************************************************************************
             TI ARM Clang Linker Unix v4.0.4                    
 ******************************************************************************
->> Linked Wed Jan 28 13:42:20 2026
+>> Linked Sun Feb  1 23:31:22 2026
 
 OUTPUT FILE NAME:   <RTOS_Lab3_RTOSpriority.out>
-ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00001fc1
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00001f65
 
 
 MEMORY CONFIGURATION
 
          name            origin    length      used     unused   attr    fill
 ----------------------  --------  ---------  --------  --------  ----  --------
-  FLASH                 00000000   00020000  00002a80  0001d580  R  X
-  SRAM                  20200000   00008000  00000e85  0000717b  RW X
+  FLASH                 00000000   00020000  00002a68  0001d598  R  X
+  SRAM                  20200000   00008000  00000e9b  00007165  RW X
   BCR_CONFIG            41c00000   00000080  00000000  00000080  R   
   BSL_CONFIG            41c00100   00000080  00000000  00000080  R   
 
@@ -21,15 +21,15 @@ SEGMENT ALLOCATION MAP
 
 run origin  load origin   length   init length attrs members
 ----------  ----------- ---------- ----------- ----- -------
-00000000    00000000    00002a80   00002a80    r-x
+00000000    00000000    00002a68   00002a68    r-x
   00000000    00000000    000000c0   000000c0    r-- .intvecs
   000000c0    000000c0    000021e0   000021e0    r-x .text
-  000022a0    000022a0    000007a0   000007a0    r-- .rodata
-  00002a40    00002a40    00000040   00000040    r-- .cinit
-20200000    20200000    00000c88   00000000    rw-
-  20200000    20200000    00000816   00000000    rw- .data
-  20200818    20200818    0000026f   00000000    rw- .bss
-  20200a88    20200a88    00000200   00000000    rw- .sysmem
+  000022a0    000022a0    00000768   00000768    r-- .rodata
+  00002a08    00002a08    00000060   00000060    r-- .cinit
+20200000    20200000    00000ca0   00000000    rw-
+  20200000    20200000    0000082c   00000000    rw- .data
+  2020082c    2020082c    0000026f   00000000    rw- .bss
+  20200aa0    20200aa0    00000200   00000000    rw- .sysmem
 20207e00    20207e00    00000200   00000000    rw-
   20207e00    20207e00    00000200   00000000    rw- .stack
 
@@ -46,100 +46,98 @@ section   page    origin      length       input sections
                   000000c0    000001b4     Clock.o (.text.Clock_Init80MHz)
                   00000274    000001a4     ST7735_SDC.o (.text.ST7735_DrawChar)
                   00000418    00000174     TFLuna2.o (.text.TFLuna2_Init)
-                  0000058c    00000148     Interpreter.o (.text.Interpreter)
-                  000006d4    00000144     TFLuna2.o (.text.copyHardwareToSoftware2)
-                  00000818    00000130     LPF.o (.text.Median5)
-                  00000948    000000f4     ADC.o (.text.ADC0_Init)
-                  00000a3c    000000f4     RTOS_Lab3.o (.text.DAS)
-                  00000b30    000000e8     DFT16.o (.text.DFT16)
-                  00000c18    000000d0     ST7735_SDC.o (.text.ST7735_OutChar)
-                  00000ce8    000000cc     RTOS_Lab3.o (.text.realmain)
-                  00000db4    000000c4     RTOS_Lab3.o (.text.Consumer)
-                  00000e78    000000b0     RTOS_Lab3.o (.text.Display)
-                  00000f28    00000094     LPF.o (.text.Filter)
-                  00000fbc    0000008e     RTOS_UART.o (.text.UART_InUDec)
-                  0000104a    00000002     OS.o (.text.OS_Init)
-                  0000104c    0000008c     ST7735_SDC.o (.text.ST7735_Message)
-                  000010d8    00000088     RTOS_UART.o (.text.UART_InString)
+                  0000058c    00000144     TFLuna2.o (.text.copyHardwareToSoftware2)
+                  000006d0    00000130     LPF.o (.text.Median5)
+                  00000800    00000118     ST7735_SDC.o (.text.ST7735_FillRect)
+                  00000918    000000f4     ADC.o (.text.ADC0_Init)
+                  00000a0c    000000f4     RTOS_Lab3.o (.text.DAS)
+                  00000b00    000000e8     DFT16.o (.text.DFT16)
+                  00000be8    000000cc     RTOS_Lab3.o (.text.realmain)
+                  00000cb4    000000c4     RTOS_Lab3.o (.text.Consumer)
+                  00000d78    000000b8     ST7735_SDC.o (.text.ST7735_Message)
+                  00000e30    000000b0     RTOS_Lab3.o (.text.Display)
+                  00000ee0    000000a8     Interpreter.o (.text.Cmd_Help)
+                  00000f88    000000a8     Timer.o (.text.TimerG7_IntArm)
+                  00001030    0000009c     Interpreter.o (.text.ParseArgs)
+                  000010cc    00000094     LPF.o (.text.Filter)
                   00001160    00000088     ST7735_SDC.o (.text.setAddrWindow)
                   000011e8    00000008     OS.o (.text.OS_Fifo_Init)
                   000011f0    00000088     libc.a : strcmp-armv6m.S.obj (.text:strcmp)
                   00001278    00000084     RTOS_Lab3.o (.text.ButtonWork)
                   000012fc    00000084     ST7735_SDC.o (.text.ST7735_DrawString)
-                  00001380    00000084     ST7735_SDC.o (.text.ST7735_OutUDec)
-                  00001404    0000007c     LaunchPad.o (.text.LaunchPad_Init)
-                  00001480    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
-                  000014fc    00000068     LPF.o (.text.LPF_Init7)
-                  00001564    00000064     RTOS_Lab3.o (.text.Producer)
-                  000015c8    00000064     SPI.o (.text.TFT_OutCommand)
-                  0000162c    00000064     SPI.o (.text.TFT_OutData)
-                  00001690    00000064     RTOS_Lab3.o (.text.VirusDetector)
-                  000016f4    0000005c     RTOS_UARTints.o (.text.UART0_IRQHandler)
-                  00001750    0000005c     TFLuna2.o (.text.UART2_IRQHandler)
-                  000017ac    00000058     IRDistance.o (.text.IRDistance_Convert)
-                  00001804    00000058     RTOS_Lab3.o (.text.Logic_Init)
-                  0000185c    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
-                  000018b2    00000002     OS.o (.text.OS_MailBox_Init)
-                  000018b4    00000054     OS.o (.text.GROUP1_IRQHandler)
-                  00001908    00000054     ST7735_SDC.o (.text.fillmessage)
-                  0000195c    0000004c     TFLuna2.o (.text.Rx2Fifo_Put)
-                  000019a8    0000004c     RTOS_FIFO.o (.text.RxFifo_Get)
-                  000019f4    0000004c     RTOS_FIFO.o (.text.RxFifo_Put)
-                  00001a40    0000004c     RTOS_Lab3.o (.text.S2Push)
-                  00001a8c    0000004c     TFLuna2.o (.text.Tx2Fifo_Put)
-                  00001ad8    0000004c     RTOS_FIFO.o (.text.TxFifo_Get)
-                  00001b24    0000004c     RTOS_FIFO.o (.text.TxFifo_Put)
-                  00001b70    0000004c     TFLuna2.o (.text.copySoftwareToHardware2)
-                  00001bbc    0000004c     RTOS_UARTints.o (.text.copySoftwareToHardware)
-                  00001c08    00000048     TFLuna2.o (.text.Tx2Fifo_Get)
-                  00001c50    00000044     ADC.o (.text.ADC0_In)
-                  00001c94    00000040     TFLuna2.o (.text.TFLuna2_OutChar)
-                  00001cd4    00000040     RTOS_UARTints.o (.text.UART_OutChar)
-                  00001d14    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
-                  00001d54    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
-                  00001d90    00000038     LaunchPad.o (.text.ActivatePortA_B)
-                  00001dc8    00000038     RTOS_Lab3.o (.text.Jitter3_Init)
-                  00001e00    00000036     RTOS_UART.o (.text.UART_OutUDec)
-                  00001e36    00000002     OS.o (.text.SysTick_Handler)
-                  00001e38    00000036     osasm.o (.text)
-                  00001e6e    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
-                  00001e70    00000034     OS.o (.text.OS_ClearMsTime)
-                  00001ea4    00000034     ST7735_SDC.o (.text.ST7735_SetCursor)
-                  00001ed8    00000030     RTOS_Lab3.o (.text.Check)
-                  00001f08    00000030     TFLuna2.o (.text.TFLuna2_SendMessage)
-                  00001f38    00000030     RTOS_UARTints.o (.text.copyHardwareToSoftware)
-                  00001f68    0000002e     ST7735_SDC.o (.text.ST7735_OutSDec)
-                  00001f96    00000002     --HOLE-- [fill = 0]
-                  00001f98    00000028     OS.o (.text.OS_MsTime)
-                  00001fc0    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
-                  00001fe8    00000026     RTOS_UART.o (.text.UART_OutString)
-                  0000200e    00000022     RTOS_UARTints.o (.text.UART_InChar)
-                  00002030    00000020     OS.o (.text.TIMG7_IRQHandler)
-                  00002050    0000001e     ST7735_SDC.o (.text.pushColor)
-                  0000206e    00000002     --HOLE-- [fill = 0]
-                  00002070    0000001c     startup_mspm0g3507_ticlang.o (.text.Default_Handler)
-                  0000208c    0000001c     startup_mspm0g3507_ticlang.o (.text.HardFault_Handler)
-                  000020a8    0000001c     RTOS_Lab3.o (.text.main)
-                  000020c4    00000018     TFLuna2.o (.text.TFLuna2_InStatus)
-                  000020dc    00000018     TFLuna2.o (.text.TFLuna2_OutStatus)
-                  000020f4    00000018     RTOS_FIFO.o (.text.TxFifo_Size)
-                  0000210c    00000016     libc.a : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset)
-                  00002122    00000002     --HOLE-- [fill = 0]
-                  00002124    00000014     TFLuna2.o (.text.Rx2Fifo_Init)
-                  00002138    00000014     OS.o (.text.TIMG8_IRQHandler)
-                  0000214c    00000014     TFLuna2.o (.text.Tx2Fifo_Init)
-                  00002160    00000012     libc.a : memcpy16.S.obj (.text:TI_memcpy_small)
-                  00002172    00000012            : copy_decompress_none.c.obj (.text:decompress:none)
-                  00002184    00000010     Clock.o (.text.Clock_Delay)
-                  00002194    00000010     LaunchPad.o (.text.Delay)
-                  000021a4    00000010     TFLuna2.o (.text.TFLuna2_Format_Standard_mm)
-                  000021b4    00000010     TFLuna2.o (.text.TFLuna2_Frame_Rate)
-                  000021c4    00000010     TFLuna2.o (.text.TFLuna2_SaveSettings)
-                  000021d4    00000010     TFLuna2.o (.text.TFLuna2_System_Reset)
-                  000021e4    0000000e     OS.o (.text.OS_AddPeriodicThread)
-                  000021f2    0000000e     OS.o (.text.OS_AddThread)
-                  00002200    0000000e     libc.a : strlen.c.obj (.text.strlen)
-                  0000220e    00000002     --HOLE-- [fill = 0]
+                  00001380    0000007c     LaunchPad.o (.text.LaunchPad_Init)
+                  000013fc    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
+                  00001478    00000068     Interpreter.o (.text.Interpreter)
+                  000014e0    00000068     LPF.o (.text.LPF_Init7)
+                  00001548    00000064     RTOS_Lab3.o (.text.Producer)
+                  000015ac    00000064     SPI.o (.text.TFT_OutCommand)
+                  00001610    00000064     SPI.o (.text.TFT_OutData)
+                  00001674    00000064     RTOS_Lab3.o (.text.VirusDetector)
+                  000016d8    0000005c     RTOS_UARTints.o (.text.UART0_IRQHandler)
+                  00001734    0000005c     TFLuna2.o (.text.UART2_IRQHandler)
+                  00001790    00000058     IRDistance.o (.text.IRDistance_Convert)
+                  000017e8    00000058     RTOS_Lab3.o (.text.Logic_Init)
+                  00001840    00000058     ST7735_SDC.o (.text.ST7735_OutUDec2)
+                  00001898    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
+                  000018ee    00000002     OS.o (.text.OS_Init)
+                  000018f0    00000054     OS.o (.text.GROUP1_IRQHandler)
+                  00001944    00000054     ST7735_SDC.o (.text.fillmessage)
+                  00001998    0000004c     TFLuna2.o (.text.Rx2Fifo_Put)
+                  000019e4    0000004c     RTOS_FIFO.o (.text.RxFifo_Get)
+                  00001a30    0000004c     RTOS_FIFO.o (.text.RxFifo_Put)
+                  00001a7c    0000004c     RTOS_Lab3.o (.text.S2Push)
+                  00001ac8    0000004c     TFLuna2.o (.text.Tx2Fifo_Put)
+                  00001b14    0000004c     RTOS_FIFO.o (.text.TxFifo_Get)
+                  00001b60    0000004c     RTOS_FIFO.o (.text.TxFifo_Put)
+                  00001bac    0000004c     TFLuna2.o (.text.copySoftwareToHardware2)
+                  00001bf8    0000004c     RTOS_UARTints.o (.text.copySoftwareToHardware)
+                  00001c44    00000048     TFLuna2.o (.text.Tx2Fifo_Get)
+                  00001c8c    00000044     ADC.o (.text.ADC0_In)
+                  00001cd0    00000040     TFLuna2.o (.text.TFLuna2_OutChar)
+                  00001d10    00000040     RTOS_UARTints.o (.text.UART_OutChar)
+                  00001d50    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
+                  00001d90    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
+                  00001dcc    00000038     LaunchPad.o (.text.ActivatePortA_B)
+                  00001e04    00000038     RTOS_Lab3.o (.text.Jitter3_Init)
+                  00001e3c    00000036     osasm.o (.text)
+                  00001e72    00000002     OS.o (.text.OS_MailBox_Init)
+                  00001e74    00000034     Interpreter.o (.text.Cmd_Print)
+                  00001ea8    00000030     RTOS_Lab3.o (.text.Check)
+                  00001ed8    00000030     TFLuna2.o (.text.TFLuna2_SendMessage)
+                  00001f08    00000030     RTOS_UARTints.o (.text.copyHardwareToSoftware)
+                  00001f38    0000002c     ST7735_SDC.o (.text.ST7735_FillScreen)
+                  00001f64    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
+                  00001f8c    00000026     RTOS_UART.o (.text.UART_OutString)
+                  00001fb2    00000022     RTOS_UARTints.o (.text.UART_InChar)
+                  00001fd4    00000020     OS.o (.text.OS_MsTime)
+                  00001ff4    00000020     OS.o (.text.TIMG7_IRQHandler)
+                  00002014    0000001e     ST7735_SDC.o (.text.pushColor)
+                  00002032    00000002     OS.o (.text.SysTick_Handler)
+                  00002034    0000001c     Interpreter.o (.text.Cmd_Lab1_Results)
+                  00002050    0000001c     startup_mspm0g3507_ticlang.o (.text.Default_Handler)
+                  0000206c    0000001c     startup_mspm0g3507_ticlang.o (.text.HardFault_Handler)
+                  00002088    0000001c     OS.o (.text.OS_ClearMsTime)
+                  000020a4    0000001c     RTOS_Lab3.o (.text.main)
+                  000020c0    00000018     TFLuna2.o (.text.TFLuna2_InStatus)
+                  000020d8    00000018     TFLuna2.o (.text.TFLuna2_OutStatus)
+                  000020f0    00000018     RTOS_FIFO.o (.text.TxFifo_Size)
+                  00002108    00000016     libc.a : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset)
+                  0000211e    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
+                  00002120    00000014     TFLuna2.o (.text.Rx2Fifo_Init)
+                  00002134    00000014     OS.o (.text.TIMG8_IRQHandler)
+                  00002148    00000014     TFLuna2.o (.text.Tx2Fifo_Init)
+                  0000215c    00000012     Interpreter.o (.text.Cmd_Flush)
+                  0000216e    00000012     libc.a : memcpy16.S.obj (.text:TI_memcpy_small)
+                  00002180    00000012            : copy_decompress_none.c.obj (.text:decompress:none)
+                  00002192    00000010     Clock.o (.text.Clock_Delay)
+                  000021a2    00000010     LaunchPad.o (.text.Delay)
+                  000021b2    00000002     --HOLE-- [fill = 0]
+                  000021b4    00000010     TFLuna2.o (.text.TFLuna2_Format_Standard_mm)
+                  000021c4    00000010     TFLuna2.o (.text.TFLuna2_Frame_Rate)
+                  000021d4    00000010     TFLuna2.o (.text.TFLuna2_SaveSettings)
+                  000021e4    00000010     TFLuna2.o (.text.TFLuna2_System_Reset)
+                  000021f4    0000000e     OS.o (.text.OS_AddPeriodicThread)
+                  00002202    0000000e     OS.o (.text.OS_AddThread)
                   00002210    0000000c     Clock.o (.text.Clock_Freq)
                   0000221c    0000000c     OS.o (.text.OS_AddPA28Task)
                   00002228    0000000c     OS.o (.text.OS_AddS2Task)
@@ -161,127 +159,115 @@ section   page    origin      length       input sections
                   00002296    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
                   0000229a    00000006     --HOLE-- [fill = 0]
 
-.cinit     0    00002a40    00000040     
-                  00002a40    00000016     (.cinit..data.load) [load image, compression = lzss]
-                  00002a56    00000002     --HOLE-- [fill = 0]
-                  00002a58    0000000c     (__TI_handler_table)
-                  00002a64    00000008     (.cinit..bss.load) [load image, compression = zero_init]
-                  00002a6c    00000010     (__TI_cinit_table)
-                  00002a7c    00000004     --HOLE-- [fill = 0]
+.cinit     0    00002a08    00000060     
+                  00002a08    00000035     (.cinit..data.load) [load image, compression = lzss]
+                  00002a3d    00000003     --HOLE-- [fill = 0]
+                  00002a40    0000000c     (__TI_handler_table)
+                  00002a4c    00000008     (.cinit..bss.load) [load image, compression = zero_init]
+                  00002a54    00000010     (__TI_cinit_table)
+                  00002a64    00000004     --HOLE-- [fill = 0]
 
-.rodata    0    000022a0    000007a0     
+.rodata    0    000022a0    00000768     
                   000022a0    000004fb     ST7735_SDC.o (.rodata.Font)
                   0000279b    00000001     --HOLE-- [fill = 0]
                   0000279c    00000040     DFT16.o (.rodata.ImW)
                   000027dc    00000040     DFT16.o (.rodata.ReW)
-                  0000281c    00000026     Interpreter.o (.rodata.str1.6099132036730984718.1)
-                  00002842    00000021     Interpreter.o (.rodata.str1.13584691219899174016.1)
-                  00002863    00000021     Interpreter.o (.rodata.str1.9303564720754203623.1)
-                  00002884    0000001d     Interpreter.o (.rodata.str1.10788060859246666907.1)
-                  000028a1    00000018     Interpreter.o (.rodata.str1.1890611713944335580.1)
-                  000028b9    00000016     ST7735_SDC.o (.rodata.str1.18061791561094498689.1)
-                  000028cf    00000016     Interpreter.o (.rodata.str1.6869798450878480225.1)
-                  000028e5    00000015     Interpreter.o (.rodata.str1.8801398533620989010.1)
-                  000028fa    00000013     Interpreter.o (.rodata.str1.11371354337695463545.1)
-                  0000290d    00000013     Interpreter.o (.rodata.str1.8834951582488220755.1)
-                  00002920    00000010     IRDistance.o (.rodata.A)
-                  00002930    00000010     IRDistance.o (.rodata.B)
-                  00002940    00000010     IRDistance.o (.rodata.C)
-                  00002950    00000010     IRDistance.o (.rodata.IRmax)
-                  00002960    0000000e     RTOS_Lab3.o (.rodata.str1.10338563355447080187.1)
-                  0000296e    0000000e     RTOS_Lab3.o (.rodata.str1.11704955707784963779.1)
-                  0000297c    0000000e     RTOS_Lab3.o (.rodata.str1.12520126893803480798.1)
-                  0000298a    0000000e     Interpreter.o (.rodata.str1.1287619923014008887.1)
-                  00002998    0000000e     Interpreter.o (.rodata.str1.17318961184984262945.1)
-                  000029a6    0000000e     RTOS_Lab3.o (.rodata.str1.17343367789043521713.1)
-                  000029b4    0000000e     RTOS_Lab3.o (.rodata.str1.3851616495332070648.1)
-                  000029c2    0000000e     Interpreter.o (.rodata.str1.3865723553975578614.1)
-                  000029d0    0000000e     RTOS_Lab3.o (.rodata.str1.6937805051806482736.1)
-                  000029de    0000000e     RTOS_Lab3.o (.rodata.str1.9816873719768994511.1)
-                  000029ec    0000000b     Interpreter.o (.rodata.str1.1827009460364060299.1)
-                  000029f7    00000008     RTOS_Lab3.o (.rodata.str1.15860131133187728716.1)
-                  000029ff    00000008     Interpreter.o (.rodata.str1.15874607606149105548.1)
-                  00002a07    00000008     RTOS_Lab3.o (.rodata.str1.18374597744251288085.1)
-                  00002a0f    00000006     TFLunaCommon.o (.rodata.Frame_Rate)
-                  00002a15    00000006     Interpreter.o (.rodata.str1.15341649103122110242.1)
-                  00002a1b    00000005     TFLunaCommon.o (.rodata.Format_Standard_mm)
-                  00002a20    00000005     Interpreter.o (.rodata.str1.15287782171638189172.1)
-                  00002a25    00000005     Interpreter.o (.rodata.str1.16145079996052228972.1)
-                  00002a2a    00000005     Interpreter.o (.rodata.str1.310310424903037747.1)
-                  00002a2f    00000004     TFLunaCommon.o (.rodata.SaveSettings)
-                  00002a33    00000004     TFLunaCommon.o (.rodata.System_Reset)
-                  00002a37    00000004     Interpreter.o (.rodata.str1.6623216276457726575.1)
-                  00002a3b    00000003     Interpreter.o (.rodata.str1.8740789795297769696.1)
-                  00002a3e    00000002     Interpreter.o (.rodata.str1.438584629756741659.1)
+                  0000281c    00000039     Interpreter.o (.rodata.str1.6869798450878480225.1)
+                  00002855    00000038     Interpreter.o (.rodata.str1.10788060859246666907.1)
+                  0000288d    00000033     Interpreter.o (.rodata.str1.15287782171638189172.1)
+                  000028c0    0000002e     Interpreter.o (.rodata.str1.13584691219899174016.1)
+                  000028ee    00000026     Interpreter.o (.rodata.str1.438584629756741659.1)
+                  00002914    00000010     IRDistance.o (.rodata.A)
+                  00002924    00000010     IRDistance.o (.rodata.B)
+                  00002934    00000010     IRDistance.o (.rodata.C)
+                  00002944    00000010     IRDistance.o (.rodata.IRmax)
+                  00002954    00000010     Interpreter.o (.rodata.str1.6099132036730984718.1)
+                  00002964    0000000e     RTOS_Lab3.o (.rodata.str1.10338563355447080187.1)
+                  00002972    0000000e     RTOS_Lab3.o (.rodata.str1.11704955707784963779.1)
+                  00002980    0000000e     RTOS_Lab3.o (.rodata.str1.12520126893803480798.1)
+                  0000298e    0000000e     RTOS_Lab3.o (.rodata.str1.17343367789043521713.1)
+                  0000299c    0000000e     RTOS_Lab3.o (.rodata.str1.3851616495332070648.1)
+                  000029aa    0000000e     RTOS_Lab3.o (.rodata.str1.6937805051806482736.1)
+                  000029b8    0000000e     RTOS_Lab3.o (.rodata.str1.9816873719768994511.1)
+                  000029c6    0000000c     Interpreter.o (.rodata.str1.8801398533620989010.1)
+                  000029d2    00000008     RTOS_Lab3.o (.rodata.str1.15860131133187728716.1)
+                  000029da    00000008     RTOS_Lab3.o (.rodata.str1.18374597744251288085.1)
+                  000029e2    00000006     TFLunaCommon.o (.rodata.Frame_Rate)
+                  000029e8    00000006     Interpreter.o (.rodata.str1.1287619923014008887.1)
+                  000029ee    00000006     Interpreter.o (.rodata.str1.8834951582488220755.1)
+                  000029f4    00000005     TFLunaCommon.o (.rodata.Format_Standard_mm)
+                  000029f9    00000004     TFLunaCommon.o (.rodata.SaveSettings)
+                  000029fd    00000004     TFLunaCommon.o (.rodata.System_Reset)
+                  00002a01    00000002     Interpreter.o (.rodata.str1.16145079996052228972.1)
+                  00002a03    00000002     Interpreter.o (.rodata.str1.8740789795297769696.1)
+                  00002a05    00000003     --HOLE-- [fill = 0]
 
 .init_array 
 *          0    00000000    00000000     UNINITIALIZED
 
 .binit     0    00000000    00000000     
 
-.data      0    20200000    00000816     UNINITIALIZED
+.data      0    20200000    0000082c     UNINITIALIZED
                   20200000    00000800     RTOS_Lab3.o (.data.JitterHistogram3)
-                  20200800    00000004     Clock.o (.data.BusFreq)
-                  20200804    00000004     LPF.o (.data.Filter.n)
-                  20200808    00000004     ST7735_SDC.o (.data.StX)
-                  2020080c    00000004     ST7735_SDC.o (.data.StY)
-                  20200810    00000002     ST7735_SDC.o (.data.StTextColor)
-                  20200812    00000002     ST7735_SDC.o (.data._height)
-                  20200814    00000002     ST7735_SDC.o (.data._width)
+                  20200800    00000020     Interpreter.o (.data.commands)
+                  20200820    00000004     Clock.o (.data.BusFreq)
+                  20200824    00000004     LPF.o (.data.Filter.n)
+                  20200828    00000002     ST7735_SDC.o (.data._height)
+                  2020082a    00000002     ST7735_SDC.o (.data._width)
 
-.bss       0    20200818    0000026f     UNINITIALIZED
-                  20200818    00000040     RTOS_FIFO.o (.bss.TxFifo)
-                  20200858    00000040     (.common:ImX)
-                  20200898    00000040     (.common:ReX)
-                  202008d8    00000040     (.common:x)
-                  20200918    00000040     (.common:x7)
-                  20200958    0000001c     (.common:f7)
-                  20200974    0000001c     (.common:mx7)
-                  20200990    00000018     LPF.o (.bss.Filter.x)
-                  202009a8    00000018     LPF.o (.bss.Filter.y)
-                  202009c0    00000010     TFLuna2.o (.bss.Rx2Fifo)
-                  202009d0    00000010     RTOS_FIFO.o (.bss.RxFifo)
-                  202009e0    00000010     TFLuna2.o (.bss.Tx2Fifo)
-                  202009f0    0000000c     (.common:Message)
-                  202009fc    0000000c     (.common:TFLuna2DataMessage)
-                  20200a08    00000004     RTOS_Lab3.o (.bss.DAS.LastTime)
-                  20200a0c    00000004     TFLuna2.o (.bss.Rx2GetI)
-                  20200a10    00000004     TFLuna2.o (.bss.Rx2PutI)
-                  20200a14    00000004     TFLuna2.o (.bss.Tx2GetI)
-                  20200a18    00000004     TFLuna2.o (.bss.Tx2PutI)
-                  20200a1c    00000004     (.common:BadCheckSum2)
-                  20200a20    00000004     (.common:Checks)
-                  20200a24    00000004     (.common:ChecksWork)
-                  20200a28    00000004     (.common:Checksum)
-                  20200a2c    00000004     (.common:ChecksumErrors)
-                  20200a30    00000004     (.common:ChecksumOriginal)
-                  20200a34    00000004     (.common:DataLost)
-                  20200a38    00000004     (.common:Distance)
-                  20200a3c    00000004     (.common:FilterOutput)
-                  20200a40    00000004     (.common:FilterWork)
-                  20200a44    00000004     (.common:I7)
-                  20200a48    00000004     (.common:LCDFree)
-                  20200a4c    00000004     (.common:LPFSum7)
-                  20200a50    00000004     (.common:LostData2)
-                  20200a54    00000004     (.common:MaxJitter3)
-                  20200a58    00000004     (.common:Messageindex)
-                  20200a5c    00000004     (.common:NumCreated)
-                  20200a60    00000004     (.common:RxGetI)
-                  20200a64    00000004     (.common:RxPutI)
-                  20200a68    00000004     (.common:Size7)
-                  20200a6c    00000004     (.common:TFLuna2Distance)
-                  20200a70    00000004     (.common:TFLuna2Function)
-                  20200a74    00000004     (.common:TFLuna2Index)
-                  20200a78    00000004     (.common:TimeMs)
-                  20200a7c    00000004     (.common:TxGetI)
-                  20200a80    00000004     (.common:TxPutI)
-                  20200a84    00000001     ST7735_SDC.o (.bss.ColStart)
-                  20200a85    00000001     ST7735_SDC.o (.bss.RowStart)
-                  20200a86    00000001     (.common:TFLuna2LastByte)
+.bss       0    2020082c    0000026f     UNINITIALIZED
+                  2020082c    00000040     RTOS_FIFO.o (.bss.TxFifo)
+                  2020086c    00000040     (.common:ImX)
+                  202008ac    00000040     (.common:ReX)
+                  202008ec    00000040     (.common:x)
+                  2020092c    00000040     (.common:x7)
+                  2020096c    0000001c     (.common:f7)
+                  20200988    0000001c     (.common:mx7)
+                  202009a4    00000018     LPF.o (.bss.Filter.x)
+                  202009bc    00000018     LPF.o (.bss.Filter.y)
+                  202009d4    00000010     TFLuna2.o (.bss.Rx2Fifo)
+                  202009e4    00000010     RTOS_FIFO.o (.bss.RxFifo)
+                  202009f4    00000010     TFLuna2.o (.bss.Tx2Fifo)
+                  20200a04    0000000c     (.common:Message)
+                  20200a10    0000000c     (.common:TFLuna2DataMessage)
+                  20200a1c    00000004     RTOS_Lab3.o (.bss.DAS.LastTime)
+                  20200a20    00000004     TFLuna2.o (.bss.Rx2GetI)
+                  20200a24    00000004     TFLuna2.o (.bss.Rx2PutI)
+                  20200a28    00000004     TFLuna2.o (.bss.Tx2GetI)
+                  20200a2c    00000004     TFLuna2.o (.bss.Tx2PutI)
+                  20200a30    00000004     (.common:BadCheckSum2)
+                  20200a34    00000004     (.common:Checks)
+                  20200a38    00000004     (.common:ChecksWork)
+                  20200a3c    00000004     (.common:Checksum)
+                  20200a40    00000004     (.common:ChecksumErrors)
+                  20200a44    00000004     (.common:ChecksumOriginal)
+                  20200a48    00000004     (.common:DataLost)
+                  20200a4c    00000004     (.common:Distance)
+                  20200a50    00000004     (.common:FilterOutput)
+                  20200a54    00000004     (.common:FilterWork)
+                  20200a58    00000004     (.common:I7)
+                  20200a5c    00000004     (.common:LCDFree)
+                  20200a60    00000004     (.common:LPFSum7)
+                  20200a64    00000004     (.common:LostData2)
+                  20200a68    00000004     (.common:MaxJitter3)
+                  20200a6c    00000004     (.common:Messageindex)
+                  20200a70    00000004     (.common:NumCreated)
+                  20200a74    00000004     (.common:RxGetI)
+                  20200a78    00000004     (.common:RxPutI)
+                  20200a7c    00000004     (.common:Size7)
+                  20200a80    00000004     (.common:TFLuna2Distance)
+                  20200a84    00000004     (.common:TFLuna2Function)
+                  20200a88    00000004     (.common:TFLuna2Index)
+                  20200a8c    00000004     (.common:TimeMs)
+                  20200a90    00000004     (.common:TxGetI)
+                  20200a94    00000004     (.common:TxPutI)
+                  20200a98    00000001     ST7735_SDC.o (.bss.ColStart)
+                  20200a99    00000001     ST7735_SDC.o (.bss.RowStart)
+                  20200a9a    00000001     (.common:TFLuna2LastByte)
 
-.sysmem    0    20200a88    00000200     UNINITIALIZED
-                  20200a88    00000010     libc.a : memory.c.obj (.sysmem)
-                  20200a98    000001f0     --HOLE--
+.sysmem    0    20200aa0    00000200     UNINITIALIZED
+                  20200aa0    00000010     libc.a : memory.c.obj (.sysmem)
+                  20200ab0    000001f0     --HOLE--
 
 .stack     0    20207e00    00000200     UNINITIALIZED
                   20207e00    00000004     libc.a : boot_cortex_m.c.obj (.stack)
@@ -299,24 +285,25 @@ MODULE SUMMARY
        ------                         ----   -------   -------
     ./
        RTOS_Lab3.o                    1448   114       2292   
-       ST7735_SDC.o                   1380   1297      32     
+       ST7735_SDC.o                   1398   1275      22     
        TFLuna2.o                      1352   0         81     
+       Interpreter.o                  526    292       32     
        LPF.o                          556    0         184    
-       Interpreter.o                  328    329       0      
        Clock.o                        464    0         4      
        RTOS_FIFO.o                    328    0         96     
-       OS.o                           370    0         4      
-       RTOS_UART.o                    370    0         0      
        DFT16.o                        232    128       0      
+       OS.o                           338    0         4      
        RTOS_UARTints.o                314    0         0      
        ADC.o                          312    0         0      
        SPI.o                          200    0         0      
        LaunchPad.o                    196    0         0      
+       Timer.o                        168    0         0      
        IRDistance.o                   88     64        0      
        osasm.o                        54     0         0      
+       RTOS_UART.o                    38     0         0      
        TFLunaCommon.o                 0      19        0      
     +--+------------------------------+------+---------+---------+
-       Total:                         7992   1951      2693   
+       Total:                         8012   1892      2715   
                                                               
     ./ticlang/
        startup_mspm0g3507_ticlang.o   60     192       0      
@@ -331,11 +318,10 @@ MODULE SUMMARY
        copy_zero_init.c.obj           22     0         0      
        copy_decompress_none.c.obj     18     0         0      
        memcpy16.S.obj                 18     0         0      
-       strlen.c.obj                   14     0         0      
        exit.c.obj                     6      0         0      
        pre_init.c.obj                 4      0         0      
     +--+------------------------------+------+---------+---------+
-       Total:                         442    0         0      
+       Total:                         428    0         0      
                                                               
     /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/armv6m-ti-none-eabi/c/libsysbm.a
        hostexit.c.obj                 4      0         0      
@@ -352,21 +338,21 @@ MODULE SUMMARY
                                                               
        Heap:                          0      0         512    
        Stack:                         0      0         512    
-       Linker Generated:              0      58        0      
+       Linker Generated:              0      89        0      
     +--+------------------------------+------+---------+---------+
-       Grand Total:                   8658   2201      3717   
+       Grand Total:                   8664   2173      3739   
 
 
 LINKER GENERATED COPY TABLES
 
-__TI_cinit_table @ 00002a6c records: 2, size/record: 8, table size: 16
-	.data: load addr=00002a40, load size=00000016 bytes, run addr=20200000, run size=00000816 bytes, compression=lzss
-	.bss: load addr=00002a64, load size=00000008 bytes, run addr=20200818, run size=0000026f bytes, compression=zero_init
+__TI_cinit_table @ 00002a54 records: 2, size/record: 8, table size: 16
+	.data: load addr=00002a08, load size=00000035 bytes, run addr=20200000, run size=0000082c bytes, compression=lzss
+	.bss: load addr=00002a4c, load size=00000008 bytes, run addr=2020082c, run size=0000026f bytes, compression=zero_init
 
 
 LINKER GENERATED HANDLER TABLE
 
-__TI_handler_table @ 00002a58 records: 3, size/record: 4, table size: 12
+__TI_handler_table @ 00002a40 records: 3, size/record: 4, table size: 12
 	index: 0, handler: __TI_decompress_lzss
 	index: 1, handler: __TI_decompress_none
 	index: 2, handler: __TI_zero_init
@@ -376,170 +362,169 @@ GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name
 
 address   name                          
 -------   ----                          
-00002920  A                             
-00002071  ADC0_IRQHandler               
-00001c51  ADC0_In                       
-00000949  ADC0_Init                     
-00002071  ADC1_IRQHandler               
-00002071  AES_IRQHandler                
-00001d91  ActivatePortA_B               
-00002930  B                             
-20200a1c  BadCheckSum2                  
-20200800  BusFreq                       
+00002914  A                             
+00002051  ADC0_IRQHandler               
+00001c8d  ADC0_In                       
+00000919  ADC0_Init                     
+00002051  ADC1_IRQHandler               
+00002051  AES_IRQHandler                
+00001dcd  ActivatePortA_B               
+00002924  B                             
+20200a30  BadCheckSum2                  
+20200820  BusFreq                       
 00001279  ButtonWork                    
-00002940  C                             
+00002934  C                             
 0000227a  C$$EXIT                       
-00002071  CANFD0_IRQHandler             
-00001ed9  Check                         
-20200a20  Checks                        
-20200a24  ChecksWork                    
-20200a28  Checksum                      
-20200a2c  ChecksumErrors                
-20200a30  ChecksumOriginal              
-00002185  Clock_Delay                   
+00002051  CANFD0_IRQHandler             
+00001ea9  Check                         
+20200a34  Checks                        
+20200a38  ChecksWork                    
+20200a3c  Checksum                      
+20200a40  ChecksumErrors                
+20200a44  ChecksumOriginal              
+00002193  Clock_Delay                   
 00002211  Clock_Freq                    
 000000c1  Clock_Init80MHz               
-00000db5  Consumer                      
-00002071  DAC0_IRQHandler               
-00000a3d  DAS                           
-00000b31  DFT16                         
-00002071  DMA_IRQHandler                
-20200a34  DataLost                      
-00002071  Default_Handler               
-00002195  Delay                         
-00000e79  Display                       
-20200a38  Distance                      
-00001e48  EndCritical                   
-00000f29  Filter                        
-20200a3c  FilterOutput                  
-20200a40  FilterWork                    
-00002a1b  Format_Standard_mm            
-00002a0f  Frame_Rate                    
-00002071  GROUP0_IRQHandler             
-000018b5  GROUP1_IRQHandler             
+0000215d  Cmd_Flush                     
+00000ee1  Cmd_Help                      
+00002035  Cmd_Lab1_Results              
+00001e75  Cmd_Print                     
+00000cb5  Consumer                      
+00002051  DAC0_IRQHandler               
+00000a0d  DAS                           
+00000b01  DFT16                         
+00002051  DMA_IRQHandler                
+20200a48  DataLost                      
+00002051  Default_Handler               
+000021a3  Delay                         
+00000e31  Display                       
+20200a4c  Distance                      
+00001e4c  EndCritical                   
+000010cd  Filter                        
+20200a50  FilterOutput                  
+20200a54  FilterWork                    
+000029f4  Format_Standard_mm            
+000029e2  Frame_Rate                    
+00002051  GROUP0_IRQHandler             
+000018f1  GROUP1_IRQHandler             
 0000227b  HOSTexit                      
-0000208d  HardFault_Handler             
-00002071  I2C0_IRQHandler               
-00002071  I2C1_IRQHandler               
-20200a44  I7                            
-000017ad  IRDistance_Convert            
-00002950  IRmax                         
+0000206d  HardFault_Handler             
+00002051  I2C0_IRQHandler               
+00002051  I2C1_IRQHandler               
+20200a58  I7                            
+00001791  IRDistance_Convert            
+00002944  IRmax                         
 0000279c  ImW                           
-20200858  ImX                           
-0000058d  Interpreter                   
-00001dc9  Jitter3_Init                  
+2020086c  ImX                           
+00001479  Interpreter                   
+00001e05  Jitter3_Init                  
 20200000  JitterHistogram3              
-20200a48  LCDFree                       
-20200a4c  LPFSum7                       
-000014fd  LPF_Init7                     
+20200a5c  LCDFree                       
+20200a60  LPFSum7                       
+000014e1  LPF_Init7                     
 UNDEFED   Lab1_Results                  
-00001405  LaunchPad_Init                
-00001805  Logic_Init                    
-20200a50  LostData2                     
-20200a54  MaxJitter3                    
-00000819  Median5                       
-202009f0  Message                       
-20200a58  Messageindex                  
-00002071  NMI_Handler                   
-20200a5c  NumCreated                    
-00001e38  OSDisableInterrupts           
-00001e3c  OSEnableInterrupts            
+00001381  LaunchPad_Init                
+000017e9  Logic_Init                    
+20200a64  LostData2                     
+20200a68  MaxJitter3                    
+000006d1  Median5                       
+20200a04  Message                       
+20200a6c  Messageindex                  
+00002051  NMI_Handler                   
+20200a70  NumCreated                    
+00001e3c  OSDisableInterrupts           
+00001e40  OSEnableInterrupts            
 0000221d  OS_AddPA28Task                
-000021e5  OS_AddPeriodicThread          
+000021f5  OS_AddPeriodicThread          
 00002229  OS_AddS2Task                  
-000021f3  OS_AddThread                  
-00001e71  OS_ClearMsTime                
+00002203  OS_AddThread                  
+00002089  OS_ClearMsTime                
 0000227f  OS_Fifo_Get                   
 000011e9  OS_Fifo_Init                  
 00002241  OS_Fifo_Put                   
 00002283  OS_Id                         
-0000104b  OS_Init                       
+000018ef  OS_Init                       
 0000224b  OS_InitSemaphore              
 00002287  OS_Kill                       
 00002255  OS_Launch                     
-000018b3  OS_MailBox_Init               
+00001e73  OS_MailBox_Init               
 0000228b  OS_MailBox_Recv               
 0000225d  OS_MailBox_Send               
-00001f99  OS_MsTime                     
+00001fd5  OS_MsTime                     
 00002265  OS_Sleep                      
 0000228f  OS_Time                       
 00002235  OS_TimeDifference             
-00001e51  PendSV_Handler                
-00001565  Producer                      
-00002071  RTC_IRQHandler                
+00001031  ParseArgs                     
+00001e55  PendSV_Handler                
+00001549  Producer                      
+00002051  RTC_IRQHandler                
 000027dc  ReW                           
-20200898  ReX                           
+202008ac  ReX                           
 00002293  Reset_Handler                 
-00002125  Rx2Fifo_Init                  
-0000195d  Rx2Fifo_Put                   
-000019a9  RxFifo_Get                    
-000019f5  RxFifo_Put                    
-20200a60  RxGetI                        
-20200a64  RxPutI                        
-00001a41  S2Push                        
-00002071  SPI0_IRQHandler               
-00002071  SPI1_IRQHandler               
+00002121  Rx2Fifo_Init                  
+00001999  Rx2Fifo_Put                   
+000019e5  RxFifo_Get                    
+00001a31  RxFifo_Put                    
+20200a74  RxGetI                        
+20200a78  RxPutI                        
+00001a7d  S2Push                        
+00002051  SPI0_IRQHandler               
+00002051  SPI1_IRQHandler               
 00000275  ST7735_DrawChar               
 000012fd  ST7735_DrawString             
-0000104d  ST7735_Message                
-00000c19  ST7735_OutChar                
-00001f69  ST7735_OutSDec                
-00001381  ST7735_OutUDec                
-00001ea5  ST7735_SetCursor              
-00001e53  SVC_Handler                   
-00002a2f  SaveSettings                  
-20200a68  Size7                         
-20200810  StTextColor                   
-20200808  StX                           
-2020080c  StY                           
-00001e40  StartCritical                 
-00001e4e  StartOS                       
-00001e37  SysTick_Handler               
-00002a33  System_Reset                  
-202009fc  TFLuna2DataMessage            
-20200a6c  TFLuna2Distance               
-20200a70  TFLuna2Function               
-20200a74  TFLuna2Index                  
-20200a86  TFLuna2LastByte               
-000021a5  TFLuna2_Format_Standard_mm    
-000021b5  TFLuna2_Frame_Rate            
-000020c5  TFLuna2_InStatus              
+00000801  ST7735_FillRect               
+00001f39  ST7735_FillScreen             
+00000d79  ST7735_Message                
+00001841  ST7735_OutUDec2               
+00001e57  SVC_Handler                   
+000029f9  SaveSettings                  
+20200a7c  Size7                         
+00001e44  StartCritical                 
+00001e52  StartOS                       
+00002033  SysTick_Handler               
+000029fd  System_Reset                  
+20200a10  TFLuna2DataMessage            
+20200a80  TFLuna2Distance               
+20200a84  TFLuna2Function               
+20200a88  TFLuna2Index                  
+20200a9a  TFLuna2LastByte               
+000021b5  TFLuna2_Format_Standard_mm    
+000021c5  TFLuna2_Frame_Rate            
+000020c1  TFLuna2_InStatus              
 00000419  TFLuna2_Init                  
-00001c95  TFLuna2_OutChar               
-000020dd  TFLuna2_OutStatus             
-000021c5  TFLuna2_SaveSettings          
-00001f09  TFLuna2_SendMessage           
-000021d5  TFLuna2_System_Reset          
-000015c9  TFT_OutCommand                
-0000162d  TFT_OutData                   
-00002071  TIMA0_IRQHandler              
-00002071  TIMA1_IRQHandler              
-00002071  TIMG0_IRQHandler              
-00002071  TIMG12_IRQHandler             
-00002071  TIMG6_IRQHandler              
-00002031  TIMG7_IRQHandler              
-00002139  TIMG8_IRQHandler              
-00002161  TI_memcpy_small               
-20200a78  TimeMs                        
-00001c09  Tx2Fifo_Get                   
-0000214d  Tx2Fifo_Init                  
-00001a8d  Tx2Fifo_Put                   
-00001ad9  TxFifo_Get                    
-00001b25  TxFifo_Put                    
-000020f5  TxFifo_Size                   
-20200a7c  TxGetI                        
-20200a80  TxPutI                        
-000016f5  UART0_IRQHandler              
-00002071  UART1_IRQHandler              
-00001751  UART2_IRQHandler              
-00002071  UART3_IRQHandler              
-0000200f  UART_InChar                   
-000010d9  UART_InString                 
-00000fbd  UART_InUDec                   
-00001cd5  UART_OutChar                  
-00001fe9  UART_OutString                
-00001e01  UART_OutUDec                  
-00001691  VirusDetector                 
+00001cd1  TFLuna2_OutChar               
+000020d9  TFLuna2_OutStatus             
+000021d5  TFLuna2_SaveSettings          
+00001ed9  TFLuna2_SendMessage           
+000021e5  TFLuna2_System_Reset          
+000015ad  TFT_OutCommand                
+00001611  TFT_OutData                   
+00002051  TIMA0_IRQHandler              
+00002051  TIMA1_IRQHandler              
+00002051  TIMG0_IRQHandler              
+00002051  TIMG12_IRQHandler             
+00002051  TIMG6_IRQHandler              
+00001ff5  TIMG7_IRQHandler              
+00002135  TIMG8_IRQHandler              
+0000216f  TI_memcpy_small               
+20200a8c  TimeMs                        
+00000f89  TimerG7_IntArm                
+00001c45  Tx2Fifo_Get                   
+00002149  Tx2Fifo_Init                  
+00001ac9  Tx2Fifo_Put                   
+00001b15  TxFifo_Get                    
+00001b61  TxFifo_Put                    
+000020f1  TxFifo_Size                   
+20200a90  TxGetI                        
+20200a94  TxPutI                        
+000016d9  UART0_IRQHandler              
+00002051  UART1_IRQHandler              
+00001735  UART2_IRQHandler              
+00002051  UART3_IRQHandler              
+00001fb3  UART_InChar                   
+00001d11  UART_OutChar                  
+00001f8d  UART_OutString                
+00001675  VirusDetector                 
 20208000  __STACK_END                   
 00000200  __STACK_SIZE                  
 00000200  __SYSMEM_SIZE                 
@@ -552,27 +537,27 @@ UNDEFED   Lab1_Results
 00000000  __TI_ATRegion2_region_sz      
 00000000  __TI_ATRegion2_src_addr       
 00000000  __TI_ATRegion2_trg_addr       
-00002a6c  __TI_CINIT_Base               
-00002a7c  __TI_CINIT_Limit              
-00002a7c  __TI_CINIT_Warm               
-00002a58  __TI_Handler_Table_Base       
-00002a64  __TI_Handler_Table_Limit      
-00001d55  __TI_auto_init_nobinit_nopinit
-00001481  __TI_decompress_lzss          
-00002173  __TI_decompress_none          
+00002a54  __TI_CINIT_Base               
+00002a64  __TI_CINIT_Limit              
+00002a64  __TI_CINIT_Warm               
+00002a40  __TI_Handler_Table_Base       
+00002a4c  __TI_Handler_Table_Limit      
+00001d91  __TI_auto_init_nobinit_nopinit
+000013fd  __TI_decompress_lzss          
+00002181  __TI_decompress_none          
 ffffffff  __TI_pprof_out_hndl           
 ffffffff  __TI_prof_data_size           
 ffffffff  __TI_prof_data_start          
 00000000  __TI_static_base__            
-0000210d  __TI_zero_init_nomemset       
-0000185d  __aeabi_idiv                  
-00001e6f  __aeabi_idiv0                 
-0000185d  __aeabi_idivmod               
+00002109  __TI_zero_init_nomemset       
+00001899  __aeabi_idiv                  
+0000211f  __aeabi_idiv0                 
+00001899  __aeabi_idivmod               
 0000226d  __aeabi_memcpy                
 0000226d  __aeabi_memcpy4               
 0000226d  __aeabi_memcpy8               
-00001d15  __aeabi_uidiv                 
-00001d15  __aeabi_uidivmod              
+00001d51  __aeabi_uidiv                 
+00001d51  __aeabi_uidivmod              
 ffffffff  __binit__                     
 UNDEFED   __mpu_init                    
 20207e00  __stack                       
@@ -580,22 +565,22 @@ UNDEFED   __mpu_init
 20200000  __start___llvm_prf_cnts       
 20200000  __stop___llvm_prf_bits        
 20200000  __stop___llvm_prf_cnts        
-00001fc1  _c_int00_noargs               
-20200a88  _sys_memory                   
+00001f65  _c_int00_noargs               
+20200aa0  _sys_memory                   
 UNDEFED   _system_post_cinit            
 00002297  _system_pre_init              
 00002275  abort                         
 ffffffff  binit                         
-20200958  f7                            
-00001909  fillmessage                   
+20200800  commands                      
+2020096c  f7                            
+00001945  fillmessage                   
 00000000  interruptVectors              
-000020a9  main                          
-20200974  mx7                           
-00000ce9  realmain                      
+000020a5  main                          
+20200988  mx7                           
+00000be9  realmain                      
 000011f1  strcmp                        
-00002201  strlen                        
-202008d8  x                             
-20200918  x7                            
+202008ec  x                             
+2020092c  x7                            
 
 
 GLOBAL SYMBOLS: SORTED BY Symbol Address 
@@ -618,118 +603,119 @@ address   name
 00000200  __SYSMEM_SIZE                 
 00000275  ST7735_DrawChar               
 00000419  TFLuna2_Init                  
-0000058d  Interpreter                   
-00000819  Median5                       
-00000949  ADC0_Init                     
-00000a3d  DAS                           
-00000b31  DFT16                         
-00000c19  ST7735_OutChar                
-00000ce9  realmain                      
-00000db5  Consumer                      
-00000e79  Display                       
-00000f29  Filter                        
-00000fbd  UART_InUDec                   
-0000104b  OS_Init                       
-0000104d  ST7735_Message                
-000010d9  UART_InString                 
+000006d1  Median5                       
+00000801  ST7735_FillRect               
+00000919  ADC0_Init                     
+00000a0d  DAS                           
+00000b01  DFT16                         
+00000be9  realmain                      
+00000cb5  Consumer                      
+00000d79  ST7735_Message                
+00000e31  Display                       
+00000ee1  Cmd_Help                      
+00000f89  TimerG7_IntArm                
+00001031  ParseArgs                     
+000010cd  Filter                        
 000011e9  OS_Fifo_Init                  
 000011f1  strcmp                        
 00001279  ButtonWork                    
 000012fd  ST7735_DrawString             
-00001381  ST7735_OutUDec                
-00001405  LaunchPad_Init                
-00001481  __TI_decompress_lzss          
-000014fd  LPF_Init7                     
-00001565  Producer                      
-000015c9  TFT_OutCommand                
-0000162d  TFT_OutData                   
-00001691  VirusDetector                 
-000016f5  UART0_IRQHandler              
-00001751  UART2_IRQHandler              
-000017ad  IRDistance_Convert            
-00001805  Logic_Init                    
-0000185d  __aeabi_idiv                  
-0000185d  __aeabi_idivmod               
-000018b3  OS_MailBox_Init               
-000018b5  GROUP1_IRQHandler             
-00001909  fillmessage                   
-0000195d  Rx2Fifo_Put                   
-000019a9  RxFifo_Get                    
-000019f5  RxFifo_Put                    
-00001a41  S2Push                        
-00001a8d  Tx2Fifo_Put                   
-00001ad9  TxFifo_Get                    
-00001b25  TxFifo_Put                    
-00001c09  Tx2Fifo_Get                   
-00001c51  ADC0_In                       
-00001c95  TFLuna2_OutChar               
-00001cd5  UART_OutChar                  
-00001d15  __aeabi_uidiv                 
-00001d15  __aeabi_uidivmod              
-00001d55  __TI_auto_init_nobinit_nopinit
-00001d91  ActivatePortA_B               
-00001dc9  Jitter3_Init                  
-00001e01  UART_OutUDec                  
-00001e37  SysTick_Handler               
-00001e38  OSDisableInterrupts           
-00001e3c  OSEnableInterrupts            
-00001e40  StartCritical                 
-00001e48  EndCritical                   
-00001e4e  StartOS                       
-00001e51  PendSV_Handler                
-00001e53  SVC_Handler                   
-00001e6f  __aeabi_idiv0                 
-00001e71  OS_ClearMsTime                
-00001ea5  ST7735_SetCursor              
-00001ed9  Check                         
-00001f09  TFLuna2_SendMessage           
-00001f69  ST7735_OutSDec                
-00001f99  OS_MsTime                     
-00001fc1  _c_int00_noargs               
-00001fe9  UART_OutString                
-0000200f  UART_InChar                   
-00002031  TIMG7_IRQHandler              
-00002071  ADC0_IRQHandler               
-00002071  ADC1_IRQHandler               
-00002071  AES_IRQHandler                
-00002071  CANFD0_IRQHandler             
-00002071  DAC0_IRQHandler               
-00002071  DMA_IRQHandler                
-00002071  Default_Handler               
-00002071  GROUP0_IRQHandler             
-00002071  I2C0_IRQHandler               
-00002071  I2C1_IRQHandler               
-00002071  NMI_Handler                   
-00002071  RTC_IRQHandler                
-00002071  SPI0_IRQHandler               
-00002071  SPI1_IRQHandler               
-00002071  TIMA0_IRQHandler              
-00002071  TIMA1_IRQHandler              
-00002071  TIMG0_IRQHandler              
-00002071  TIMG12_IRQHandler             
-00002071  TIMG6_IRQHandler              
-00002071  UART1_IRQHandler              
-00002071  UART3_IRQHandler              
-0000208d  HardFault_Handler             
-000020a9  main                          
-000020c5  TFLuna2_InStatus              
-000020dd  TFLuna2_OutStatus             
-000020f5  TxFifo_Size                   
-0000210d  __TI_zero_init_nomemset       
-00002125  Rx2Fifo_Init                  
-00002139  TIMG8_IRQHandler              
-0000214d  Tx2Fifo_Init                  
-00002161  TI_memcpy_small               
-00002173  __TI_decompress_none          
-00002185  Clock_Delay                   
-00002195  Delay                         
-000021a5  TFLuna2_Format_Standard_mm    
-000021b5  TFLuna2_Frame_Rate            
-000021c5  TFLuna2_SaveSettings          
-000021d5  TFLuna2_System_Reset          
-000021e5  OS_AddPeriodicThread          
-000021f3  OS_AddThread                  
-00002201  strlen                        
+00001381  LaunchPad_Init                
+000013fd  __TI_decompress_lzss          
+00001479  Interpreter                   
+000014e1  LPF_Init7                     
+00001549  Producer                      
+000015ad  TFT_OutCommand                
+00001611  TFT_OutData                   
+00001675  VirusDetector                 
+000016d9  UART0_IRQHandler              
+00001735  UART2_IRQHandler              
+00001791  IRDistance_Convert            
+000017e9  Logic_Init                    
+00001841  ST7735_OutUDec2               
+00001899  __aeabi_idiv                  
+00001899  __aeabi_idivmod               
+000018ef  OS_Init                       
+000018f1  GROUP1_IRQHandler             
+00001945  fillmessage                   
+00001999  Rx2Fifo_Put                   
+000019e5  RxFifo_Get                    
+00001a31  RxFifo_Put                    
+00001a7d  S2Push                        
+00001ac9  Tx2Fifo_Put                   
+00001b15  TxFifo_Get                    
+00001b61  TxFifo_Put                    
+00001c45  Tx2Fifo_Get                   
+00001c8d  ADC0_In                       
+00001cd1  TFLuna2_OutChar               
+00001d11  UART_OutChar                  
+00001d51  __aeabi_uidiv                 
+00001d51  __aeabi_uidivmod              
+00001d91  __TI_auto_init_nobinit_nopinit
+00001dcd  ActivatePortA_B               
+00001e05  Jitter3_Init                  
+00001e3c  OSDisableInterrupts           
+00001e40  OSEnableInterrupts            
+00001e44  StartCritical                 
+00001e4c  EndCritical                   
+00001e52  StartOS                       
+00001e55  PendSV_Handler                
+00001e57  SVC_Handler                   
+00001e73  OS_MailBox_Init               
+00001e75  Cmd_Print                     
+00001ea9  Check                         
+00001ed9  TFLuna2_SendMessage           
+00001f39  ST7735_FillScreen             
+00001f65  _c_int00_noargs               
+00001f8d  UART_OutString                
+00001fb3  UART_InChar                   
+00001fd5  OS_MsTime                     
+00001ff5  TIMG7_IRQHandler              
+00002033  SysTick_Handler               
+00002035  Cmd_Lab1_Results              
+00002051  ADC0_IRQHandler               
+00002051  ADC1_IRQHandler               
+00002051  AES_IRQHandler                
+00002051  CANFD0_IRQHandler             
+00002051  DAC0_IRQHandler               
+00002051  DMA_IRQHandler                
+00002051  Default_Handler               
+00002051  GROUP0_IRQHandler             
+00002051  I2C0_IRQHandler               
+00002051  I2C1_IRQHandler               
+00002051  NMI_Handler                   
+00002051  RTC_IRQHandler                
+00002051  SPI0_IRQHandler               
+00002051  SPI1_IRQHandler               
+00002051  TIMA0_IRQHandler              
+00002051  TIMA1_IRQHandler              
+00002051  TIMG0_IRQHandler              
+00002051  TIMG12_IRQHandler             
+00002051  TIMG6_IRQHandler              
+00002051  UART1_IRQHandler              
+00002051  UART3_IRQHandler              
+0000206d  HardFault_Handler             
+00002089  OS_ClearMsTime                
+000020a5  main                          
+000020c1  TFLuna2_InStatus              
+000020d9  TFLuna2_OutStatus             
+000020f1  TxFifo_Size                   
+00002109  __TI_zero_init_nomemset       
+0000211f  __aeabi_idiv0                 
+00002121  Rx2Fifo_Init                  
+00002135  TIMG8_IRQHandler              
+00002149  Tx2Fifo_Init                  
+0000215d  Cmd_Flush                     
+0000216f  TI_memcpy_small               
+00002181  __TI_decompress_none          
+00002193  Clock_Delay                   
+000021a3  Delay                         
+000021b5  TFLuna2_Format_Standard_mm    
+000021c5  TFLuna2_Frame_Rate            
+000021d5  TFLuna2_SaveSettings          
+000021e5  TFLuna2_System_Reset          
+000021f5  OS_AddPeriodicThread          
+00002203  OS_AddThread                  
 00002211  Clock_Freq                    
 0000221d  OS_AddPA28Task                
 00002229  OS_AddS2Task                  
@@ -754,64 +740,62 @@ address   name
 00002297  _system_pre_init              
 0000279c  ImW                           
 000027dc  ReW                           
-00002920  A                             
-00002930  B                             
-00002940  C                             
-00002950  IRmax                         
-00002a0f  Frame_Rate                    
-00002a1b  Format_Standard_mm            
-00002a2f  SaveSettings                  
-00002a33  System_Reset                  
-00002a58  __TI_Handler_Table_Base       
-00002a64  __TI_Handler_Table_Limit      
-00002a6c  __TI_CINIT_Base               
-00002a7c  __TI_CINIT_Limit              
-00002a7c  __TI_CINIT_Warm               
+00002914  A                             
+00002924  B                             
+00002934  C                             
+00002944  IRmax                         
+000029e2  Frame_Rate                    
+000029f4  Format_Standard_mm            
+000029f9  SaveSettings                  
+000029fd  System_Reset                  
+00002a40  __TI_Handler_Table_Base       
+00002a4c  __TI_Handler_Table_Limit      
+00002a54  __TI_CINIT_Base               
+00002a64  __TI_CINIT_Limit              
+00002a64  __TI_CINIT_Warm               
 20200000  JitterHistogram3              
 20200000  __start___llvm_prf_bits       
 20200000  __start___llvm_prf_cnts       
 20200000  __stop___llvm_prf_bits        
 20200000  __stop___llvm_prf_cnts        
-20200800  BusFreq                       
-20200808  StX                           
-2020080c  StY                           
-20200810  StTextColor                   
-20200858  ImX                           
-20200898  ReX                           
-202008d8  x                             
-20200918  x7                            
-20200958  f7                            
-20200974  mx7                           
-202009f0  Message                       
-202009fc  TFLuna2DataMessage            
-20200a1c  BadCheckSum2                  
-20200a20  Checks                        
-20200a24  ChecksWork                    
-20200a28  Checksum                      
-20200a2c  ChecksumErrors                
-20200a30  ChecksumOriginal              
-20200a34  DataLost                      
-20200a38  Distance                      
-20200a3c  FilterOutput                  
-20200a40  FilterWork                    
-20200a44  I7                            
-20200a48  LCDFree                       
-20200a4c  LPFSum7                       
-20200a50  LostData2                     
-20200a54  MaxJitter3                    
-20200a58  Messageindex                  
-20200a5c  NumCreated                    
-20200a60  RxGetI                        
-20200a64  RxPutI                        
-20200a68  Size7                         
-20200a6c  TFLuna2Distance               
-20200a70  TFLuna2Function               
-20200a74  TFLuna2Index                  
-20200a78  TimeMs                        
-20200a7c  TxGetI                        
-20200a80  TxPutI                        
-20200a86  TFLuna2LastByte               
-20200a88  _sys_memory                   
+20200800  commands                      
+20200820  BusFreq                       
+2020086c  ImX                           
+202008ac  ReX                           
+202008ec  x                             
+2020092c  x7                            
+2020096c  f7                            
+20200988  mx7                           
+20200a04  Message                       
+20200a10  TFLuna2DataMessage            
+20200a30  BadCheckSum2                  
+20200a34  Checks                        
+20200a38  ChecksWork                    
+20200a3c  Checksum                      
+20200a40  ChecksumErrors                
+20200a44  ChecksumOriginal              
+20200a48  DataLost                      
+20200a4c  Distance                      
+20200a50  FilterOutput                  
+20200a54  FilterWork                    
+20200a58  I7                            
+20200a5c  LCDFree                       
+20200a60  LPFSum7                       
+20200a64  LostData2                     
+20200a68  MaxJitter3                    
+20200a6c  Messageindex                  
+20200a70  NumCreated                    
+20200a74  RxGetI                        
+20200a78  RxPutI                        
+20200a7c  Size7                         
+20200a80  TFLuna2Distance               
+20200a84  TFLuna2Function               
+20200a88  TFLuna2Index                  
+20200a8c  TimeMs                        
+20200a90  TxGetI                        
+20200a94  TxPutI                        
+20200a9a  TFLuna2LastByte               
+20200aa0  _sys_memory                   
 20207e00  __stack                       
 20208000  __STACK_END                   
 ffffffff  __TI_pprof_out_hndl           
@@ -823,4 +807,4 @@ UNDEFED   Lab1_Results
 UNDEFED   __mpu_init                    
 UNDEFED   _system_post_cinit            
 
-[220 symbols]
+[219 symbols]

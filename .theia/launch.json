@@ -53,6 +53,15 @@
                 "name": "DAC",
                 "resourceId": "/DAC"
             }
+        },
+        {
+            "name": "RTOS_Lab2_RTOSkernel",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "RTOS_Lab2_RTOSkernel",
+                "resourceId": "/RTOS_Lab2_RTOSkernel"
+            }
         }
     ]
 }
