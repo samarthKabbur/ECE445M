@@ -97,8 +97,8 @@ void StartOS(void); // implemented in osasm.s
 //  SysTick interrupt happens every 2 ms
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
-void SysTick_Handler(void) {      
-  
+void SysTick_Handler(void) {   
+  OS_Suspend();
 } // end SysTick_Handler
 
 uint32_t OS_LockScheduler(void){
