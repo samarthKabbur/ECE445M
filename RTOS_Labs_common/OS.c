@@ -64,6 +64,7 @@ typedef struct tcb {
 
 tcb_t tcbs [NUMTHREADS];
 tcb_t *RunPt;
+tcb_t *NextThreadPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];
 
 // ******** OS_ClearMsTime ************
@@ -97,7 +98,8 @@ void StartOS(void); // implemented in osasm.s
 //  SysTick interrupt happens every 2 ms
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
-void SysTick_Handler(void) {   
+void SysTick_Handler(void) { 
+  GPIOB->DOUTTGL31_0 = (1<<22);
   OS_Suspend();
 } // end SysTick_Handler
 

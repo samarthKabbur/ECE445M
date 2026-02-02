@@ -737,7 +737,7 @@ int main(void) { 			// main
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   // realmain();
-  // Testmain1();
+  //Testmain1();
   // Testmain2();
   TestmainCS();
 }
