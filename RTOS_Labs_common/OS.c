@@ -44,8 +44,8 @@ void OSEnableInterrupts(void);
 long StartCritical(void);
 void EndCritical(long);
 void SetInitialStack(int i);
-#define  OSCRITICAL_ENTER() { sr=StartCritical(); }
-#define  OSCRITICAL_EXIT()  { EndCritical(sr); }
+#define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
+#define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
 volatile uint32_t TimeMs; // in ms
 
@@ -66,8 +66,6 @@ tcb_t tcbs [NUMTHREADS];
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
-
-LCDFree;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -132,7 +130,8 @@ void OS_UnLockScheduler(uint32_t previous){
 //
 void OS_Init(void){
   // put Lab 2 (and beyond) solution here
-  
+  OSDisableInterrupts();
+  OS_ClearMsTime();
   //Enable Interrupts occurs at OS_Launch
 }
 
@@ -142,8 +141,9 @@ void OS_Init(void){
 // output: none
 void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
   // put Lab 2 (and beyond) solution here
-  
-
+  // i assume that this isn't a critical section
+  // because this function should only be called once
+  semaPt->Value = value;
 }; 
 
 
@@ -153,9 +153,17 @@ void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
 // Lab3 block if less than zero
 // input:  pointer to a counting semaphore
 // output: none
-void OS_Wait(Sema4_t *semaPt){long sr;
+void OS_Wait(Sema4_t *semaPt){
+  long sr;
   // put Lab 2 (and beyond) solution here
-   
+  OSCRITICAL_ENTER(sr);
+  while (semaPt->Value <= 0) {
+    OSCRITICAL_EXIT(sr);
+    OS_Suspend();
+    OSCRITICAL_ENTER(sr);
+  }
+  semaPt->Value--;
+  OSCRITICAL_EXIT(sr);
 }; 
 
 // ******** OS_Signal ************
@@ -166,7 +174,9 @@ void OS_Wait(Sema4_t *semaPt){long sr;
 // output: none
 void OS_Signal(Sema4_t *semaPt){long sr;
   // put Lab 2 (and beyond) solution here
-  
+  OSCRITICAL_ENTER(sr);
+  semaPt->Value++;
+  OSCRITICAL_EXIT(sr);
 }; 
 
 // ******** OS_bWait ************
@@ -176,7 +186,15 @@ void OS_Signal(Sema4_t *semaPt){long sr;
 // output: none
 void OS_bWait(Sema4_t *semaPt){
   // put Lab 2 (and beyond) solution here
-    
+  long sr;
+  OSCRITICAL_ENTER(sr);
+  while (semaPt->Value <= 0) {
+    OSCRITICAL_EXIT(sr);
+    OS_Suspend();
+    OSCRITICAL_ENTER(sr);
+  }
+  semaPt->Value = 0;
+  OSCRITICAL_EXIT(sr);
 
 }; 
 
@@ -187,8 +205,10 @@ void OS_bWait(Sema4_t *semaPt){
 // output: none
 void OS_bSignal(Sema4_t *semaPt){
   // put Lab 2 (and beyond) solution here
-    
-
+  long sr;
+  OSCRITICAL_ENTER(sr);
+  semaPt->Value = 1;
+  OSCRITICAL_EXIT(sr);
 }; 
 
 
@@ -211,7 +231,7 @@ int OS_AddProcessThread(void(*task)(void),
    }
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
-  long status;
+  long sr;
   static int thread_idx = 0; 
   int i;
   
@@ -219,7 +239,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
       return 0; // No more threads available: fail
   }
   
-  status = StartCritical();
+  OSCRITICAL_ENTER(sr);
   
   i = thread_idx;
   thread_idx++;
@@ -248,7 +268,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
       RunPt->prev = &tcbs[i];
   }
 
-  EndCritical(status);
+  OSCRITICAL_EXIT(sr);
   return 1;
 }
 
@@ -459,9 +479,11 @@ int OS_AddPA28Task(void(*task)(void), uint32_t priority){
 void OS_Sleep(uint32_t sleepTime){
   // put Lab 2 (and beyond) solution here
   // use int TimeMS global variable to time the sleeping
+  long sr;
+  OSCRITICAL_ENTER(sr);
+  RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG7
+  OSCRITICAL_EXIT(sr);
   
-
-
 } 
 
 
@@ -472,9 +494,26 @@ void OS_Sleep(uint32_t sleepTime){
 // output: none
 void OS_Kill(void){
   // put Lab 2 (and beyond) solution here
+  long sr;
+  OSCRITICAL_ENTER(sr);
+  tcb_t *pt = RunPt;
+
+  // case for only one thread exists
+  if (RunPt == RunPt->next) {
+
+  }
+
+  while (pt->next != RunPt) {
+    pt = pt->next;
+  }
+  pt->next = RunPt->next;
+
+  OSCRITICAL_EXIT(sr);
+  OS_Suspend();
+
+
 
   for(;;){};        // can not return (must return in Lab 5 since called from SVC_hander)
-   
 }; 
 
 

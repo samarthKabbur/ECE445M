@@ -53,7 +53,7 @@ OSEnableInterrupts:
 // inputs :  none
 // outputs : R0=previous I bit
 StartCritical:
-        MRS    R0, PRIMASK  // save old status
+        MRS    R0, PRIMASK  // save old status (long sr passed in as argument)
         CPSID  I           // mask all (except faults)
         BX     LR
 
@@ -122,11 +122,11 @@ OSStartHang:
 ;
 ;********************************************************************************************************/
 .type PendSV_Handler, %function
-// Only ISR running at priority 3 guarantees it interrupts only main/foreground code
+/* Only ISR running at priority 3 guarantees it interrupts only main/foreground code */
 PendSV_Handler:
-// put your code here
-CPSID I // A. disable interrupts so context switch is atomic
-PUSH {R4-R7} // B. push remaining R4-R7 onto the stack
+/* put your code here */
+CPSID I /* A. disable interrupts so context switch is atomic */
+PUSH {R4-R7} /* B. push remaining R4-R7 onto the stack */
 
 /* C. save the SP into its TCB */
 LDR R0, =RunPt  /* R0 = ptr->RunPt */
@@ -135,12 +135,12 @@ MOV R2, SP      /* R2 = SP */
 STR R2, [R1]    /* RunPt->sp = SP */
 
 /* D. get next thread to run */
-// LDR R1, [R1, #4] // R1 = RunPt->next
-// STR R1, [R0]    // RunPt = RunPt->next
-PUSH {R0, LR}   // save R0 and LR
-BL Scheduler    // C code determines which TCB to run next and sets the next RunPt
-POP {R0, LR}    // restore R0 and LR
-MOV LR, R1      /* LR = RunPt */
+// LDR R1, [R1, #4] /* R1 = RunPt->next */
+// STR R1, [R0]    /* RunPt = RunPt->next */
+PUSH {R0, LR}   /* save R0 and LR */
+BL Scheduler    /* C code determines which TCB to run next and sets the next RunPt */
+POP {R0, R1}    /* restore R0 and LR */
+MOV LR, R1      /* LR = RunPt. So when you do BX LR, it goes to the next RunPt */
 
 /* E. load SP of next thread (set by scheduler) into SP */
 LDR R1, [R0]    /* R1 = ptr->RunPt */
@@ -153,7 +153,7 @@ POP {R4-R7}
 /* G. Enable interrupts */
 CPSIE I
 
-BX      LR                 // Exception return will restore remaining context   
+BX      LR                 /* Exception return will restore remaining context */
     
 
 /* *******************************************************************************************************

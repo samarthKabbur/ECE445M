@@ -84,6 +84,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+extern Sema4_t LCDFree;
+
 // main program must call SPI1_init to initialize SPI1 for both TFT and SDC
 // 16 rows (0 to 15) and 21 characters (0 to 20)
 // Requires (11 + size*size*6*8) bytes of transmission for each character
@@ -2103,41 +2106,27 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        value   signed integer to be printed
 void ST7735_Message(uint32_t d, uint32_t l, char *pt, int32_t value){
   // write this as part of Labs 1 and 2
- char negative[2] = "-";
+  
+   OS_bWait(&LCDFree);
+
   bool isNegative = false;
   uint32_t unsignedValue = (uint32_t)value;
 
- // ST7735_Message(0, 0, "The value is: ", 42);
-  char num[32];
-  int num_index = 0; 
   if(value < 0){
     isNegative = true;
   }
-  
 
-  
-
-  
-  
-  if(d== 0){ // l remains unchanged 
-  ST7735_DrawString(0, l, pt, ST7735_YELLOW);
-  //ST7735_OutString(num);
-  if(isNegative){
-  ST7735_DrawString(13, l, negative, ST7735_YELLOW);
+  if(d == 1){
+    l = l + 8;
   }
-
-  ST7735_OutUDec2(unsignedValue, l);
   
-  }
-  else if(d == 1){ // need to add 7 + l so l is in second half of lcd
-  l = l+8;
-  ST7735_DrawString(0, l, pt, ST7735_YELLOW);
-  //ST7735_OutString(num);
-  if(isNegative){
-  ST7735_DrawString(13, l, negative, ST7735_YELLOW);
-  }
-  ST7735_OutUDec2(unsignedValue, l);
+    ST7735_DrawString(0, l, pt, ST7735_YELLOW);
+    
+    if(isNegative){
+    ST7735_DrawString(13, l, "-", ST7735_YELLOW);
+    }
 
-  }
-
+    ST7735_OutUDec2(unsignedValue, l);
+  
+    OS_bSignal(&LCDFree);
 }
