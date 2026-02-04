@@ -1,0 +1,12 @@
+# Build artifacts and temporary files
+*.map
+*.xml
+*.out
+*.d
+*.idx
+*.o
+
+# Optional: Ignore common build directories where these often live
+bin/
+obj/
+dist/

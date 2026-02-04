@@ -18,6 +18,7 @@
 #include "../RTOS_Labs_common/TFLuna2.h"
 #include "../RTOS_Labs_common/OS.h"
 #include <stdio.h>
+#include "../RTOS_Labs_common/RTOS_Debug_Prints.h"
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J21: Connects PA10 to XDS_UART
@@ -313,7 +314,8 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 //    i.e., Checks, ChecksumErrors
 
 // Call these from your interpreter
-void Lab2(void){int i;
+void Lab2(void){
+  int i;
   UART_OutString("\r\nLab 2 performance data");
   UART_OutString("\r\nFilterWork    = "); UART_OutUDec(FilterWork);
   UART_OutString("\r\nNumCreated    = "); UART_OutUDec(NumCreated);
@@ -737,9 +739,9 @@ int main(void) { 			// main
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   // realmain();
-  //Testmain1();
+  Testmain1();
   // Testmain2();
-  TestmainCS();
+  // TestmainCS();
 }
 
 

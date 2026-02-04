@@ -20,6 +20,7 @@
 #include "../RTOS_Labs_common/LPF.h"
 #include "../RTOS_Labs_common/OS.h"
 #include <stdio.h>
+#include "../RTOS_Labs_common/RTOS_Debug_Prints.h"
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J21: Connects PA10 to XDS_UART

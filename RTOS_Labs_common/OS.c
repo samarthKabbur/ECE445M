@@ -49,13 +49,13 @@ void SetInitialStack(int i);
 
 volatile uint32_t TimeMs; // in ms
 
-#define NUMTHREADS 3
-#define STACKSIZE 100
+#define NUMTHREADS 3  // maximum number of threads
+#define STACKSIZE 100 // maximum of 32-bit words on the stack (400 bytes per stack)
 
 typedef struct tcb {
-  int *sp;
-  struct tcb *next;
-  struct tcb *prev;
+  int *sp;  // pointer to stack, valid for threads not running
+  struct tcb *next; // linked-list pointer
+  struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
   int id;
   int sleep_st;
   int priority;
@@ -63,9 +63,11 @@ typedef struct tcb {
 } tcb_t;
 
 tcb_t tcbs [NUMTHREADS];
-tcb_t *RunPt;
+tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
-int32_t Stacks[NUMTHREADS][STACKSIZE];
+int32_t Stacks[NUMTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+
+LCDFree;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -102,6 +104,13 @@ void SysTick_Handler(void) {
   GPIOB->DOUTTGL31_0 = (1<<22);
   OS_Suspend();
 } // end SysTick_Handler
+
+void Scheduler(void) {
+  RunPt = RunPt->next;  // go to at least the next thread
+  while (RunPt->sleep_st) {
+    RunPt = RunPt->next;  // find a thread that isn't sleeping
+  }
+}
 
 uint32_t OS_LockScheduler(void){
  uint32_t old = SysTick->CTRL;
@@ -222,7 +231,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   tcbs[i].sleep_st = 0;
 
   SetInitialStack(i);  // this func was copied from the book
-  Stacks[i][STACKSIZE - 2] = (int32_t)(task);
+  Stacks[i][STACKSIZE - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
   // insert RunPt into the LL
   if (RunPt == (void*)0) {
@@ -244,18 +253,18 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 }
 
 void SetInitialStack(int i) {
-  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];
-  Stacks[i][STACKSIZE-1] = 0x01000000;
-  Stacks[i][STACKSIZE-3] = 0x14141414;
-  Stacks[i][STACKSIZE-4] = 0x12121212;
-  Stacks[i][STACKSIZE-5] = 0x03030303;
-  Stacks[i][STACKSIZE-6] = 0x02020202;
-  Stacks[i][STACKSIZE-7] = 0x01010101;
-  Stacks[i][STACKSIZE-8] = 0x00000000;
-  Stacks[i][STACKSIZE-9] = 0x07070707;
-  Stacks[i][STACKSIZE-10] = 0x06060606;
-  Stacks[i][STACKSIZE-11] = 0x05050505;
-  Stacks[i][STACKSIZE-12] = 0x04040404;
+  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];  // thread stack pointer
+  Stacks[i][STACKSIZE-1] = 0x01000000;  // thumb bit
+  Stacks[i][STACKSIZE-3] = 0x14141414;  // R14
+  Stacks[i][STACKSIZE-4] = 0x12121212;  // R12
+  Stacks[i][STACKSIZE-5] = 0x03030303;  // R3
+  Stacks[i][STACKSIZE-6] = 0x02020202;  // R2
+  Stacks[i][STACKSIZE-7] = 0x01010101;  // R1
+  Stacks[i][STACKSIZE-8] = 0x00000000; // R0
+  Stacks[i][STACKSIZE-9] = 0x07070707;  // R7
+  Stacks[i][STACKSIZE-10] = 0x06060606; // R6
+  Stacks[i][STACKSIZE-11] = 0x05050505; // R5
+  Stacks[i][STACKSIZE-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
 }
 
 // ******** OS_AddProcess *************** 
@@ -449,7 +458,10 @@ int OS_AddPA28Task(void(*task)(void), uint32_t priority){
 // OS_Sleep(0) implements cooperative multitasking
 void OS_Sleep(uint32_t sleepTime){
   // put Lab 2 (and beyond) solution here
- 
+  // use int TimeMS global variable to time the sleeping
+  
+
+
 } 
 
 

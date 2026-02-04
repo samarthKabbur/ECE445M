@@ -38,6 +38,7 @@
      .global  SVC_Handler
      .global  StartCritical
      .global  EndCritical 
+     .global Scheduler
 
 OSDisableInterrupts:
         CPSID   I
@@ -74,10 +75,10 @@ POP {R4-R7}     /* restore regs R4-R7 */
 POP {R0-R3}     /* restore regs R0-R3 */
 ADD SP, SP, #4  /* discard R12 */
 ADD SP, SP, #4  /* discard LR from the initial stack */
-POP {R0}        /* start location */
+POP {R0}        /* R0 gets loaded with the address of the thread/task */
 ADD SP, SP, #4  /* discard PSR */
 CPSIE I         /* enable interrupts at the processor level */
-BX R0           /* start first thread */
+BX R0           /* start first thread by setting PC to address of the first thread/task */
 
 
 OSStartHang:
@@ -124,30 +125,35 @@ OSStartHang:
 // Only ISR running at priority 3 guarantees it interrupts only main/foreground code
 PendSV_Handler:
 // put your code here
-CPSID I // a
-PUSH {R4-R7} // b
+CPSID I // A. disable interrupts so context switch is atomic
+PUSH {R4-R7} // B. push remaining R4-R7 onto the stack
 
-// c save SP in its TCB
-LDR R0, =RunPt
-LDR R1, [R0]
-MOV R2, SP
-STR R2, [R1]    // store SP into tcb[n]->sp;
+/* C. save the SP into its TCB */
+LDR R0, =RunPt  /* R0 = ptr->RunPt */
+LDR R1, [R0]    /* R1 = RunPt */
+MOV R2, SP      /* R2 = SP */
+STR R2, [R1]    /* RunPt->sp = SP */
 
-// d get next thread to run
-LDR R1, [R1, #4]        // R1 = RunPt->next;
-STR R1, [R0]    // update RunPt to the new TCB
+/* D. get next thread to run */
+// LDR R1, [R1, #4] // R1 = RunPt->next
+// STR R1, [R0]    // RunPt = RunPt->next
+PUSH {R0, LR}   // save R0 and LR
+BL Scheduler    // C code determines which TCB to run next and sets the next RunPt
+POP {R0, LR}    // restore R0 and LR
+MOV LR, R1      /* LR = RunPt */
 
-// e load SP of next thread into SP
-LDR R0, [R1]
-MOV SP, R0
+/* E. load SP of next thread (set by scheduler) into SP */
+LDR R1, [R0]    /* R1 = ptr->RunPt */
+LDR R2, [R1]    /* R2 = RunPt */
+MOV SP, R2      /* SP = RunPt*/      
 
-// f
+/* F. pop R4-R7 off the new stack */
 POP {R4-R7}
 
-// g
+/* G. Enable interrupts */
 CPSIE I
 
-    BX      LR                 // Exception return will restore remaining context   
+BX      LR                 // Exception return will restore remaining context   
     
 
 /* *******************************************************************************************************

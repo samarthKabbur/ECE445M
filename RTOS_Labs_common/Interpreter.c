@@ -16,8 +16,7 @@
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/heap.h"
 #include "../RTOS_Labs_common/Interpreter.h"
-
-
+#include "../RTOS_Labs_common/RTOS_Debug_Prints.h"
 
 typedef struct{
   const char *name;
@@ -61,8 +60,8 @@ void Cmd_Print(char* args, int l){
 
 
 void Cmd_Lab1_Results(char* args, int l){
-  Lab2();
-  // Lab1_Results(1);
+  // Lab2();
+  Lab1_Results(1);
   UART_OutString("\n");
   
   
