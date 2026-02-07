@@ -50,16 +50,21 @@ void SetInitialStack(int i);
 volatile uint32_t TimeMs; // in ms
 
 #define NUMTHREADS 3  // maximum number of threads
-#define STACKSIZE 100 // maximum of 32-bit words on the stack (400 bytes per stack)
+#define STACKSIZE 128 // maximum of 32-bit words on the stack 
+                      // (STACKSIZE * NUMTHREADS bytes per stack)
 
+enum state {Free, // free means unallocated or killed
+          Active  // active means allocated or not killed
+          };
 typedef struct tcb {
   int *sp;  // pointer to stack, valid for threads not running
   struct tcb *next; // linked-list pointer
   struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
   int id;
-  int sleep_st;
+  int sleep_st; // 0 means not sleeping
   int priority;
   int blocked_st;
+  enum state Status; // active or free
 } tcb_t;
 
 tcb_t tcbs [NUMTHREADS];
@@ -132,6 +137,11 @@ void OS_Init(void){
   // put Lab 2 (and beyond) solution here
   OSDisableInterrupts();
   OS_ClearMsTime();
+
+  // mark all threads as free
+  for (int i = 0; i < NUMTHREADS; i++) {
+    tcbs[i].Status = Free;
+  }
   //Enable Interrupts occurs at OS_Launch
 }
 
@@ -232,40 +242,56 @@ int OS_AddProcessThread(void(*task)(void),
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
-  static int thread_idx = 0; 
-  int i;
-  
-  if (thread_idx >= NUMTHREADS) {
-      return 0; // No more threads available: fail
-  }
+  int i = -1; // thread idx
   
   OSCRITICAL_ENTER(sr);
   
-  i = thread_idx;
-  thread_idx++;
+  // find a thread that is free
+  for (int p = 0; p < NUMTHREADS; p++) {
+    if (tcbs[p].Status == Free) {
+      i = p;
+      p = NUMTHREADS + 1; // exit the loop
+    }
+  }
   
-  // init tcb
+  if (i == -1) {
+    OSCRITICAL_EXIT(sr);
+    return 0; // fail upon no thread space available
+  }
+
+  // init tcb fields
   tcbs[i].id = i; 
   tcbs[i].priority = priority;
   tcbs[i].blocked_st = 0;
   tcbs[i].sleep_st = 0;
+  tcbs[i].Status = Active;
 
+  // init stack
   SetInitialStack(i);  // this func was copied from the book
-  Stacks[i][STACKSIZE - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
   // insert RunPt into the LL
-  if (RunPt == (void*)0) {
-      tcbs[i].next = &tcbs[i];
-      tcbs[i].prev = &tcbs[i];
-      RunPt = &tcbs[i]; 
+  if (RunPt == (void*)0) {  // if RunPt is a nullptr
+    // then this is the first tcb in the LL: do init
+
+    tcbs[i].next = &tcbs[i];  // self reference
+    tcbs[i].prev = &tcbs[i];  // self reference
+    RunPt = &tcbs[i]; // point the RunPt to the first tcb
   } else {
-      tcb_t *tail = RunPt->prev;
-      
-      tcbs[i].next = RunPt;
-      tcbs[i].prev = tail;
-      
-      tail->next = &tcbs[i];
-      RunPt->prev = &tcbs[i];
+    // otherwise add a tcb
+    tcb_t *tail = RunPt->prev;  // tail is the node immediately behind the head
+                                // where head is RunPt
+    
+    tcbs[i].next = RunPt;
+    tcbs[i].prev = tail;
+    
+    tail->next = &tcbs[i];
+    RunPt->prev = &tcbs[i];
+
+    // before: tail <--> RunPt
+    // adds the new node behind the head
+    // and after the tail
+    // After: Tail <--> tcbs[i] <--> RunPt
   }
 
   OSCRITICAL_EXIT(sr);
@@ -273,7 +299,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 }
 
 void SetInitialStack(int i) {
-  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];  // thread stack pointer
+  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];  // <-tcb[i].sp;
   Stacks[i][STACKSIZE-1] = 0x01000000;  // thumb bit
   Stacks[i][STACKSIZE-3] = 0x14141414;  // R14
   Stacks[i][STACKSIZE-4] = 0x12121212;  // R12
@@ -378,6 +404,12 @@ int OS_AddPeriodicThread(void(*task)(void),
 void TIMG7_IRQHandler(void){
   if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
     TimeMs++;
+    // decrement any sleeping threads once every ms
+    for (int i = 0; i < NUMTHREADS; i++) {
+      if ((tcbs[i].sleep_st > 0) && (tcbs[i].Status == Active)) {
+        tcbs[i].sleep_st--;
+      }
+    }
   }
 }  
 void TIMG8_IRQHandler(void){
@@ -481,9 +513,8 @@ void OS_Sleep(uint32_t sleepTime){
   // use int TimeMS global variable to time the sleeping
   long sr;
   OSCRITICAL_ENTER(sr);
-  RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG7
+  RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG7 every ms
   OSCRITICAL_EXIT(sr);
-  
 } 
 
 
@@ -494,26 +525,44 @@ void OS_Sleep(uint32_t sleepTime){
 // output: none
 void OS_Kill(void){
   // put Lab 2 (and beyond) solution here
+
+  // 1. set sleep to max so the scheduler (systick) won't try to run the thread
+  RunPt->sleep_st = 0xFFFFFFFF;
+
+  // 2. disable interrupts
   long sr;
   OSCRITICAL_ENTER(sr);
-  tcb_t *pt = RunPt;
 
-  // case for only one thread exists
-  if (RunPt == RunPt->next) {
+  // case for no thread existing (this usually won't be the case)
+  if (RunPt == (void*)0) {  
+    OSCRITICAL_EXIT(sr);
+    return; // nothing to kill or suspend
+  } else {
+    RunPt->Status = Free; // free the thread so it can be added again
 
+    // case for only one thread exists
+    if (RunPt == RunPt->next) {
+      RunPt->next = (void*)0;
+      RunPt->prev = (void*)0;
+      RunPt = (void*)0;
+    } else {
+      // case: multiple threads exist
+      tcb_t *to_be_killed = RunPt;
+      tcb_t *prevThread = to_be_killed->prev;
+      tcb_t *nextThread = to_be_killed->next;
+
+      prevThread->next = nextThread;
+      nextThread->prev = prevThread;
+
+      // RunPt = next; // the scheduler should increment itself here
+    }
+
+    OSCRITICAL_EXIT(sr);
+
+    OS_Suspend(); // trigger the scheduler
+
+    while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
   }
-
-  while (pt->next != RunPt) {
-    pt = pt->next;
-  }
-  pt->next = RunPt->next;
-
-  OSCRITICAL_EXIT(sr);
-  OS_Suspend();
-
-
-
-  for(;;){};        // can not return (must return in Lab 5 since called from SVC_hander)
 }; 
 
 
@@ -652,10 +701,12 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 void OS_Launch(uint32_t theTimeSlice){
   // units of theTimeSlice are in bus cycles (12.5 ns)
   // put Lab 2 (and beyond) solution here
-  SysTick->CTRL = 0; // disable systick during setup
-  SysTick->VAL = 0; // clear val
-  SCB->SHP[1] = ((SCB->SHP[1]&(~0xC0000000)) | (3 << 30)); // set priority 3
+  int priority = 2;
+
+  SysTick->CTRL = 0x00; // disable systick during setup
   SysTick->LOAD = theTimeSlice - 1; // reload value
-  SysTick->CTRL = 0x07; // enable, core clock, and arm interrupts
+  SCB->SHP[1] = (SCB->SHP[1]&(~0xC0000000)) | priority<<30;
+  SysTick->VAL = 0; // clear count, cause reload
+  SysTick->CTRL = 0x07; // enable systick irq and systick timer
   StartOS();  // start on the first task (implemented in osasm.s)
 }

@@ -68,9 +68,9 @@ EndCritical:
 
 StartOS:
 LDR R0, =RunPt  /* currently running thread */
-LDR R1, [R0]    /* R1 = value of RunPt */
-LDR R2, [R1]    /* New thread SP */
-MOV SP, R2      /* SP = RunPt->sp; */
+LDR R1, [R0]    /* R1 = RunPt */
+LDR R2, [R1]    /* R2 = RunPt->sp */
+MOV SP, R2      /* SP = RunPt->sp */
 POP {R4-R7}     /* restore regs R4-R7 */
 POP {R0-R3}     /* restore regs R0-R3 */
 ADD SP, SP, #4  /* discard R12 */
@@ -79,7 +79,6 @@ POP {R0}        /* R0 gets loaded with the address of the thread/task */
 ADD SP, SP, #4  /* discard PSR */
 CPSIE I         /* enable interrupts at the processor level */
 BX R0           /* start first thread by setting PC to address of the first thread/task */
-
 
 OSStartHang:
     B       OSStartHang        // Should never get here
