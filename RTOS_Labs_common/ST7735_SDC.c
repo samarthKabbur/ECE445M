@@ -2107,26 +2107,18 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 void ST7735_Message(uint32_t d, uint32_t l, char *pt, int32_t value){
   // write this as part of Labs 1 and 2
   
-   OS_bWait(&LCDFree);
-
-  bool isNegative = false;
+  OS_bWait(&LCDFree);
   uint32_t unsignedValue = (uint32_t)value;
 
+  l+= (d * 8);  // equivalent to l+= 0 * 8 or 1 * 8
+  
+  ST7735_DrawString(0, l, pt, ST7735_YELLOW);
+  
   if(value < 0){
-    isNegative = true;
-  }
-
-  if(d == 1){
-    l = l + 8;
-  }
-  
-    ST7735_DrawString(0, l, pt, ST7735_YELLOW);
-    
-    if(isNegative){
     ST7735_DrawString(13, l, "-", ST7735_YELLOW);
-    }
+  }
 
-    ST7735_OutUDec2(unsignedValue, l);
-  
-    OS_bSignal(&LCDFree);
+  ST7735_OutUDec2(unsignedValue, l);
+
+  OS_bSignal(&LCDFree);
 }

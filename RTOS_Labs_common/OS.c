@@ -105,7 +105,8 @@ void StartOS(void); // implemented in osasm.s
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
   GPIOB->DOUTTGL31_0 = (1<<22);
-  OS_Suspend();
+  SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
+                                      // which causes context switch
 } // end SysTick_Handler
 
 void Scheduler(void) {
@@ -169,7 +170,7 @@ void OS_Wait(Sema4_t *semaPt){
   OSCRITICAL_ENTER(sr);
   while (semaPt->Value <= 0) {
     OSCRITICAL_EXIT(sr);
-    OS_Suspend();
+    OS_Suspend(); // implements cooperative spin lock
     OSCRITICAL_ENTER(sr);
   }
   semaPt->Value--;
@@ -182,8 +183,9 @@ void OS_Wait(Sema4_t *semaPt){
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a counting semaphore
 // output: none
-void OS_Signal(Sema4_t *semaPt){long sr;
+void OS_Signal(Sema4_t *semaPt){
   // put Lab 2 (and beyond) solution here
+  long sr;
   OSCRITICAL_ENTER(sr);
   semaPt->Value++;
   OSCRITICAL_EXIT(sr);
@@ -198,14 +200,14 @@ void OS_bWait(Sema4_t *semaPt){
   // put Lab 2 (and beyond) solution here
   long sr;
   OSCRITICAL_ENTER(sr);
-  while (semaPt->Value <= 0) {
+  while (semaPt->Value <= 0) {  // theoretically bsemaphore 
+                                // value will never be less than zero
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
     OSCRITICAL_ENTER(sr);
   }
   semaPt->Value = 0;
   OSCRITICAL_EXIT(sr);
-
 }; 
 
 // ******** OS_bSignal ************
@@ -579,7 +581,8 @@ void OS_Kill(void){
 // output: none
 void OS_Suspend(void){
   // put Lab 2 (and beyond) solution here
-  SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+  SysTick->VAL = 0; // reset counter
+  SCB->ICSR = 0x04000000; // trigger SysTick
 };
   
 
