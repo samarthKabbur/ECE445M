@@ -38,7 +38,7 @@
      .global  SVC_Handler
      .global  StartCritical
      .global  EndCritical 
-     .global Scheduler
+     .global  Scheduler
 
 OSDisableInterrupts:
         CPSID   I
@@ -82,9 +82,6 @@ BX R0           /* start first thread by setting PC to address of the first thre
 
 OSStartHang:
     B       OSStartHang        // Should never get here
-
-
-    
 
 /* *******************************************************************************************************
 ;                                         HANDLE PendSV EXCEPTION
@@ -134,12 +131,10 @@ MOV R2, SP      /* R2 = SP */
 STR R2, [R1]    /* RunPt->sp = SP */
 
 /* D. get next thread to run */
-// LDR R1, [R1, #4] /* R1 = RunPt->next */
-// STR R1, [R0]    /* RunPt = RunPt->next */
 PUSH {R0, LR}   /* save R0 and LR */
 BL Scheduler    /* C code determines which TCB to run next and sets the next RunPt */
 POP {R0, R1}    /* restore R0 and LR */
-MOV LR, R1      /* LR = RunPt. So when you do BX LR, it goes to the next RunPt */
+MOV LR, R1      /* Moves the exeption return back into LR */
 
 /* E. load SP of next thread (set by scheduler) into SP */
 LDR R1, [R0]    /* R1 = ptr->RunPt */
@@ -152,7 +147,7 @@ POP {R4-R7}
 /* G. Enable interrupts */
 CPSIE I
 
-BX      LR                 /* Exception return will restore remaining context */
+BX LR                 /* Exception return will restore remaining context */
     
 
 /* *******************************************************************************************************

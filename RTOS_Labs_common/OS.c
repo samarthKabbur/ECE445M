@@ -538,13 +538,14 @@ void OS_Kill(void){
     OSCRITICAL_EXIT(sr);
     return; // nothing to kill or suspend
   } else {
-    RunPt->Status = Free; // free the thread so it can be added again
+    RunPt->Status = Free; // 3. 4. mark the old thread as free
 
+    /* 5. unlink the old thread from the circular linked list */
     // case for only one thread exists
     if (RunPt == RunPt->next) {
       RunPt->next = (void*)0;
       RunPt->prev = (void*)0;
-      RunPt = (void*)0;
+      RunPt = (void*)0; // may cause hardfault without an idle thread
     } else {
       // case: multiple threads exist
       tcb_t *to_be_killed = RunPt;
@@ -554,12 +555,14 @@ void OS_Kill(void){
       prevThread->next = nextThread;
       nextThread->prev = prevThread;
 
-      // RunPt = next; // the scheduler should increment itself here
+      // RunPt = nextThread; // increment for scheduler to run on the next thread
     }
+    
+    SysTick->VAL = 0; // 6. clear hardware counter (full time slice to next thread)
 
+    // start next thread
     OSCRITICAL_EXIT(sr);
-
-    OS_Suspend(); // trigger the scheduler
+    OS_Suspend();
 
     while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
   }
@@ -701,11 +704,14 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 void OS_Launch(uint32_t theTimeSlice){
   // units of theTimeSlice are in bus cycles (12.5 ns)
   // put Lab 2 (and beyond) solution here
-  int priority = 2;
+  int systick_priority = 2;
+  int pendsv_priority = 3;
+
+  NVIC_SetPriority(PendSV_IRQn, pendsv_priority); // set pendsv priority 3
 
   SysTick->CTRL = 0x00; // disable systick during setup
   SysTick->LOAD = theTimeSlice - 1; // reload value
-  SCB->SHP[1] = (SCB->SHP[1]&(~0xC0000000)) | priority<<30;
+  SCB->SHP[1] = (SCB->SHP[1]&(~0xC0000000)) | systick_priority<<30; // set systick priority 2
   SysTick->VAL = 0; // clear count, cause reload
   SysTick->CTRL = 0x07; // enable systick irq and systick timer
   StartOS();  // start on the first task (implemented in osasm.s)
