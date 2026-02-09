@@ -121,8 +121,8 @@ typedef struct fifo {
   uint32_t volatile *getPt; // get next
   uint32_t static data[FIFOSIZE];
   Sema4_t currrent_size; // 0 means FIFO is empty, > 0 means fifo has data
-  Sema4_t room_left;  // 0 means FIFO full, > 0 means room left
-  Sema4_t fifo_mutex; // 1 means available, 0 means busy
+  Sema4_t mutex; // 1 means available, 0 means busy
+  uint32_t lost_data;
 } fifo_t;
 
 fifo_t fifo;
@@ -750,9 +750,9 @@ void OS_Suspend(void){
 void OS_Fifo_Init(uint32_t size){
   fifo.getPt = &fifo.data[0]; // empty
   fifo.putPt = &fifo.data[0]; // empty
+  fifo.lost_data = 0; // no data lost yet
   OS_InitSemaphore(fifo.currrent_size, 0);
-  OS_InitSemaphore(fifo.room_left, FIFOSIZE);
-  OS_InitSemaphore(fifo.fifo_mutex, 1);
+  OS_InitSemaphore(fifo.mutex, 1);
 }
 
 // ******** OS_Fifo_Put ************
@@ -765,7 +765,20 @@ void OS_Fifo_Init(uint32_t size){
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
   // put Lab 2 (and beyond) solution here
-  return 0; // replace this line with solution
+  if (fifo.currrent_size == FIFOSIZE) {
+    fifo.lost_data++;
+    return 0; // fail if fifo is full
+  }
+  
+  *(fifo.putPt) = data;
+  fifo.putPt++;
+
+  if (fifo.putPt == &fifo.data[FIFOSIZE]) {
+    fifo.putPt = &fifo.data[0]; // wrap
+  }
+
+  OS_Signal(fifo.currrent_size);
+  return 1;
 }
 
 // ******** OS_Fifo_Get ************
@@ -775,7 +788,19 @@ int OS_Fifo_Put(uint32_t data){
 // Outputs: data 
 uint32_t OS_Fifo_Get(void){
   // put Lab 2 (and beyond) solution here
-   return 0; // replace this line with solution
+
+  OS_Wait(fifo.currrent_size);  // block if empty
+  OS_Wait(fifo.mutex); // block if busy
+
+  data = *(fifo.getPt);
+  fifo.getPt++;
+
+  if (fifo.getPt == &fifo.data[FIFOSIZE]) {
+    fifo.getPt = &fifo.data[0]; // wrap
+  }
+
+  OS_Signal(fifo.mutex);
+  return data;
 }
 
 // ******** OS_Fifo_Size ************
