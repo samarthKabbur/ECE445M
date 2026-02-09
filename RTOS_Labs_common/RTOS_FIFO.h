@@ -30,6 +30,10 @@
  */
  #define TXFIFOSIZE 64 // must be a power of 2
 
+ /* FIFO SEMAPHORES */
+ Sema4_t fifo_mutex = 0;
+ Sema4_t current_size = 0;
+
 
 /**
  * Initialize the transmit FIFO 

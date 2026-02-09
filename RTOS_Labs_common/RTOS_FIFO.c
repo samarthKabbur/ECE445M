@@ -32,7 +32,7 @@ void TxFifo_Init(void){
   TxPutI = TxGetI = 0; // empty
 }
 int TxFifo_Put(char data){
-uint32_t newPutI = (TxPutI+1)&(TXFIFOSIZE-1);
+  uint32_t newPutI = (TxPutI+1)&(TXFIFOSIZE-1);
   if(newPutI == TxGetI) return 0; // fail if full
   TxFifo[TxPutI] = data;          // save in Fifo
   TxPutI = newPutI;               // next place to put
@@ -59,16 +59,26 @@ void RxFifo_Init(void){
   RxPutI = RxGetI = 0;  // empty
 }
 int RxFifo_Put(char data){
-uint32_t newPutI = (RxPutI+1)&(RXFIFOSIZE-1);
+  uint32_t newPutI = (RxPutI+1)&(RXFIFOSIZE-1);
   if(newPutI == RxGetI) return 0; // fail if full
   RxFifo[RxPutI] = data;          // save in Fifo
   RxPutI = newPutI;               // next place to put
+
+  OS_Signal(&current_size); // something was added to fifo
+
   return 1;
 }
 char RxFifo_Get(void){char data;
-  if(RxGetI == RxPutI) return 0;      // fail if empty
+  // if(RxGetI == RxPutI) return 0;      // fail if empty
+
+  OS_Wait(&current_size); // block if full
+  OS_Wait(&fifo_mutex); // block if busy
+
   data = RxFifo[RxGetI];              // retrieve data
   RxGetI = (RxGetI+1)&(RXFIFOSIZE-1); // next place to get
+
+  OS_Signal(&fifo_mutex); // unblock fifo
+
   return data;
 }
 
