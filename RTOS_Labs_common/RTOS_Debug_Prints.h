@@ -4,4 +4,4 @@
 void Lab1_Results(uint32_t d);
 void Lab2(void);
 
-#endif __RTOS_Debug_Prints_H__
+#endif // __RTOS_Debug_Prints_H__

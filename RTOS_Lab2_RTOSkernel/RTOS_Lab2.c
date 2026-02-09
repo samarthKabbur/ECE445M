@@ -742,7 +742,8 @@ int main(void) { 			// main
   // Testmain1();
   // Testmain2();
   // TestmainCS();
-  Testmain3();
+  // Testmain3();
+  Testmain4();  // max six threads
 }
 
 

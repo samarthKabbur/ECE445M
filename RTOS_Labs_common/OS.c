@@ -25,15 +25,15 @@
 // Hardware interrupt priorities
 //   Priority 0: Periodic threads 
 //   Priority 1: Input/output interrupts like UART and edge triggered 
-//   Priority 2: 1000 Hz periodic event to implement OS_MsTime and sleep using TimerG8
+//   Priority 2: 1000 Hz periodic event to implement OS_MsTime and sleep using TimerG7
 //   Priority 2: SysTick for running the scheduler
 //   Priority 3: PendSV for context switch 
 
 // *****************Timers******************
 // SysTick for running the scheduler
 // Use TimerG0 is used for SDC timeout
-// Use TimerG7 for background periodic threads
-// Use TimerG8 is interrupts at 1000Hz to implement OS_MsTime, and sleeping
+// Use TimerG7 is interrupts at 1000Hz to implement OS_MsTime, and sleeping
+// Use TimerG8 for background periodic threads
 // Use TimerG12 for 32-bit OS_Time, free running (no interrupts)
 // Use TimerA0 for PWM outputs to motors
 // Use TimerA1 for PWM outputs to motors
@@ -49,7 +49,7 @@ void SetInitialStack(int i);
 
 volatile uint32_t TimeMs; // in ms
 
-#define NUMTHREADS 3  // maximum number of threads
+#define NUMTHREADS 6  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
@@ -61,9 +61,9 @@ typedef struct tcb {
   struct tcb *next; // linked-list pointer
   struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
   int id;
-  int sleep_st; // 0 means not sleeping
+  int sleep_st; // 0 means not sleeping, ie awake
   int priority;
-  int blocked_st;
+  int blocked_st; // 0 means unblocked, 1 means blocked
   enum state Status; // active or free
 } tcb_t;
 
@@ -71,6 +71,17 @@ tcb_t tcbs [NUMTHREADS];
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+
+typedef struct periodic_task {
+  void (*task)(void); // pointer to the background thread
+  uint32_t period;  // reload value
+  uint32_t timeLeft;  // decrement counter
+  enum state Status; // active or free
+} periodic_task_t;
+
+#define MAX_PERIODIC_THREADS 4
+periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
+
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -80,7 +91,8 @@ int32_t Stacks[NUMTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2k
 void OS_ClearMsTime(void){
   // using timer g7 for this feature
   TimeMs = 0;
-  TimerG7_IntArm(1000, 80, 2);
+  TimerG7_IntArm(1000, 80, 2);  // 1ms period
+  TimerG8_IntArm(1000, 80, 2);  // 1ms period
 };
 
 
@@ -109,10 +121,21 @@ void SysTick_Handler(void) {
                                       // which causes context switch
 } // end SysTick_Handler
 
+/*
+0 = not available
+1 = available
+*/
+int isThreadAvailable(tcb_t *RunPt) {
+  return ((RunPt->sleep_st == 0) && (RunPt->blocked_st == 0) && (RunPt->Status == Active));
+}
+
 void Scheduler(void) {
+  tcb_t *current = RunPt;
   RunPt = RunPt->next;  // go to at least the next thread
-  while (RunPt->sleep_st) {
-    RunPt = RunPt->next;  // find a thread that isn't sleeping
+  while ((isThreadAvailable(RunPt) == 0) && (RunPt->next != current)) {
+    // if thread is not available, find a thread that is available
+    // and stop looping when we've come back around to the first thread
+    RunPt = RunPt->next;  // find a thread that is available
   }
 }
 
@@ -139,9 +162,14 @@ void OS_Init(void){
   OSDisableInterrupts();
   OS_ClearMsTime();
 
-  // mark all threads as free
+  // mark all foreground threads as free
   for (int i = 0; i < NUMTHREADS; i++) {
     tcbs[i].Status = Free;
+  }
+
+  // mark all background threads as free
+  for (int i = 0; i < MAX_PERIODIC_THREADS; i++) {
+    periodic_threads[i].Status = Free;
   }
   //Enable Interrupts occurs at OS_Launch
 }
@@ -244,21 +272,19 @@ int OS_AddProcessThread(void(*task)(void),
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
-  int i = -1; // thread idx
-  
   OSCRITICAL_ENTER(sr);
   
   // find a thread that is free
-  for (int p = 0; p < NUMTHREADS; p++) {
-    if (tcbs[p].Status == Free) {
-      i = p;
-      p = NUMTHREADS + 1; // exit the loop
+  int i;
+  for (i = 0; i < NUMTHREADS; i++) {
+    if (tcbs[i].Status == Free) {
+      break;
     }
   }
   
-  if (i == -1) {
+  if (i == NUMTHREADS) {
     OSCRITICAL_EXIT(sr);
-    return 0; // fail upon no thread space available
+    return 0; // fail upon: no thread space available
   }
 
   // init tcb fields
@@ -399,25 +425,58 @@ uint32_t lcm5(uint32_t n1,uint32_t n2,uint32_t n3,uint32_t n4,uint32_t n5){
 int OS_AddPeriodicThread(void(*task)(void), 
    uint32_t period, uint32_t priority){
   // put Lab 2 (and beyond) solution here
-   
-  return 0; // replace this line with solution
+  long sr;
+  OSCRITICAL_ENTER(sr); // since this function receives the highest priority
+
+  // find an available thread
+  int i;
+  for (i = 0; i < MAX_PERIODIC_THREADS; i++) {
+    if (periodic_threads[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAX_PERIODIC_THREADS) {
+    OSCRITICAL_EXIT(sr);
+    return 0; // fail upon no space available
+  }
+
+  // init bg thread
+  periodic_threads[i].task = task;
+  periodic_threads[i].period = period;
+  periodic_threads[i].timeLeft = period;
+  periodic_threads[i].Status = Active;
+
+  OSCRITICAL_EXIT(sr);
+  return 1;
 }
 
 void TIMG7_IRQHandler(void){
   if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
     TimeMs++;
     // decrement any sleeping threads once every ms
+    // its okay to use a for loop instead of going thru
+    // the circular LL because we have so few threads
     for (int i = 0; i < NUMTHREADS; i++) {
       if ((tcbs[i].sleep_st > 0) && (tcbs[i].Status == Active)) {
         tcbs[i].sleep_st--;
       }
     }
   }
-}  
+}
+
 void TIMG8_IRQHandler(void){
   if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
-    
- 
+    for (int i = 0; i < MAX_PERIODIC_THREADS; i++) {
+      if (periodic_threads[i].Status == Active) {
+        if (periodic_threads[i].timeLeft == 0) {
+          (*periodic_threads[i].task)();  // run the bg thread when time has run out
+          periodic_threads[i].timeLeft = periodic_threads[i].period;  // reload counter
+        } else {
+          periodic_threads[i].timeLeft--; // decrement
+        }
+      }
+    }
   }
 }
 
@@ -515,7 +574,8 @@ void OS_Sleep(uint32_t sleepTime){
   // use int TimeMS global variable to time the sleeping
   long sr;
   OSCRITICAL_ENTER(sr);
-  RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG7 every ms
+  RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG8 every ms
+  RunPt->blocked_st = 1;        // block so it won't be run
   OSCRITICAL_EXIT(sr);
 } 
 
