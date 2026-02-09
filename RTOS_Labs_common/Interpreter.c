@@ -16,8 +16,11 @@
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/heap.h"
 #include "../RTOS_Labs_common/Interpreter.h"
-#include "../RTOS_Labs_common/RTOS_Debug_Prints.h"
 
+extern void Lab1_Results(uint32_t d);
+extern void Lab2(void);
+extern void DFT(void);
+extern void Jitter(void);
 
 typedef struct{
   const char *name;
@@ -66,7 +69,7 @@ void Cmd_Print(char* args, int l){
 
 
 void Cmd_Lab1_Results(char* args, int l){
-  Lab1_Results(1);
+  // Lab1_Results(1);
   UART_OutString("\n");
 }
 

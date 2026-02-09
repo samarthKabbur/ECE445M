@@ -58,7 +58,7 @@ enum state {Free, // free means unallocated or killed
           };
 
 /* FOREGROUND THREADS 
-- Scheduled by Systick and Scheduler()
+- Scheduled by Systick and Scheduler
 - Context switched by PendSV
 */
 typedef struct tcb {
@@ -229,6 +229,7 @@ void OS_Init(void){
   }
 
   TimerG8_IntArm(1000, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
+  TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
   
   //Enable Interrupts occurs at OS_Launch
@@ -735,9 +736,6 @@ void OS_Suspend(void){
   SCB->ICSR = 0x04000000; // trigger SysTick
 };
   
-
-
-
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
 // Inputs: size
@@ -861,7 +859,7 @@ uint32_t OS_MailBox_Recv(void){
 //   this function and OS_TimeDifference have the same resolution and precision 
 uint32_t OS_Time(void){
   // put Lab 2 (and beyond) solution here
-    return 0; // replace this line with solution
+  return TIMG12->COUNTERREGS.CTR;
 };
 
 // ******** OS_TimeDifference ************
@@ -873,10 +871,9 @@ uint32_t OS_Time(void){
 //   this function and OS_Time have the same resolution and precision 
 uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
   // put Lab 2 (and beyond) solution here
-    return 0; // replace this line with solution
+    uint32_t diff = stop -start;
+    return diff; // replace this line with solution
 };
-
-
 
 // ******** OS_Launch *************** 
 // start the scheduler, enable interrupts

@@ -18,7 +18,6 @@
 #include "../RTOS_Labs_common/TFLuna2.h"
 #include "../RTOS_Labs_common/OS.h"
 #include <stdio.h>
-#include "../RTOS_Labs_common/RTOS_Debug_Prints.h"
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J21: Connects PA10 to XDS_UART
@@ -758,8 +757,10 @@ void BackgroundFillerThreadMailBox(void) {
 }
 
 void MailboxProducer(void) {
-  OS_MailBox_Send(Count1);
-  Count1++;
+  while (1) {
+    Count1++;
+    OS_MailBox_Send(Count1);
+  }
 }
 
 int TestmainMailBox(void) {
@@ -768,6 +769,7 @@ int TestmainMailBox(void) {
   OS_Init();
   NumCreated = 0;
   int BackgroundNumCreated = 0;
+  OS_MailBox_Init();
   NumCreated+= OS_AddThread(&ConsumerThreadMailbox, 128, 0);
   NumCreated+= OS_AddThread(&FillerThreadMailBox, 128, 0);
   BackgroundNumCreated+= OS_AddPeriodicThread(&BackgroundFillerThreadMailBox, PERIOD/80000, 0);
@@ -787,7 +789,8 @@ int main(void) { 			// main
   // TestmainCS();
   // Testmain3();
   // Testmain4();  // max six threads
-  TestmainFIFO();
+  // TestmainFIFO();
+  TestmainMailBox();
 }
 
 
