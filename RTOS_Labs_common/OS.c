@@ -107,8 +107,8 @@ button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 
 typedef struct mailbox {
   uint32_t mail; // shared data
-  int32_t mail_available_sema4; // 0 means invalid data, 1 means valid data. AKA send
-  int32_t mail_acknowledge_sema4; // 0 means consumer has not read, 1 means consumer has read. AKA Ack
+  Sema4_t mail_available; // 0 means invalid data, 1 means valid data. AKA send
+  Sema4_t mail_acknowledge; // 0 means consumer has not read, 1 means consumer has read. AKA Ack
 } mailbox_t;
 
 mailbox_t mailbox;
@@ -782,8 +782,8 @@ void OS_MailBox_Init(void){
   long sr;
   OSCRITICAL_ENTER(sr);
   // updating semaphores is critical section
-  mailbox.mail_available_sema4 = 0;
-  mailbox.mail_acknowledge_sema4 = 0;
+  mailbox.mail_available.Value = 0;
+  mailbox.mail_acknowledge.Value = 0;
   OSCRITICAL_EXIT(sr);
 }
 
@@ -795,7 +795,9 @@ void OS_MailBox_Init(void){
 // It will spin/block if the MailBox contains data not yet received 
 void OS_MailBox_Send(uint32_t data){
   // put Lab 2 (and beyond) solution here
-  
+  mailbox.mail = data;
+  OS_Signal(&mailbox.mail_available); // signal that mail is available
+  OS_Wait(&mailbox.mail_acknowledge); // don't send again until the consumer gets the mail
 };
 
 // ******** OS_MailBox_Recv ************
