@@ -16,7 +16,7 @@
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/heap.h"
 #include "../RTOS_Labs_common/Interpreter.h"
-
+#include "../RTOS_Labs_common/RTOS_Debug_Prints.h"
 
 
 typedef struct{
@@ -53,6 +53,11 @@ ST7735_FillScreen(ST7735_BLACK);
 
 
 void Cmd_Print(char* args, int l){
+  if(args == 0){
+      UART_OutString("Error: No message provided\n");
+      return;
+  }
+
   UART_OutString(args);
   UART_OutChar('\n');
   ST7735_FillScreen(ST7735_BLACK);
@@ -61,27 +66,23 @@ void Cmd_Print(char* args, int l){
 
 
 void Cmd_Lab1_Results(char* args, int l){
-  //Lab1_Results(1);
+  Lab1_Results(1);
   UART_OutString("\n");
-  
 }
 
 void Cmd_Lab2_Results(char* args, int l){
   Lab2();
   UART_OutString("\n");
-  
 }
 
 void Cmd_DFT(char* args, int l){
   DFT();
   UART_OutString("\n");
-  
 }
 
 void Cmd_Jitter(char* args, int l){
   Jitter();
   UART_OutString("\n");
-  
 }
 
 
@@ -136,22 +137,15 @@ void ParseArgs(char *string, int l){
 
 //new Interpreter old one is below this just incase this doesnt work
 void Interpreter(void) {  
+  char string[50]; // didnt need to do this couldve just used InString(); will change later on
+  int stringIndex = 0;
+  int l = 3; //line number
 
-
-char string[50]; // didnt need to do this couldve just used InString(); will change later on
-int stringIndex = 0;
-int l = 3; //line number
-
-UART_OutChar(CARROT); //begin by printing arrow
+  UART_OutChar(CARROT); //begin by printing arrow
 
   while (1) {                        // Loop forever
-
-
-  UART_InString(string, 50);
-  ParseArgs(string, l);
-   
-   
-
+    UART_InString(string, 50);
+    ParseArgs(string, l);
   }
 }
 // void Interpreter(void) {
