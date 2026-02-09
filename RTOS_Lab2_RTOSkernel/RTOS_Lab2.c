@@ -783,14 +783,14 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  // realmain();
+  realmain();
   // Testmain1();
   // Testmain2();
   // TestmainCS();
   // Testmain3();
   // Testmain4();  // max six threads
   // TestmainFIFO();
-  TestmainMailBox();
+  // TestmainMailBox();
 }
 
 

@@ -30,6 +30,8 @@ char static TxFifo[TXFIFOSIZE];
 
 void TxFifo_Init(void){
   TxPutI = TxGetI = 0; // empty
+  OS_InitSemaphore(&tx_fifo_semaphore.current_size, 0);
+  OS_InitSemaphore(&tx_fifo_semaphore.mutex, 1);
 }
 int TxFifo_Put(char data){
   uint32_t newPutI = (TxPutI+1)&(TXFIFOSIZE-1);
@@ -65,6 +67,8 @@ char static RxFifo[RXFIFOSIZE];
 
 void RxFifo_Init(void){
   RxPutI = RxGetI = 0;  // empty
+  OS_InitSemaphore(&rx_fifo_semaphore.current_size, 0);
+  OS_InitSemaphore(&rx_fifo_semaphore.mutex, 1);
 }
 int RxFifo_Put(char data){
   uint32_t newPutI = (RxPutI+1)&(RXFIFOSIZE-1);

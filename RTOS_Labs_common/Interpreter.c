@@ -139,54 +139,54 @@ void ParseArgs(char *string, int l){
 }
 
 //new Interpreter old one is below this just incase this doesnt work
-void Interpreter(void) {  
-  char string[50]; // didnt need to do this couldve just used InString(); will change later on
-  int stringIndex = 0;
-  int l = 3; //line number
+// void Interpreter(void) {  
+//   char string[50]; // didnt need to do this couldve just used InString(); will change later on
+//   int stringIndex = 0;
+//   int l = 3; //line number
 
-  UART_OutChar(CARROT); //begin by printing arrow
+//   UART_OutChar(CARROT); //begin by printing arrow
 
-  while (1) {                        // Loop forever
-    UART_InString(string, 50);
-    ParseArgs(string, l);
-  }
-}
-// void Interpreter(void) {
-//     char string[50];
-//     int stringIndex = 0;
-//     int l = 3; 
-
-//     UART_OutChar(CARROT); 
-
-//     while (1) {
-//         uint8_t letter = UART_InChar();
-
-//         if (letter == 13 || letter == 10) { 
-//             if (stringIndex > 0) {
-//                 UART_OutChar(NEW_LINE);
-//                 string[stringIndex] = NULL_CHAR;
-                
-//                 ParseArgs(string, l);
-                
-//                 stringIndex = 0;
-//                 l++; 
-//                 UART_OutChar(CARROT);
-//             }
-//         }
-//         else if (letter == 127 || letter == 8) {
-//             if (stringIndex > 0) {
-//                 stringIndex--;
-//                 UART_OutChar(8);
-//                 UART_OutChar(' '); // Erase char
-//                 UART_OutChar(8);   // Move cursor back again
-//             }
-//         }
-//         else {
-//             if (stringIndex < 49) { // Leave room for NULL terminator
-//                 UART_OutChar(letter);
-//                 string[stringIndex] = letter; 
-//                 stringIndex++;
-//             }
-//         }
-//     }
+//   while (1) {                        // Loop forever
+//     UART_InString(string, 50);
+//     ParseArgs(string, l);
+//   }
 // }
+void Interpreter(void) {
+    char string[50];
+    int stringIndex = 0;
+    int l = 3; 
+
+    UART_OutChar(CARROT); 
+
+    while (1) {
+        uint8_t letter = UART_InChar();
+
+        if (letter == 13 || letter == 10) { 
+            if (stringIndex > 0) {
+                UART_OutChar(NEW_LINE);
+                string[stringIndex] = NULL_CHAR;
+                
+                ParseArgs(string, l);
+                
+                stringIndex = 0;
+                l++; 
+                UART_OutChar(CARROT);
+            }
+        }
+        else if (letter == 127 || letter == 8) {
+            if (stringIndex > 0) {
+                stringIndex--;
+                UART_OutChar(8);
+                UART_OutChar(' '); // Erase char
+                UART_OutChar(8);   // Move cursor back again
+            }
+        }
+        else {
+            if (stringIndex < 49) { // Leave room for NULL terminator
+                UART_OutChar(letter);
+                string[stringIndex] = letter; 
+                stringIndex++;
+            }
+        }
+    }
+}

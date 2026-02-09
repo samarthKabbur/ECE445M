@@ -49,7 +49,7 @@ void SetInitialStack(int i);
 
 volatile uint32_t TimeMs; // in ms
 
-#define NUMTHREADS 6  // maximum number of threads
+#define NUMTHREADS 32  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
@@ -88,7 +88,7 @@ typedef struct periodic_task {
   int priority;
 } periodic_task_t;
 
-#define MAX_PERIODIC_THREADS 4
+#define MAX_PERIODIC_THREADS 64
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
 
 /* BACKGROUND BUTTON CREATED THREADS
@@ -114,7 +114,7 @@ typedef struct mailbox {
 mailbox_t mailbox;
 
 /* GLOBAL FIFO */
-#define FIFOSIZE 10 // can be any size
+#define FIFOSIZE 256 // can be any size
 
 typedef struct fifo {
   uint32_t volatile *putPt; // put next
@@ -207,7 +207,7 @@ void EdgeTriggered_Init(void){
 
 //
 //@details  Initialize operating system, disable interrupts until OS_Launch.
-//Initialize OS controlled I/O: serial, ADC, systick, LaunchPad I/O and timers.
+//Initialize OS controlled I/O: uart, serial, ADC, systick, LaunchPad I/O and timers.
 // Interrupts not yet enabled.
  // @param  none
  // @return none
@@ -231,6 +231,8 @@ void OS_Init(void){
   TimerG8_IntArm(1000, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
+
+  UART_Init(1); // hardware priority 1
   
   //Enable Interrupts occurs at OS_Launch
 }
