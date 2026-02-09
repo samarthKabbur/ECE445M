@@ -51,7 +51,7 @@ Command commands[] = {
 #define NULL_CHAR '\0'
 
 void Cmd_Flush(char* args, int l){
-ST7735_FillScreen(ST7735_BLACK);
+  ST7735_FillScreen(ST7735_BLACK); //not thread safe 
 }
 
 

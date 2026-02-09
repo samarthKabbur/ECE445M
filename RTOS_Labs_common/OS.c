@@ -217,6 +217,7 @@ void OS_Init(void){
   // put Lab 2 (and beyond) solution here
   OSDisableInterrupts();
   OS_ClearMsTime();
+  ST7735_FillScreen(ST7735_BLACK); //not thread safe 
 
   // mark all foreground threads as free
   for (int i = 0; i < NUMTHREADS; i++) {

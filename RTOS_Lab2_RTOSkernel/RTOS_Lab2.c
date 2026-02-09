@@ -315,12 +315,19 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 // Call these from your interpreter
 void Lab2(void){
   int i;
+  int d = 0;
   UART_OutString("\r\nLab 2 performance data");
   UART_OutString("\r\nFilterWork    = "); UART_OutUDec(FilterWork);
   UART_OutString("\r\nNumCreated    = "); UART_OutUDec(NumCreated);
   UART_OutString("\r\nChecksWork    = "); UART_OutUDec(ChecksWork);
   UART_OutString("\r\nDataLost      = "); UART_OutUDec(DataLost); 
-  UART_OutString("\r\nMaxJitter(cyc)= "); UART_OutUDec(MaxJitter); 
+  UART_OutString("\r\nMaxJitter(cyc)= "); UART_OutUDec(MaxJitter);
+  ST7735_Message(d,0,"FilterWork      = ",FilterWork);
+	ST7735_Message(d,1,"NumCreated = ",NumCreated);
+	ST7735_Message(d,2,"CheckWork      = ",ChecksWork);
+	ST7735_Message(d,3,"DataLost = ",DataLost);
+	ST7735_Message(d,4,"MaxJitter     = ",MaxJitter);
+	ST7735_Message(d,7,"Time(s)  = ",OS_MsTime()/1000);
 }
 void DFT(void){ int i;  int32_t real,imag,mag;
   UART_OutString("\r\nLab 2/3/4 DFT data");
