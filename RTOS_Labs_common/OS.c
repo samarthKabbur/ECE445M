@@ -119,7 +119,7 @@ mailbox_t mailbox;
 typedef struct fifo {
   uint32_t volatile *putPt; // put next
   uint32_t volatile *getPt; // get next
-  uint32_t static data[FIFOSIZE];
+  uint32_t data[FIFOSIZE];
   Sema4_t currrent_size; // 0 means FIFO is empty, > 0 means fifo has data
   Sema4_t mutex; // 1 means available, 0 means busy
   uint32_t lost_data;
@@ -751,8 +751,8 @@ void OS_Fifo_Init(uint32_t size){
   fifo.getPt = &fifo.data[0]; // empty
   fifo.putPt = &fifo.data[0]; // empty
   fifo.lost_data = 0; // no data lost yet
-  OS_InitSemaphore(fifo.currrent_size, 0);
-  OS_InitSemaphore(fifo.mutex, 1);
+  OS_InitSemaphore(&fifo.currrent_size, 0);
+  OS_InitSemaphore(&fifo.mutex, 1);
 }
 
 // ******** OS_Fifo_Put ************
@@ -765,7 +765,7 @@ void OS_Fifo_Init(uint32_t size){
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
   // put Lab 2 (and beyond) solution here
-  if (fifo.currrent_size == FIFOSIZE) {
+  if (fifo.currrent_size.Value == FIFOSIZE) {
     fifo.lost_data++;
     return 0; // fail if fifo is full
   }
@@ -777,7 +777,7 @@ int OS_Fifo_Put(uint32_t data){
     fifo.putPt = &fifo.data[0]; // wrap
   }
 
-  OS_Signal(fifo.currrent_size);
+  OS_Signal(&fifo.currrent_size);
   return 1;
 }
 
@@ -789,17 +789,17 @@ int OS_Fifo_Put(uint32_t data){
 uint32_t OS_Fifo_Get(void){
   // put Lab 2 (and beyond) solution here
 
-  OS_Wait(fifo.currrent_size);  // block if empty
-  OS_Wait(fifo.mutex); // block if busy
+  OS_Wait(&fifo.currrent_size);  // block if empty
+  OS_Wait(&fifo.mutex); // block if busy
 
-  data = *(fifo.getPt);
+  uint32_t data = *(fifo.getPt);
   fifo.getPt++;
 
   if (fifo.getPt == &fifo.data[FIFOSIZE]) {
     fifo.getPt = &fifo.data[0]; // wrap
   }
 
-  OS_Signal(fifo.mutex);
+  OS_Signal(&fifo.mutex);
   return data;
 }
 
@@ -820,8 +820,8 @@ int32_t OS_Fifo_Size(void){
 // Outputs: none
 void OS_MailBox_Init(void){
   // put Lab 2 (and beyond) solution here
-  OS_InitSemaphore(mailbox.mail_available, 0);
-  OS_InitSemaphore(mailbox.mail_acknowledge, 0);
+  OS_InitSemaphore(&mailbox.mail_available, 0);
+  OS_InitSemaphore(&mailbox.mail_acknowledge, 0);
 }
 
 // ******** OS_MailBox_Send ************
