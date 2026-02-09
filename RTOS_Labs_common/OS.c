@@ -217,7 +217,6 @@ void OS_Init(void){
   // put Lab 2 (and beyond) solution here
   OSDisableInterrupts();
   OS_ClearMsTime();
-  ST7735_FillScreen(ST7735_BLACK); //not thread safe 
 
   // mark all foreground threads as free
   for (int i = 0; i < NUMTHREADS; i++) {
@@ -234,7 +233,13 @@ void OS_Init(void){
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
   UART_Init(1); // hardware priority 1
+
+  ST7735_InitR(INITR_BLACKTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
+  ST7735_FillScreen(ST7735_BLACK);
+  ST7735_SetCursor(0, 0);
+  ST7735_OutString("RTOS Lab 2\nSpring 2026\n");
   
+  UART_OutString("ECE445M Lab 2\n\rSpring 2026\n\r");
   //Enable Interrupts occurs at OS_Launch
 }
 

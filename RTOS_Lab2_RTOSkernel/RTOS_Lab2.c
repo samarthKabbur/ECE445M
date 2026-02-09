@@ -315,7 +315,7 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 // Call these from your interpreter
 void Lab2(void){
   int i;
-  int d = 0;
+  int d = 1;
   UART_OutString("\r\nLab 2 performance data");
   UART_OutString("\r\nFilterWork    = "); UART_OutUDec(FilterWork);
   UART_OutString("\r\nNumCreated    = "); UART_OutUDec(NumCreated);
