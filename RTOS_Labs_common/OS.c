@@ -56,6 +56,11 @@ volatile uint32_t TimeMs; // in ms
 enum state {Free, // free means unallocated or killed
           Active  // active means allocated or not killed
           };
+
+/* FOREGROUND THREADS 
+- Scheduled by Systick and Scheduler()
+- Context switched by PendSV
+*/
 typedef struct tcb {
   int *sp;  // pointer to stack, valid for threads not running
   struct tcb *next; // linked-list pointer
@@ -72,16 +77,31 @@ tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
 
+/* BACKGROUND PERIODIC THREADS 
+- scheduled by TimerG8
+*/
 typedef struct periodic_task {
   void (*task)(void); // pointer to the background thread
   uint32_t period;  // reload value
   uint32_t timeLeft;  // decrement counter
   enum state Status; // active or free
+  int priority;
 } periodic_task_t;
 
 #define MAX_PERIODIC_THREADS 4
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
 
+/* BACKGROUND BUTTON CREATED THREADS
+- Scheduled by Group1 IRQ
+*/
+typedef struct button_task {
+  void (*task)(void); // pointer to the background thread
+  enum state Status; // active or free
+  int priority; 
+} button_task_t;
+
+#define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
+button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -91,8 +111,7 @@ periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
 void OS_ClearMsTime(void){
   // using timer g7 for this feature
   TimeMs = 0;
-  TimerG7_IntArm(1000, 80, 2);  // 1ms period
-  TimerG8_IntArm(1000, 80, 2);  // 1ms period
+  TimerG7_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
 };
 
 
@@ -148,6 +167,19 @@ void OS_UnLockScheduler(uint32_t previous){
   SysTick->CTRL = previous;
 }
 
+// Arm interrupts on fall of PB21
+// interrupts will be enabled in main after all initialization
+void EdgeTriggered_Init(void){
+
+  int priority = 1;
+
+  GPIOB->POLARITY31_16 = 0x00000800;     // falling
+  GPIOB->CPU_INT.ICLR = 0x00200000;   // clear bit 21
+  GPIOB->CPU_INT.IMASK = 0x00200000;  // arm PB21
+  NVIC->IP[0] = (NVIC->IP[0]&(~0x0000FF00))|priority<<14;    // set priority (bits 15,14) IRQ 1
+  NVIC->ISER[0] = 1 << 1; // Group1 interrupt
+}
+
 
 //
 //@details  Initialize operating system, disable interrupts until OS_Launch.
@@ -171,6 +203,10 @@ void OS_Init(void){
   for (int i = 0; i < MAX_PERIODIC_THREADS; i++) {
     periodic_threads[i].Status = Free;
   }
+
+  TimerG8_IntArm(1000, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
+  EdgeTriggered_Init(); // initialize edge triggered button presses
+  
   //Enable Interrupts occurs at OS_Launch
 }
 
@@ -445,6 +481,7 @@ int OS_AddPeriodicThread(void(*task)(void),
   periodic_threads[i].task = task;
   periodic_threads[i].period = period;
   periodic_threads[i].timeLeft = period;
+  periodic_threads[i].priority = priority;
   periodic_threads[i].Status = Active;
 
   OSCRITICAL_EXIT(sr);
@@ -503,8 +540,14 @@ void GROUP1_IRQHandler(void){
    
   }
   if(GPIOB->CPU_INT.RIS&(1<<21)){ // PB21
-    GPIOB->CPU_INT.ICLR = 1<<21;
-    
+    GPIOB->CPU_INT.ICLR = 1<<21;  // this acknowledges interrupt
+
+    // check all available button threads
+    for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
+      if (s2_button_threads[i].Status == Active) {
+        (*s2_button_threads[i].task)(); // run the background thread
+      }
+    }
   }
 }
 // ******** OS_AddS1Task *************** 
@@ -538,8 +581,31 @@ int OS_AddS1Task(void(*task)(void), uint32_t priority){
 //           determines the relative priority of these four threads
 int OS_AddS2Task(void(*task)(void), uint32_t priority){
   // put Lab 2 (and beyond) solution here
-  
-  return 0; // replace this line with solution
+  long sr;
+  OSCRITICAL_ENTER(sr);
+
+  // find an available thread
+  int i;
+  for (i = 0; i < MAX_BUTTON_THREADS; i++) {
+    if (s2_button_threads[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAX_BUTTON_THREADS) {
+    OSCRITICAL_EXIT(sr);
+    return 0; // failed to add task
+  }
+
+  // init background thread
+  s2_button_threads[i].task = task;
+  s2_button_threads[i].priority = priority;
+  s2_button_threads[i].Status = Active;
+  // can kill a button thread by deactivating its task
+    // and marking the thread as free
+
+  OSCRITICAL_EXIT(sr);
+  return 1; // successfully added task
 }
 
 // ******** OS_AddPA28Task *************** 
