@@ -103,7 +103,7 @@ typedef struct button_task {
 #define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 
-/* GLOBAL MAILBOX FOR INTER-THREAD COMMUNICATION */
+/* GLOBAL MAILBOX */
 
 typedef struct mailbox {
   uint32_t mail; // shared data
@@ -112,6 +112,20 @@ typedef struct mailbox {
 } mailbox_t;
 
 mailbox_t mailbox;
+
+/* GLOBAL FIFO */
+#define FIFOSIZE 10 // can be any size
+
+typedef struct fifo {
+  uint32_t volatile *putPt; // put next
+  uint32_t volatile *getPt; // get next
+  uint32_t static data[FIFOSIZE];
+  Sema4_t currrent_size; // 0 means FIFO is empty, > 0 means fifo has data
+  Sema4_t room_left;  // 0 means FIFO full, > 0 means room left
+  Sema4_t fifo_mutex; // 1 means available, 0 means busy
+} fifo_t;
+
+fifo_t fifo;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -734,9 +748,11 @@ void OS_Suspend(void){
 //    e.g., 4 to 64 elements
 //    e.g., must be a power of 2,4,8,16,32,64,128,256
 void OS_Fifo_Init(uint32_t size){
-  // put Lab 2 (and beyond) solution here
-  
- 
+  fifo.getPt = &fifo.data[0]; // empty
+  fifo.putPt = &fifo.data[0]; // empty
+  OS_InitSemaphore(fifo.currrent_size, 0);
+  OS_InitSemaphore(fifo.room_left, FIFOSIZE);
+  OS_InitSemaphore(fifo.fifo_mutex, 1);
 }
 
 // ******** OS_Fifo_Put ************
@@ -779,12 +795,8 @@ int32_t OS_Fifo_Size(void){
 // Outputs: none
 void OS_MailBox_Init(void){
   // put Lab 2 (and beyond) solution here
-  long sr;
-  OSCRITICAL_ENTER(sr);
-  // updating semaphores is critical section
-  mailbox.mail_available.Value = 0;
-  mailbox.mail_acknowledge.Value = 0;
-  OSCRITICAL_EXIT(sr);
+  OS_InitSemaphore(mailbox.mail_available, 0);
+  OS_InitSemaphore(mailbox.mail_acknowledge, 0);
 }
 
 // ******** OS_MailBox_Send ************
