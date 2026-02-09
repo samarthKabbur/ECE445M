@@ -733,6 +733,49 @@ int TestmainFIFO(void){   // TestmainFIFO
   return 0;            // this never executes
 }
 
+/* MAILBOX TEST */
+/*
+Count3 should be very large
+Count4 should be proportional to time passed
+Count 1 should equal Count2
+*/
+void ConsumerThreadMailbox(void) {
+  Count2 = 0;
+  while (1) {
+    Count2 = OS_MailBox_Recv();
+  }
+}
+
+void FillerThreadMailBox(void) {
+  Count3 = 0;
+  while (1) {
+    Count3++;
+  }
+}
+
+void BackgroundFillerThreadMailBox(void) {
+  Count4++;
+}
+
+void MailboxProducer(void) {
+  OS_MailBox_Send(Count1);
+  Count1++;
+}
+
+int TestmainMailBox(void) {
+  Count1 = 0;
+  Count4 = 0;
+  OS_Init();
+  NumCreated = 0;
+  int BackgroundNumCreated = 0;
+  NumCreated+= OS_AddThread(&ConsumerThreadMailbox, 128, 0);
+  NumCreated+= OS_AddThread(&FillerThreadMailBox, 128, 0);
+  BackgroundNumCreated+= OS_AddPeriodicThread(&BackgroundFillerThreadMailBox, PERIOD/80000, 0);
+  NumCreated+=OS_AddThread(&MailboxProducer, 128, 0);
+  OS_Launch(TIME_2MS);  // doesn't return, interrupts enabled in here
+  return 0; // this never executes
+}
+
 //*******************Trampoline for selecting which main to execute**********
 int main(void) { 			// main 
   __disable_irq();

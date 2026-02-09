@@ -23,6 +23,7 @@
 #ifndef __FIFO_H__
 #define __FIFO_H__
 
+#include "../RTOS_Labs_common/OS.h"
 
 /**
  * \brief TXFIFOSIZE the size of the transmit FIFO, which can hold 0 to TXFIFOSIZE-1 elements.
@@ -30,10 +31,14 @@
  */
  #define TXFIFOSIZE 64 // must be a power of 2
 
- /* FIFO SEMAPHORES */
- Sema4_t fifo_mutex = 0;
- Sema4_t current_size = 0;
+/* FIFO SEMAPHORES */
+typedef struct fifo_semaphores {
+  Sema4_t current_size;
+  Sema4_t mutex;
+} fifo_semaphores_t;
 
+fifo_semaphores_t rx_fifo_semaphore;
+fifo_semaphores_t tx_fifo_semaphore;
 
 /**
  * Initialize the transmit FIFO 
