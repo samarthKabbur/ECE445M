@@ -103,6 +103,16 @@ typedef struct button_task {
 #define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 
+/* GLOBAL MAILBOX FOR INTER-THREAD COMMUNICATION */
+
+typedef struct mailbox {
+  uint32_t mail; // shared data
+  int32_t mail_available_sema4; // 0 means invalid data, 1 means valid data. AKA send
+  int32_t mail_acknowledge_sema4; // 0 means consumer has not read, 1 means consumer has read. AKA Ack
+} mailbox_t;
+
+mailbox_t mailbox;
+
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
 // Inputs:  none
@@ -769,8 +779,12 @@ int32_t OS_Fifo_Size(void){
 // Outputs: none
 void OS_MailBox_Init(void){
   // put Lab 2 (and beyond) solution here
-  
- 
+  long sr;
+  OSCRITICAL_ENTER(sr);
+  // updating semaphores is critical section
+  mailbox.mail_available_sema4 = 0;
+  mailbox.mail_acknowledge_sema4 = 0;
+  OSCRITICAL_EXIT(sr);
 }
 
 // ******** OS_MailBox_Send ************
