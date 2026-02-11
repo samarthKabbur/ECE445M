@@ -43,7 +43,7 @@ void OSDisableInterrupts(void);
 void OSEnableInterrupts(void);
 long StartCritical(void);
 void EndCritical(long);
-void SetInitialStack(int i);
+void SetInitialStack(int i, int stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
@@ -364,7 +364,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   tcbs[i].Status = Active;
 
   // init stack
-  SetInitialStack(i);  // this func was copied from the book
+  SetInitialStack(i, stackSize);  // this func was copied from the book
   Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
   // insert RunPt into the LL
@@ -395,19 +395,19 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   return 1;
 }
 
-void SetInitialStack(int i) {
-  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];  // <-tcb[i].sp;
-  Stacks[i][STACKSIZE-1] = 0x01000000;  // thumb bit
-  Stacks[i][STACKSIZE-3] = 0x14141414;  // R14
-  Stacks[i][STACKSIZE-4] = 0x12121212;  // R12
-  Stacks[i][STACKSIZE-5] = 0x03030303;  // R3
-  Stacks[i][STACKSIZE-6] = 0x02020202;  // R2
-  Stacks[i][STACKSIZE-7] = 0x01010101;  // R1
-  Stacks[i][STACKSIZE-8] = 0x00000000; // R0
-  Stacks[i][STACKSIZE-9] = 0x07070707;  // R7
-  Stacks[i][STACKSIZE-10] = 0x06060606; // R6
-  Stacks[i][STACKSIZE-11] = 0x05050505; // R5
-  Stacks[i][STACKSIZE-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
+void SetInitialStack(int i, int stackSize) {
+  tcbs[i].sp = &Stacks[i][stackSize - 12];  // <-tcb[i].sp;
+  Stacks[i][stackSize-1] = 0x01000000;  // thumb bit
+  Stacks[i][stackSize-3] = 0x14141414;  // R14
+  Stacks[i][stackSize-4] = 0x12121212;  // R12
+  Stacks[i][stackSize-5] = 0x03030303;  // R3
+  Stacks[i][stackSize-6] = 0x02020202;  // R2
+  Stacks[i][stackSize-7] = 0x01010101;  // R1
+  Stacks[i][stackSize-8] = 0x00000000; // R0
+  Stacks[i][stackSize-9] = 0x07070707;  // R7
+  Stacks[i][stackSize-10] = 0x06060606; // R6
+  Stacks[i][stackSize-11] = 0x05050505; // R5
+  Stacks[i][stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
 }
 
 // ******** OS_AddProcess *************** 
