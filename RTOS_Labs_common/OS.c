@@ -674,7 +674,7 @@ void OS_Sleep(uint32_t sleepTime){
   long sr;
   OSCRITICAL_ENTER(sr);
   RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG8 every ms
-  RunPt->blocked_st = 1;        // block so it won't be run
+  //RunPt->blocked_st = 1;        // block so it won't be run
   OSCRITICAL_EXIT(sr);
 } 
 
@@ -818,7 +818,8 @@ uint32_t OS_Fifo_Get(void){
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
   // put Lab 2 (and beyond) solution here
-  return 0; // replace this line with solution
+  //return fifo.currrent_size.Value; // replace this line with solution
+  return 0;
 }
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
@@ -867,7 +868,7 @@ uint32_t OS_MailBox_Recv(void){
 //   this function and OS_TimeDifference have the same resolution and precision 
 uint32_t OS_Time(void){
   // put Lab 2 (and beyond) solution here
-  return TIMG12->COUNTERREGS.CTR;
+  return ~(TIMG12->COUNTERREGS.CTR);
 };
 
 // ******** OS_TimeDifference ************
@@ -879,7 +880,10 @@ uint32_t OS_Time(void){
 //   this function and OS_Time have the same resolution and precision 
 uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
   // put Lab 2 (and beyond) solution here
-    uint32_t diff = stop -start;
+  long sr;
+  OSCRITICAL_ENTER(sr);
+    uint32_t diff = stop - start;
+    OSCRITICAL_EXIT(sr);
     return diff; // replace this line with solution
 };
 
