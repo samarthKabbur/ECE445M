@@ -76,12 +76,22 @@ void Logic_Init(void){
   GPIOA->DOE31_0 |= (1<<8)|(1<<9)|(1<<16);
   GPIOB->DOE31_0 |= (1<<4)|(1<<1)|(1<<20);
 }
+
+/* DEBUGGING TOGGLE PINS */
 #define TogglePA8() (GPIOA->DOUTTGL31_0 = (1<<8))
 #define TogglePA9() (GPIOA->DOUTTGL31_0 = (1<<9))
 #define TogglePA16() (GPIOA->DOUTTGL31_0 = (1<<16))
 #define TogglePB4() (GPIOB->DOUTTGL31_0 = (1<<4))
 #define TogglePB1() (GPIOB->DOUTTGL31_0 = (1<<1))
 #define TogglePB20() (GPIOB->DOUTTGL31_0 = (1<<20))
+
+/* UNCOMMENT THESE TO DISABLE DEBUGGING */
+// #define TogglePA8()
+// #define TogglePA9()
+// #define TogglePA16()
+// #define TogglePB4()
+// #define TogglePB1()
+// #define TogglePB20()
 
 uint32_t Checks; // number of times virus checking has run
 uint32_t ChecksWork; // number of checks in 10 second
