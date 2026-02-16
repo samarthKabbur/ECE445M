@@ -74,12 +74,12 @@ void Cmd_Lab1_Results(char* args, int l){
 }
 
 void Cmd_Lab2_Results(char* args, int l){
-  Lab2();
+ Lab2();
   UART_OutString("\n");
 }
 
 void Cmd_DFT(char* args, int l){
-  DFT();
+ DFT();
   UART_OutString("\n");
 }
 
