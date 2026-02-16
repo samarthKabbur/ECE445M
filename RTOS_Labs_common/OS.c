@@ -55,7 +55,9 @@ void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
-volatile uint32_t TimeMs; // in ms
+volatile uint32_t TimeMs;
+volatile uint32_t TimeMsG8; // in ms
+volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
 #define MAXTHREADS 32  // maximum number of threads
@@ -150,7 +152,9 @@ void OS_ClearMsTime(void){
   // using timer g7 for this feature
   long sr;
   OSCRITICAL_ENTER(sr);
-  TimeMs = 0;
+  //TimeMs = 0;
+  TimeMsG7 =  0;
+  TimeMsG8 = 0;
   TimerG7_IntArm(1000, 80, 0);  // 1ms period, priority 2: used for TimeMs
   OSCRITICAL_EXIT(sr);
 };
@@ -164,7 +168,8 @@ void OS_ClearMsTime(void){
 // For Labs 2 and beyond, it is ok to make the resolution to match the first call to OS_AddPeriodicThread
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
-  return TimeMs;
+  return TimeMsG8;
+  //return TimeMs;
 };
 
 void StartOS(void); // implemented in osasm.s
@@ -254,7 +259,7 @@ void OS_Init(void){
   
   //_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
 
-  TimerG8_IntArm(1000, 80, 2);  // 1ms period, priority 0: used to run periodic background threads
+  TimerG8_IntArm(500, 80, 2);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
@@ -567,13 +572,15 @@ void TIMG8_IRQHandler(void){
     //TimeMs++; timerg8 seems to running every 2 ms and not every ms so add 2
     long sr;
     OSCRITICAL_ENTER(sr);
-    TimeMs += 2;
+    //TimeMs += 2;
+    TimeMsG8 += 1;
     OSCRITICAL_EXIT(sr);
     // decrement any sleeping threads once every ms
     // its okay to use a for loop instead of going thru
     // the circular LL because we have so few threads
+    TogglePB4();
     for (int i = 0; i < NumThreads; i++) {
-      TogglePB4();
+      
       if ((tcbs[i].sleep_st > 0) && (tcbs[i].Status == Active)) {
         tcbs[i].sleep_st--;
       }
@@ -605,7 +612,9 @@ void TIMG7_IRQHandler(void){
  uint32_t now = OS_MsTime();
   TogglePA9();
   //int i = 0;
+  TimeMsG7 += 1;
   (*periodic_threads[0].task)(); 
+  
   // for (int i = 0; i < NumPeriodic; i++) {
   //   TogglePA9();
   // if(now >= periodic_threads[i].nextTriggerTime){
