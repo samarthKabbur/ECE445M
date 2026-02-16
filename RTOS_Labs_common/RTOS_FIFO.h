@@ -37,8 +37,7 @@ typedef struct fifo_semaphores {
   Sema4_t mutex;
 } fifo_semaphores_t;
 
-fifo_semaphores_t rx_fifo_semaphore;
-fifo_semaphores_t tx_fifo_semaphore;
+
 
 /**
  * Initialize the transmit FIFO 

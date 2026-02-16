@@ -39,17 +39,26 @@
 // Use TimerA1 for PWM outputs to motors
 // Use TimerG6 for Lab 1 and then for PWM to servo steering
 
+//for debugging 
+#define TogglePA8() (GPIOA->DOUTTGL31_0 = (1<<8))
+#define TogglePA9() (GPIOA->DOUTTGL31_0 = (1<<9))
+#define TogglePA16() (GPIOA->DOUTTGL31_0 = (1<<16))
+#define TogglePB4() (GPIOB->DOUTTGL31_0 = (1<<4))
+#define TogglePB1() (GPIOB->DOUTTGL31_0 = (1<<1))
+#define TogglePB20() (GPIOB->DOUTTGL31_0 = (1<<20))
+
 void OSDisableInterrupts(void);
 void OSEnableInterrupts(void);
 long StartCritical(void);
 void EndCritical(long);
-void SetInitialStack(int i);
+void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
 volatile uint32_t TimeMs; // in ms
+volatile uint32_t TimeUs; // in microseconds
 
-#define NUMTHREADS 32  // maximum number of threads
+#define MAXTHREADS 32  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
@@ -72,10 +81,11 @@ typedef struct tcb {
   enum state Status; // active or free
 } tcb_t;
 
-tcb_t tcbs [NUMTHREADS];
+tcb_t tcbs [MAXTHREADS];
+int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
-int32_t Stacks[NUMTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
 
 /* BACKGROUND PERIODIC THREADS 
 - scheduled by TimerG8
@@ -84,11 +94,14 @@ typedef struct periodic_task {
   void (*task)(void); // pointer to the background thread
   uint32_t period;  // reload value
   uint32_t timeLeft;  // decrement counter
+  uint32_t nextTriggerTime; // absolute time for next run
   enum state Status; // active or free
   int priority;
 } periodic_task_t;
 
 #define MAX_PERIODIC_THREADS 64
+int NumPeriodic; //for allocated periodic threads
+
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
 
 /* BACKGROUND BUTTON CREATED THREADS
@@ -101,6 +114,7 @@ typedef struct button_task {
 } button_task_t;
 
 #define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
+int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 
 /* GLOBAL MAILBOX */
@@ -134,8 +148,11 @@ fifo_t fifo;
 // You are free to change how this works
 void OS_ClearMsTime(void){
   // using timer g7 for this feature
+  long sr;
+  OSCRITICAL_ENTER(sr);
   TimeMs = 0;
-  TimerG7_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
+  TimerG7_IntArm(1000, 80, 0);  // 1ms period, priority 2: used for TimeMs
+  OSCRITICAL_EXIT(sr);
 };
 
 
@@ -159,7 +176,8 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-  GPIOB->DOUTTGL31_0 = (1<<22);
+  //GPIOB->DOUTTGL31_0 = (1<<22);
+  TogglePB1();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
 } // end SysTick_Handler
@@ -217,9 +235,11 @@ void OS_Init(void){
   // put Lab 2 (and beyond) solution here
   OSDisableInterrupts();
   OS_ClearMsTime();
-
+  NumThreads = 0;
+  NumPeriodic = 0;
+  NumButtonThreads = 0;
   // mark all foreground threads as free
-  for (int i = 0; i < NUMTHREADS; i++) {
+  for (int i = 0; i < MAXTHREADS; i++) {
     tcbs[i].Status = Free;
   }
 
@@ -227,8 +247,14 @@ void OS_Init(void){
   for (int i = 0; i < MAX_PERIODIC_THREADS; i++) {
     periodic_threads[i].Status = Free;
   }
+  for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
+    s2_button_threads[i].Status = Free;
+      
+    }
+  
+  //_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
 
-  TimerG8_IntArm(1000, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
+  TimerG8_IntArm(1000, 80, 2);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
@@ -263,12 +289,17 @@ void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
 // output: none
 void OS_Wait(Sema4_t *semaPt){
   long sr;
+  int count = 0;
   // put Lab 2 (and beyond) solution here
   OSCRITICAL_ENTER(sr);
   while (semaPt->Value <= 0) {
+    TogglePA16();
+    count++;
     OSCRITICAL_EXIT(sr);
+    TogglePA16();
     OS_Suspend(); // implements cooperative spin lock
     OSCRITICAL_ENTER(sr);
+    TogglePA16();
   }
   semaPt->Value--;
   OSCRITICAL_EXIT(sr);
@@ -283,9 +314,14 @@ void OS_Wait(Sema4_t *semaPt){
 void OS_Signal(Sema4_t *semaPt){
   // put Lab 2 (and beyond) solution here
   long sr;
+  int count  = 0;
   OSCRITICAL_ENTER(sr);
+  TogglePA9();
   semaPt->Value++;
+  TogglePA9();
+  count++;
   OSCRITICAL_EXIT(sr);
+  TogglePA9();
 }; 
 
 // ******** OS_bWait ************
@@ -345,13 +381,13 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   
   // find a thread that is free
   int i;
-  for (i = 0; i < NUMTHREADS; i++) {
+  for (i = 0; i < MAXTHREADS; i++) {
     if (tcbs[i].Status == Free) {
       break;
     }
   }
   
-  if (i == NUMTHREADS) {
+  if (i == MAXTHREADS) {
     OSCRITICAL_EXIT(sr);
     return 0; // fail upon: no thread space available
   }
@@ -362,9 +398,10 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   tcbs[i].blocked_st = 0;
   tcbs[i].sleep_st = 0;
   tcbs[i].Status = Active;
+  NumThreads++;
 
   // init stack
-  SetInitialStack(i);  // this func was copied from the book
+  SetInitialStack(i, stackSize);  // this func was copied from the book
   Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
   // insert RunPt into the LL
@@ -395,19 +432,19 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   return 1;
 }
 
-void SetInitialStack(int i) {
-  tcbs[i].sp = &Stacks[i][STACKSIZE - 12];  // <-tcb[i].sp;
-  Stacks[i][STACKSIZE-1] = 0x01000000;  // thumb bit
-  Stacks[i][STACKSIZE-3] = 0x14141414;  // R14
-  Stacks[i][STACKSIZE-4] = 0x12121212;  // R12
-  Stacks[i][STACKSIZE-5] = 0x03030303;  // R3
-  Stacks[i][STACKSIZE-6] = 0x02020202;  // R2
-  Stacks[i][STACKSIZE-7] = 0x01010101;  // R1
-  Stacks[i][STACKSIZE-8] = 0x00000000; // R0
-  Stacks[i][STACKSIZE-9] = 0x07070707;  // R7
-  Stacks[i][STACKSIZE-10] = 0x06060606; // R6
-  Stacks[i][STACKSIZE-11] = 0x05050505; // R5
-  Stacks[i][STACKSIZE-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
+void SetInitialStack(int i, uint32_t stackSize) {
+  tcbs[i].sp = &Stacks[i][stackSize - 12];  // <-tcb[i].sp;
+  Stacks[i][stackSize-1] = 0x01000000;  // thumb bit
+  Stacks[i][stackSize-3] = 0x14141414;  // R14
+  Stacks[i][stackSize-4] = 0x12121212;  // R12
+  Stacks[i][stackSize-5] = 0x03030303;  // R3
+  Stacks[i][stackSize-6] = 0x02020202;  // R2
+  Stacks[i][stackSize-7] = 0x01010101;  // R1
+  Stacks[i][stackSize-8] = 0x00000000; // R0
+  Stacks[i][stackSize-9] = 0x07070707;  // R7
+  Stacks[i][stackSize-10] = 0x06060606; // R6
+  Stacks[i][stackSize-11] = 0x05050505; // R5
+  Stacks[i][stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
 }
 
 // ******** OS_AddProcess *************** 
@@ -438,7 +475,7 @@ int OS_LoadProgram(char *name, uint32_t priority){
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void){
   // put Lab 2 (and beyond) solution here
-    return 0; // replace this line with solution
+    return RunPt->id; // replace this line with solution
 }
 
 
@@ -509,6 +546,7 @@ int OS_AddPeriodicThread(void(*task)(void),
     OSCRITICAL_EXIT(sr);
     return 0; // fail upon no space available
   }
+ 
 
   // init bg thread
   periodic_threads[i].task = task;
@@ -516,41 +554,69 @@ int OS_AddPeriodicThread(void(*task)(void),
   periodic_threads[i].timeLeft = period;
   periodic_threads[i].priority = priority;
   periodic_threads[i].Status = Active;
+  periodic_threads[i].nextTriggerTime = OS_MsTime() + period;
+  NumPeriodic++;
 
   OSCRITICAL_EXIT(sr);
   return 1;
 }
 
-void TIMG7_IRQHandler(void){
-  if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
-    TimeMs++;
+void TIMG8_IRQHandler(void){
+  if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
+    TogglePB4();
+    //TimeMs++; timerg8 seems to running every 2 ms and not every ms so add 2
+    long sr;
+    OSCRITICAL_ENTER(sr);
+    TimeMs += 2;
+    OSCRITICAL_EXIT(sr);
     // decrement any sleeping threads once every ms
     // its okay to use a for loop instead of going thru
     // the circular LL because we have so few threads
-    for (int i = 0; i < NUMTHREADS; i++) {
+    for (int i = 0; i < NumThreads; i++) {
+      TogglePB4();
       if ((tcbs[i].sleep_st > 0) && (tcbs[i].Status == Active)) {
         tcbs[i].sleep_st--;
       }
     }
   }
+  TogglePB4();
 }
 
-void TIMG8_IRQHandler(void){
-  if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
-    for (int i = 0; i < MAX_PERIODIC_THREADS; i++) {
-      if (periodic_threads[i].Status == Active) {
-        if (periodic_threads[i].timeLeft == 0) {
-          (*periodic_threads[i].task)();  // run the bg thread when time has run out
-          periodic_threads[i].timeLeft = periodic_threads[i].period;  // reload counter
-        } else {
-          periodic_threads[i].timeLeft--; // decrement
-        }
-      }
-    }
-  }
+// void TIMG8_IRQHandler(void){
+//   if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
+//   TogglePA9();
+//     for (int i = 0; i < NumPeriodic; i++) {
+//       if (periodic_threads[i].Status == Active) {
+//         if (periodic_threads[i].timeLeft == 0) {
+//           TogglePA9();
+//           (*periodic_threads[i].task)();  // run the bg thread when time has run out
+//           periodic_threads[i].timeLeft = periodic_threads[i].period-1;  // reload counter
+//         } else {
+//           periodic_threads[i].timeLeft--; // decrement
+//         }
+//       }
+//     }
+//   }
+//   TogglePA9();
+// }
+void TIMG7_IRQHandler(void){
+  if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
+  TogglePA9();
+ uint32_t now = OS_MsTime();
+  TogglePA9();
+  //int i = 0;
+  (*periodic_threads[0].task)(); 
+  // for (int i = 0; i < NumPeriodic; i++) {
+  //   TogglePA9();
+  // if(now >= periodic_threads[i].nextTriggerTime){
+  //   (*periodic_threads[i].task)(); 
+  //   // TogglePA9();
+  //   periodic_threads[i].nextTriggerTime += periodic_threads[i].period;
+  //     } 
+  //   }
+   }
+  TogglePA9();
 }
-
-
 
 
 
@@ -576,7 +642,7 @@ void GROUP1_IRQHandler(void){
     GPIOB->CPU_INT.ICLR = 1<<21;  // this acknowledges interrupt
 
     // check all available button threads
-    for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
+    for (int i = 0; i < NumButtonThreads; i++) {
       if (s2_button_threads[i].Status == Active) {
         (*s2_button_threads[i].task)(); // run the background thread
       }
@@ -634,6 +700,7 @@ int OS_AddS2Task(void(*task)(void), uint32_t priority){
   s2_button_threads[i].task = task;
   s2_button_threads[i].priority = priority;
   s2_button_threads[i].Status = Active;
+   NumButtonThreads++;
   // can kill a button thread by deactivating its task
     // and marking the thread as free
 
@@ -740,8 +807,10 @@ void OS_Kill(void){
 // output: none
 void OS_Suspend(void){
   // put Lab 2 (and beyond) solution here
+  TogglePB1();
   SysTick->VAL = 0; // reset counter
   SCB->ICSR = 0x04000000; // trigger SysTick
+  TogglePB1();
 };
   
 // ******** OS_Fifo_Init ************
@@ -868,7 +937,7 @@ uint32_t OS_MailBox_Recv(void){
 //   this function and OS_TimeDifference have the same resolution and precision 
 uint32_t OS_Time(void){
   // put Lab 2 (and beyond) solution here
-  return ~(TIMG12->COUNTERREGS.CTR);
+  return TIMG12->COUNTERREGS.CTR;
 };
 
 // ******** OS_TimeDifference ************
@@ -880,11 +949,8 @@ uint32_t OS_Time(void){
 //   this function and OS_Time have the same resolution and precision 
 uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
   // put Lab 2 (and beyond) solution here
-  long sr;
-  OSCRITICAL_ENTER(sr);
-    uint32_t diff = stop - start;
-    OSCRITICAL_EXIT(sr);
-    return diff; // replace this line with solution
+  
+  return start - stop;
 };
 
 // ******** OS_Launch *************** 

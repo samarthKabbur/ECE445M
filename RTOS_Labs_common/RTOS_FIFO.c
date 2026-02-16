@@ -28,6 +28,17 @@ uint32_t volatile TxPutI; // where to put next
 uint32_t volatile TxGetI; // where to get next
 char static TxFifo[TXFIFOSIZE];
 
+//for debugging 
+#define TogglePA8() (GPIOA->DOUTTGL31_0 = (1<<8))
+#define TogglePA9() (GPIOA->DOUTTGL31_0 = (1<<9))
+#define TogglePA16() (GPIOA->DOUTTGL31_0 = (1<<16))
+#define TogglePB4() (GPIOB->DOUTTGL31_0 = (1<<4))
+#define TogglePB1() (GPIOB->DOUTTGL31_0 = (1<<1))
+#define TogglePB20() (GPIOB->DOUTTGL31_0 = (1<<20))
+
+fifo_semaphores_t rx_fifo_semaphore;
+fifo_semaphores_t tx_fifo_semaphore;
+
 void TxFifo_Init(void){
   TxPutI = TxGetI = 0; // empty
   OS_InitSemaphore(&tx_fifo_semaphore.current_size, 0);
@@ -61,6 +72,7 @@ uint32_t TxFifo_Size(void){
 
 // Two-index implementation of the receive FIFO
 // can hold 0 to RXFIFOSIZE-1 elements
+
 uint32_t volatile RxPutI; // where to put next
 uint32_t volatile RxGetI; // where to get next
 char static RxFifo[RXFIFOSIZE];
@@ -73,6 +85,7 @@ void RxFifo_Init(void){
 int RxFifo_Put(char data){
   uint32_t newPutI = (RxPutI+1)&(RXFIFOSIZE-1);
   if(newPutI == RxGetI) return 0; // fail if full
+  TogglePB4();
   RxFifo[RxPutI] = data;          // save in Fifo
   RxPutI = newPutI;               // next place to put
 
@@ -83,7 +96,7 @@ int RxFifo_Put(char data){
 char RxFifo_Get(void){char data;
   OS_Wait(&rx_fifo_semaphore.current_size); // block if full
   OS_Wait(&rx_fifo_semaphore.mutex); // block if busy
-
+  TogglePA9();
   data = RxFifo[RxGetI];              // retrieve data
   RxGetI = (RxGetI+1)&(RXFIFOSIZE-1); // next place to get
 
