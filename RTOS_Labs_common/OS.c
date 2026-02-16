@@ -46,6 +46,9 @@
 #define TogglePB4() (GPIOB->DOUTTGL31_0 = (1<<4))
 #define TogglePB1() (GPIOB->DOUTTGL31_0 = (1<<1))
 #define TogglePB20() (GPIOB->DOUTTGL31_0 = (1<<20))
+#define TogglePB22() (GPIOB->DOUTTGL31_0 = (1<<22))
+#define TogglePB26() (GPIOB->DOUTTGL31_0 = (1<<26))
+
 
 void OSDisableInterrupts(void);
 void OSEnableInterrupts(void);
@@ -152,7 +155,7 @@ void OS_ClearMsTime(void){
   long sr;
   OSCRITICAL_ENTER(sr);
   TimeMs = 0;
-  TimerG7_IntArm(1000, 80, 0);  // 1ms period, priority 2: used for TimeMs
+  TimerG7_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
   OSCRITICAL_EXIT(sr);
 };
 
@@ -177,8 +180,7 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-  //GPIOB->DOUTTGL31_0 = (1<<22);
-  TogglePB1();
+  // TogglePB22();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
 } // end SysTick_Handler
@@ -252,10 +254,8 @@ void OS_Init(void){
     s2_button_threads[i].Status = Free;
       
     }
-  
-  //_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
 
-  TimerG8_IntArm(1000, 80, 2);  // 1ms period, priority 0: used to run periodic background threads
+  TimerG8_IntArm(500, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
@@ -290,17 +290,12 @@ void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
 // output: none
 void OS_Wait(Sema4_t *semaPt){
   long sr;
-  int count = 0;
   // put Lab 2 (and beyond) solution here
   OSCRITICAL_ENTER(sr);
   while (semaPt->Value <= 0) {
-    TogglePA16();
-    count++;
     OSCRITICAL_EXIT(sr);
-    TogglePA16();
     OS_Suspend(); // implements cooperative spin lock
     OSCRITICAL_ENTER(sr);
-    TogglePA16();
   }
   semaPt->Value--;
   OSCRITICAL_EXIT(sr);
@@ -315,14 +310,9 @@ void OS_Wait(Sema4_t *semaPt){
 void OS_Signal(Sema4_t *semaPt){
   // put Lab 2 (and beyond) solution here
   long sr;
-  int count  = 0;
   OSCRITICAL_ENTER(sr);
-  TogglePA9();
   semaPt->Value++;
-  TogglePA9();
-  count++;
   OSCRITICAL_EXIT(sr);
-  TogglePA9();
 }; 
 
 // ******** OS_bWait ************
@@ -388,7 +378,6 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   }
   
   if (i == MAXTHREADS) {
-    OSCRITICAL_EXIT(sr);
     return 0; // fail upon: no thread space available
   }
 
@@ -546,6 +535,7 @@ int OS_AddPeriodicThread(void(*task)(void),
   }
 
   // init bg thread
+  OSCRITICAL_ENTER(sr);
   periodic_threads[i].task = task;
   periodic_threads[i].period = period;
   periodic_threads[i].timeLeft = period;
@@ -558,64 +548,43 @@ int OS_AddPeriodicThread(void(*task)(void),
   return 1;
 }
 
+/* TIMG8 locks or unlocks periodic threads */
 void TIMG8_IRQHandler(void){
+  TogglePB22();
   if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
-    TogglePB4();
-    //TimeMs++; timerg8 seems to running every 2 ms and not every ms so add 2
-    long sr;
-    OSCRITICAL_ENTER(sr);
-    TimeMs += 2;
-    OSCRITICAL_EXIT(sr);
+    TogglePB22();
+    for (int i = 0; i < NumPeriodic; i++) {
+      if (periodic_threads[i].Status == Active) {
+        if (periodic_threads[i].timeLeft == 0) {
+          (*periodic_threads[i].task)();  // run the bg thread when time has run out
+          periodic_threads[i].timeLeft = periodic_threads[i].period - 1;  // reload counter
+        } else {
+          periodic_threads[i].timeLeft--; // decrement
+        }
+      }
+    }
+    TogglePB22();
+  }
+}
+
+/* 
+TIMG7 handles the millisecond clock 
+and decrements sleeping threads
+*/
+void TIMG7_IRQHandler(void){
+  TogglePB26();
+  if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
+    TogglePB26();
+    TimeMs++; // increment the millisecond clock
+    TogglePB26();
     // decrement any sleeping threads once every ms
-    // its okay to use a for loop instead of going thru
-    // the circular LL because we have so few threads
     for (int i = 0; i < NumThreads; i++) {
-      TogglePB4();
       if ((tcbs[i].sleep_st > 0) && (tcbs[i].Status == Active)) {
         tcbs[i].sleep_st--;
       }
     }
   }
-  TogglePB4();
 }
-
-// void TIMG8_IRQHandler(void){
-//   if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
-//   TogglePA9();
-//     for (int i = 0; i < NumPeriodic; i++) {
-//       if (periodic_threads[i].Status == Active) {
-//         if (periodic_threads[i].timeLeft == 0) {
-//           TogglePA9();
-//           (*periodic_threads[i].task)();  // run the bg thread when time has run out
-//           periodic_threads[i].timeLeft = periodic_threads[i].period-1;  // reload counter
-//         } else {
-//           periodic_threads[i].timeLeft--; // decrement
-//         }
-//       }
-//     }
-//   }
-//   TogglePA9();
-// }
-void TIMG7_IRQHandler(void){
-  if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
-  TogglePA9();
- uint32_t now = OS_MsTime();
-  TogglePA9();
-  //int i = 0;
-  (*periodic_threads[0].task)(); 
-  // for (int i = 0; i < NumPeriodic; i++) {
-  //   TogglePA9();
-  // if(now >= periodic_threads[i].nextTriggerTime){
-  //   (*periodic_threads[i].task)(); 
-  //   // TogglePA9();
-  //   periodic_threads[i].nextTriggerTime += periodic_threads[i].period;
-  //     } 
-  //   }
-   }
-  TogglePA9();
-}
-
-
 
 //----------------------------------------------------------------------------
 //  Edge triggered Interrupt Handler
@@ -782,13 +751,12 @@ void OS_Kill(void){
 
   // 2. disable interrupts
   long sr;
-  OSCRITICAL_ENTER(sr);
-
   // case for no thread existing (hopefully this usually won't be the case)
   if (RunPt == (void*)0) {  
-    OSCRITICAL_EXIT(sr);
+    
     return; // nothing to kill or suspend
   } else {
+    OSCRITICAL_ENTER(sr);
     RunPt->Status = Free; // 3. 4. mark the old thread as free
 
     /* 5. unlink the old thread from the circular linked list */
@@ -830,10 +798,8 @@ void OS_Kill(void){
 // output: none
 void OS_Suspend(void){
   // put Lab 2 (and beyond) solution here
-  TogglePB1();
   SysTick->VAL = 0; // reset counter
   SCB->ICSR = 0x04000000; // trigger SysTick
-  TogglePB1();
 };
   
 // ******** OS_Fifo_Init ************
