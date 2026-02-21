@@ -429,7 +429,7 @@ int Testmain1(void){  // Testmain1
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread0,128,0); 
   NumCreated += OS_AddThread(&Thread1,128,0); 
-  NumCreated += OS_AddThread(&Thread2,128,2); 
+  NumCreated += OS_AddThread(&Thread2,128,0); 
   // Count0 Count1 should be equal or off by one at all times
   // With a priority scheduler, Count2 should remain 0 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
@@ -1071,7 +1071,8 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  realmain();
+  Testmain1();
+  //realmain();
 }
 
 
