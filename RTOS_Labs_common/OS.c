@@ -58,7 +58,9 @@ void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
-volatile uint32_t TimeMs; // in ms
+volatile uint32_t TimeMs;
+volatile uint32_t TimeMsG8; // in ms
+volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
 #define MAXTHREADS 32  // maximum number of threads
@@ -168,6 +170,7 @@ void OS_ClearMsTime(void){
 // For Labs 2 and beyond, it is ok to make the resolution to match the first call to OS_AddPeriodicThread
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
+  //Return TimeMSG8/G7 for check
   return TimeMs;
 };
 
@@ -180,7 +183,7 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-  // TogglePB22();
+  TogglePB22();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
 } // end SysTick_Handler
@@ -194,13 +197,55 @@ int isThreadAvailable(tcb_t *RunPt) {
 }
 
 void Scheduler(void) {
-  tcb_t *current = RunPt;
-  RunPt = RunPt->next;  // go to at least the next thread
-  while ((isThreadAvailable(RunPt) == 0) && (RunPt->next != current)) {
-    // if thread is not available, find a thread that is available
-    // and stop looping when we've come back around to the first thread
-    RunPt = RunPt->next;  // find a thread that is available
-  }
+  //want to run bestPt
+  int max = 255;
+  tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
+  tcb_t *pt = RunPt->next;
+  tcb_t *bestPt =0;
+  do{
+    if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
+      if(pt->priority < max|| bestPt ==0){
+        max = pt->priority; //changes highest priorty to current priority 
+        bestPt = pt;
+      }
+    }
+    pt = pt->next; //skips at least one
+  }while(pt != start);
+  //hopefully at least one runnable thread
+
+  //round robin within same priority 
+  // if (isThreadAvailable(RunPt) &&
+  //     RunPt->priority == max) {
+      
+      // pt = RunPt->next;
+      // while(pt != RunPt){
+      //   if(isThreadAvailable(pt) && pt->priority == max){
+      //     RunPt = pt; //run next same priority 
+      //     return;
+      //   }
+      //   pt = pt->next;
+
+      // }
+
+
+      // } //if this runs all the way through then no other same priority runnable
+
+
+      // round robin within same priority
+      pt = bestPt->next;
+      while(pt != bestPt){
+        if(isThreadAvailable(pt) && pt->priority == max){
+            bestPt = pt;
+            break;
+        }
+        pt = pt->next;
+    }
+
+
+      RunPt  = bestPt;
+
+
+
 }
 
 uint32_t OS_LockScheduler(void){
@@ -259,14 +304,17 @@ void OS_Init(void){
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
-  UART_Init(1); // hardware priority 1
+    //comment out for test 1
 
-  ST7735_InitR(INITR_BLACKTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
-  ST7735_FillScreen(ST7735_BLACK);
-  ST7735_SetCursor(0, 0);
-  ST7735_OutString("RTOS Lab 2\nSpring 2026\n");
-  
-  UART_OutString("ECE445M Lab 2\n\rSpring 2026\n\r");
+  // TimerG8_IntArm(500, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
+  // TimerG12_Init();
+  // EdgeTriggered_Init(); // initialize edge triggered button presses
+
+  // UART_Init(1); // hardware priority 1
+
+  // ST7735_InitR(INITR_BLACKTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
+  // ST7735_FillScreen(ST7735_BLACK);
+  // ST7735_SetCursor(0, 0);
   //Enable Interrupts occurs at OS_Launch
 }
 
@@ -394,30 +442,67 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   SetInitialStack(i, stackSize);  // this func was copied from the book
   Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
-  // insert RunPt into the LL
-  if (RunPt == (void*)0) {  // if RunPt is a nullptr
-    // then this is the first tcb in the LL: do init
+  // // insert RunPt into the LL
+  // if (RunPt == (void*)0) {  // if RunPt is a nullptr
+  //   // then this is the first tcb in the LL: do init
 
-    tcbs[i].next = &tcbs[i];  // self reference
-    tcbs[i].prev = &tcbs[i];  // self reference
-    RunPt = &tcbs[i]; // point the RunPt to the first tcb
+  //   tcbs[i].next = &tcbs[i];  // self reference
+  //   tcbs[i].prev = &tcbs[i];  // self reference
+  //   RunPt = &tcbs[i]; // point the RunPt to the first tcb
     
-  } else {
-    // otherwise add a tcb
-    tcb_t *tail = RunPt->prev;  // tail is the node immediately behind the head
-                                // where head is RunPt
+  // } else {
+  //   // otherwise add a tcb
+  //   tcb_t *tail = RunPt->prev;  // tail is the node immediately behind the head
+  //                               // where head is RunPt
     
-    tcbs[i].next = RunPt;
-    tcbs[i].prev = tail;
+  //   tcbs[i].next = RunPt;
+  //   tcbs[i].prev = tail;
     
-    tail->next = &tcbs[i];
-    RunPt->prev = &tcbs[i];
+  //   tail->next = &tcbs[i];
+  //   RunPt->prev = &tcbs[i];
 
-    // before: tail <--> RunPt
-    // adds the new node behind the head
-    // and after the tail
-    // After: Tail <--> tcbs[i] <--> RunPt
-  }
+  //   // before: tail <--> RunPt
+  //   // adds the new node behind the head
+  //   // and after the tail
+  //   // After: Tail <--> tcbs[i] <--> RunPt
+  // }
+
+  // insert into  priority sorted circular doubly-linked list
+if (RunPt == (void*)0) {  
+  // first thread in system
+  tcbs[i].next = &tcbs[i];
+  tcbs[i].prev = &tcbs[i];
+  RunPt = &tcbs[i];
+} else {
+
+  tcb_t *pt = RunPt;
+
+  // find first node with lower priority ( higher value)
+  do {
+    if (priority < pt->priority) {
+      break;   
+    }
+    pt = pt->next;
+  } while (pt != RunPt);
+
+  // insert before pt and after previous node
+  tcb_t *prevNode = pt->prev; 
+
+  tcbs[i].next = pt;
+  tcbs[i].prev = prevNode;
+
+  prevNode->next = &tcbs[i];
+  pt->prev = &tcbs[i];
+
+//prevNode <---- newNode ----> pt
+
+
+//below does not work if trying to add a high priority thread from a lower - thinks running thread is the high priority when not
+//   // if new thread is highest priority, move RunPt
+//   if (priority < RunPt->priority) {
+//     RunPt = &tcbs[i];
+//   }
+}
 
   OSCRITICAL_EXIT(sr);
   return 1;
@@ -533,15 +618,26 @@ int OS_AddPeriodicThread(void(*task)(void),
   if (i == MAX_PERIODIC_THREADS) {
     return 0; // fail upon no space available
   }
+ 
+  int j = i;
+
+// Shift higher priority elements up
+  while (j > 0 &&
+       periodic_threads[j-1].Status == Active &&
+       periodic_threads[j-1].priority > priority) {
+
+    periodic_threads[j] = periodic_threads[j-1];
+    j--;
+  }
+
 
   // init bg thread
-  OSCRITICAL_ENTER(sr);
-  periodic_threads[i].task = task;
-  periodic_threads[i].period = period;
-  periodic_threads[i].timeLeft = period;
-  periodic_threads[i].priority = priority;
-  periodic_threads[i].Status = Active;
-  periodic_threads[i].nextTriggerTime = OS_MsTime() + period;
+  periodic_threads[j].task = task;
+  periodic_threads[j].period = period;
+  periodic_threads[j].timeLeft = period;
+  periodic_threads[j].priority = priority;
+  periodic_threads[j].Status = Active;
+  periodic_threads[j].nextTriggerTime = OS_MsTime() + period;
   NumPeriodic++;
 
   OSCRITICAL_EXIT(sr);
@@ -735,6 +831,7 @@ void OS_Sleep(uint32_t sleepTime){
   OSCRITICAL_ENTER(sr);
   RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG8 every ms
   OSCRITICAL_EXIT(sr);
+  OS_Suspend();
 } 
 
 
@@ -745,12 +842,11 @@ void OS_Sleep(uint32_t sleepTime){
 // output: none
 void OS_Kill(void){
   // put Lab 2 (and beyond) solution here
-
+  long sr;
   // 1. set sleep to max so the scheduler (systick) won't try to run the thread
   RunPt->sleep_st = 0xFFFFFFFF;
-
+  
   // 2. disable interrupts
-  long sr;
   // case for no thread existing (hopefully this usually won't be the case)
   if (RunPt == (void*)0) {  
     
@@ -774,18 +870,29 @@ void OS_Kill(void){
       prevThread->next = nextThread;
       nextThread->prev = prevThread;
 
-      // RunPt = nextThread; // increment for scheduler to run on the next thread
+       //RunPt = nextThread; // increment for scheduler to run on the next thread
+       //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
+    //which is where the priority 0 thread was instead of its actually thread
     }
-    
+    NumThreads--;
     SysTick->VAL = 0; // 6. clear hardware counter (full time slice to next thread)
-
+    
     // start next thread
+
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
+    // having an issue where this killed thread is no longer in tcb thread/ no longer linked but if its the 
+    // running tcb(RunPt = killed_thread) when trying to switch threads we will never be able to 
+    // go to pt == RunPt since it is unlinked from the tcb queue 
+    // this leads to infinite loop
+    //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
+    //which is where the priority 0 thread was instead of its actually thread
 
     while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
   }
 }; 
+
+
 
 
 
@@ -955,6 +1062,7 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 void OS_Launch(uint32_t theTimeSlice){
   // units of theTimeSlice are in bus cycles (12.5 ns)
   // put Lab 2 (and beyond) solution here
+  //uncomment after test 1
   int systick_priority = 2;
   int pendsv_priority = 3;
 
