@@ -185,9 +185,11 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-  // TogglePB22();
+   //TogglePB4();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
+  //TogglePB4();
+
 } // end SysTick_Handler
 
 /*
@@ -201,8 +203,8 @@ int isThreadAvailable(tcb_t *RunPt) {
 void Scheduler(void) {
   //want to run bestPt
   int max = 255;
-  //tcb_t *current = RunPt;
-  tcb_t *pt = RunPt;
+  tcb_t *start = RunPt->next;
+  tcb_t *pt = RunPt->next;
   tcb_t *bestPt =0;
   do{
     if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
@@ -212,25 +214,36 @@ void Scheduler(void) {
       }
     }
     pt = pt->next; //skips at least one
-  }while(pt != RunPt);
+  }while(pt != start);
   //hopefully at least one runnable thread
 
   //round robin within same priority 
-  if (isThreadAvailable(RunPt) &&
-      RunPt->priority == max) {
+  // if (isThreadAvailable(RunPt) &&
+  //     RunPt->priority == max) {
       
-      pt = RunPt->next;
-      while(pt != RunPt){
+      // pt = RunPt->next;
+      // while(pt != RunPt){
+      //   if(isThreadAvailable(pt) && pt->priority == max){
+      //     RunPt = pt; //run next same priority 
+      //     return;
+      //   }
+      //   pt = pt->next;
+
+      // }
+
+
+      // } //if this runs all the way through then no other same priority runnable
+
+
+      // round robin within same priority
+      pt = bestPt->next;
+      while(pt != bestPt){
         if(isThreadAvailable(pt) && pt->priority == max){
-          RunPt = pt; //run next same priority 
-          return;
+            bestPt = pt;
+            break;
         }
         pt = pt->next;
-
-      }
-
-
-      } //if this runs all the way through then no other same priority runnable
+    }
 
 
       RunPt  = bestPt;
@@ -273,7 +286,7 @@ void EdgeTriggered_Init(void){
 void OS_Init(void){
   // put Lab 2 (and beyond) solution here
   OSDisableInterrupts();
-  //OS_ClearMsTime();
+  OS_ClearMsTime();
   NumThreads = 0;
   NumPeriodic = 0;
   NumButtonThreads = 0;
@@ -413,7 +426,7 @@ int OS_AddProcessThread(void(*task)(void),
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
-  
+  OSCRITICAL_ENTER(sr);
   // find a thread that is free
   int i;
   for (i = 0; i < MAXTHREADS; i++) {
@@ -426,7 +439,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
     return 0; // fail upon: no thread space available
   }
 
-  OSCRITICAL_ENTER(sr);
+ //OSCRITICAL_ENTER(sr);
   // init tcb fields
   tcbs[i].id = i; 
   tcbs[i].priority = priority;
@@ -493,10 +506,12 @@ if (RunPt == (void*)0) {
 
 //prevNode <---- newNode ----> pt
 
-  // if new thread is highest priority, move RunPt
-  if (priority < RunPt->priority) {
-    RunPt = &tcbs[i];
-  }
+
+//below does not work if trying to add a high priority thread from a lower - thinks running thread is the high priority when not
+//   // if new thread is highest priority, move RunPt
+//   if (priority < RunPt->priority) {
+//     RunPt = &tcbs[i];
+//   }
 }
 
   OSCRITICAL_EXIT(sr);
@@ -820,6 +835,7 @@ void OS_Sleep(uint32_t sleepTime){
   OSCRITICAL_ENTER(sr);
   RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG8 every ms
   OSCRITICAL_EXIT(sr);
+  OS_Suspend();
 } 
 
 
@@ -830,18 +846,20 @@ void OS_Sleep(uint32_t sleepTime){
 // output: none
 void OS_Kill(void){
   // put Lab 2 (and beyond) solution here
-
+  long sr;
   // 1. set sleep to max so the scheduler (systick) won't try to run the thread
+  OSCRITICAL_ENTER(sr);
   RunPt->sleep_st = 0xFFFFFFFF;
+  
 
   // 2. disable interrupts
-  long sr;
+  //long sr;
   // case for no thread existing (hopefully this usually won't be the case)
   if (RunPt == (void*)0) {  
     
     return; // nothing to kill or suspend
   } else {
-    OSCRITICAL_ENTER(sr);
+    //OSCRITICAL_ENTER(sr);
     RunPt->Status = Free; // 3. 4. mark the old thread as free
 
     /* 5. unlink the old thread from the circular linked list */
@@ -859,18 +877,29 @@ void OS_Kill(void){
       prevThread->next = nextThread;
       nextThread->prev = prevThread;
 
-      // RunPt = nextThread; // increment for scheduler to run on the next thread
+       //RunPt = nextThread; // increment for scheduler to run on the next thread
+       //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
+    //which is where the priority 0 thread was instead of its actually thread
     }
-    
+    NumThreads--;
     SysTick->VAL = 0; // 6. clear hardware counter (full time slice to next thread)
-
+    
     // start next thread
+
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
+    // having an issue where this killed thread is no longer in tcb thread/ no longer linked but if its the 
+    // running tcb(RunPt = killed_thread) when trying to switch threads we will never be able to 
+    // go to pt == RunPt since it is unlinked from the tcb queue 
+    // this leads to infinite loop
+    //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
+    //which is where the priority 0 thread was instead of its actually thread
 
     while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
   }
 }; 
+
+
 
 
 
@@ -883,7 +912,7 @@ void OS_Kill(void){
 // output: none
 void OS_Suspend(void){
   // put Lab 2 (and beyond) solution here
- // SysTick->VAL = 0; // reset counter
+ SysTick->VAL = 0; // reset counter
   SCB->ICSR = 0x04000000; // trigger SysTick
 };
   
@@ -1040,15 +1069,15 @@ void OS_Launch(uint32_t theTimeSlice){
   // units of theTimeSlice are in bus cycles (12.5 ns)
   // put Lab 2 (and beyond) solution here
   //uncomment after test 1
-  // int systick_priority = 2;
-  // int pendsv_priority = 3;
+  int systick_priority = 2;
+  int pendsv_priority = 3;
 
-  // NVIC_SetPriority(PendSV_IRQn, pendsv_priority); // set pendsv priority 3
+  NVIC_SetPriority(PendSV_IRQn, pendsv_priority); // set pendsv priority 3
 
-  // SysTick->CTRL = 0x00; // disable systick during setup
-  // SysTick->LOAD = theTimeSlice - 1; // reload value
-  // SCB->SHP[1] = (SCB->SHP[1]&(~0xC0000000)) | systick_priority<<30; // set systick priority 2
-  // SysTick->VAL = 0; // clear count, cause reload
-  // SysTick->CTRL = 0x07; // enable systick irq and systick timer
+  SysTick->CTRL = 0x00; // disable systick during setup
+  SysTick->LOAD = theTimeSlice - 1; // reload value
+  SCB->SHP[1] = (SCB->SHP[1]&(~0xC0000000)) | systick_priority<<30; // set systick priority 2
+  SysTick->VAL = 0; // clear count, cause reload
+  SysTick->CTRL = 0x07; // enable systick irq and systick timer
   StartOS();  // start on the first task (implemented in osasm.s)
 }
