@@ -203,7 +203,7 @@ int isThreadAvailable(tcb_t *RunPt) {
 void Scheduler(void) {
   //want to run bestPt
   int max = 255;
-  tcb_t *start = RunPt->next;
+  tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
   tcb_t *pt = RunPt->next;
   tcb_t *bestPt =0;
   do{
@@ -633,14 +633,25 @@ int OS_AddPeriodicThread(void(*task)(void),
     return 0; // fail upon no space available
   }
  
+  int j = i;
+
+// Shift higher priority elements up
+  while (j > 0 &&
+       periodic_threads[j-1].Status == Active &&
+       periodic_threads[j-1].priority > priority) {
+
+    periodic_threads[j] = periodic_threads[j-1];
+    j--;
+  }
+
 
   // init bg thread
-  periodic_threads[i].task = task;
-  periodic_threads[i].period = period;
-  periodic_threads[i].timeLeft = period;
-  periodic_threads[i].priority = priority;
-  periodic_threads[i].Status = Active;
-  periodic_threads[i].nextTriggerTime = OS_MsTime() + period;
+  periodic_threads[j].task = task;
+  periodic_threads[j].period = period;
+  periodic_threads[j].timeLeft = period;
+  periodic_threads[j].priority = priority;
+  periodic_threads[j].Status = Active;
+  periodic_threads[j].nextTriggerTime = OS_MsTime() + period;
   NumPeriodic++;
 
   OSCRITICAL_EXIT(sr);
