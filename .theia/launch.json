@@ -62,6 +62,15 @@
                 "name": "RTOS_Lab2_RTOSkernel",
                 "resourceId": "/RTOS_Lab2_RTOSkernel"
             }
+        },
+        {
+            "name": "RTOS_Lab3_RTOSpriority",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "RTOS_Lab3_RTOSpriority",
+                "resourceId": "/RTOS_Lab3_RTOSpriority"
+            }
         }
     ]
 }

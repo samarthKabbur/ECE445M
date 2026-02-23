@@ -680,7 +680,7 @@ int Testmain5(void){   // Testmain5
   // Count1 should exactly equal Count2
   // Count3 should be very large
   // Thread4e runs once making Count4 640 
-  // Count5 increments by 1, and Count4 increases by 640 every time S2 or PA28 is pressed
+  // Count5 increments by 1 and Count4 increases by 640 every time S2 or PA28 is pressed
   NumCreated = 0 ;
   OS_AddPeriodicThread(&BackgroundThread1e,1,0);  // 1ms, 1000Hz
   OS_AddS2Task(&BackgroundThread5e,1);
@@ -1073,9 +1073,11 @@ int main(void) { 			// main
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   // Testmain1();
   // Testmain2();
-  Testmain3();
+  // Testmain3();
+  // Testmain4();
+  Testmain5();
   //realmain();
-  Testmain3();
+  
 }
 
 

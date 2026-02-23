@@ -103,6 +103,7 @@ typedef struct button_task {
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
+button_task_t pa28_button_threads[MAX_BUTTON_THREADS];
 
 /* GLOBAL MAILBOX */
 
@@ -179,17 +180,19 @@ int isThreadAvailable(tcb_t *RunPt) {
 
 void Scheduler(void) {
 
+  tcb_t *currentPt = RunPt;
+
   // if the thread is to be blocked move it to the blocked LL
   // otherwise remove it if it needs to be killed
-  if (RunPt->blocked_st != 0) {
-    Sema4_t *semaPt = (Sema4_t *)RunPt->blocked_st;
-    RemoveFromActive(RunPt);
-    AddToBlocked(semaPt, RunPt);
-  } else if (RunPt->Status == Free) {
-    RemoveFromActive(RunPt);
+  if (currentPt->blocked_st != 0) {
+    Sema4_t *semaPt = (Sema4_t *)currentPt->blocked_st;
+    RemoveFromActive(currentPt);
+    AddToBlocked(semaPt, currentPt);
+  } else if (currentPt->Status == Free) {
+    RemoveFromActive(currentPt);
   }
 
-  // priority scheduling from main thread pool
+  // priority scheduling from mains thread pool
   int max = 255;
   tcb_t *start = RunPt->next; 
   tcb_t *pt = RunPt->next;
@@ -259,18 +262,15 @@ void OS_Init(void){
   }
   for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
     s2_button_threads[i].Status = Free;
-      
-    }
+    s1_button_threads[i].Status = Free;
+    pa28_button_threads[i].Status = Free;  
+  }
 
   TimerG8_IntArm(500, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
     //comment out for test 1
-
-  // TimerG8_IntArm(500, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
-  // TimerG12_Init();
-  // EdgeTriggered_Init(); // initialize edge triggered button presses
 
   // UART_Init(1); // hardware priority 1
 
@@ -389,6 +389,8 @@ void OS_Wait(Sema4_t *semaPt){
     
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
+
+    return;
   }
   
   OSCRITICAL_EXIT(sr);
@@ -544,67 +546,33 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   SetInitialStack(i, stackSize);  // this func was copied from the book
   Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
-  // // insert RunPt into the LL
-  // if (RunPt == (void*)0) {  // if RunPt is a nullptr
-  //   // then this is the first tcb in the LL: do init
-
-  //   tcbs[i].next = &tcbs[i];  // self reference
-  //   tcbs[i].prev = &tcbs[i];  // self reference
-  //   RunPt = &tcbs[i]; // point the RunPt to the first tcb
-    
-  // } else {
-  //   // otherwise add a tcb
-  //   tcb_t *tail = RunPt->prev;  // tail is the node immediately behind the head
-  //                               // where head is RunPt
-    
-  //   tcbs[i].next = RunPt;
-  //   tcbs[i].prev = tail;
-    
-  //   tail->next = &tcbs[i];
-  //   RunPt->prev = &tcbs[i];
-
-  //   // before: tail <--> RunPt
-  //   // adds the new node behind the head
-  //   // and after the tail
-  //   // After: Tail <--> tcbs[i] <--> RunPt
-  // }
-
   // insert into  priority sorted circular doubly-linked list
-if (RunPt == (void*)0) {  
-  // first thread in system
-  tcbs[i].next = &tcbs[i];
-  tcbs[i].prev = &tcbs[i];
-  RunPt = &tcbs[i];
-} else {
+  if (RunPt == (void*)0) {  
+    // first thread in system
+    tcbs[i].next = &tcbs[i];
+    tcbs[i].prev = &tcbs[i];
+    RunPt = &tcbs[i];
+  } else {
 
-  tcb_t *pt = RunPt;
+    tcb_t *pt = RunPt;
 
-  // find first node with lower priority ( higher value)
-  do {
-    if (priority < pt->priority) {
-      break;   
-    }
-    pt = pt->next;
-  } while (pt != RunPt);
+    // find first node with lower priority ( higher value)
+    do {
+      if (priority < pt->priority) {
+        break;   
+      }
+      pt = pt->next;
+    } while (pt != RunPt);
 
-  // insert before pt and after previous node
-  tcb_t *prevNode = pt->prev; 
+    // insert before pt and after previous node
+    tcb_t *prevNode = pt->prev; 
 
-  tcbs[i].next = pt;
-  tcbs[i].prev = prevNode;
+    tcbs[i].next = pt;
+    tcbs[i].prev = prevNode;
 
-  prevNode->next = &tcbs[i];
-  pt->prev = &tcbs[i];
-
-//prevNode <---- newNode ----> pt
-
-
-//below does not work if trying to add a high priority thread from a lower - thinks running thread is the high priority when not
-//   // if new thread is highest priority, move RunPt
-//   if (priority < RunPt->priority) {
-//     RunPt = &tcbs[i];
-//   }
-}
+    prevNode->next = &tcbs[i];
+    pt->prev = &tcbs[i];
+  }
 
   OSCRITICAL_EXIT(sr);
   return 1;
@@ -722,7 +690,7 @@ int OS_AddPeriodicThread(void(*task)(void),
   }
  
   int j = i;
-
+  OSCRITICAL_ENTER(sr);
 // Shift higher priority elements up
   while (j > 0 &&
        periodic_threads[j-1].Status == Active &&
@@ -731,7 +699,6 @@ int OS_AddPeriodicThread(void(*task)(void),
     periodic_threads[j] = periodic_threads[j-1];
     j--;
   }
-
 
   // init bg thread
   periodic_threads[j].task = task;
@@ -806,7 +773,11 @@ void GROUP1_IRQHandler(void){
   
   if(GPIOA->CPU_INT.RIS&(1<<28)){ // PA28
     GPIOA->CPU_INT.ICLR = 1<<28;
-   
+    for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
+      if (pa28_button_threads[i].Status == Active) {
+        (*pa28_button_threads[i].task)(); // run the background thread
+      }
+    }
   }
 
   if(GPIOB->CPU_INT.RIS&(1<<21)){ // PB21
@@ -913,9 +884,27 @@ int OS_AddS2Task(void(*task)(void), uint32_t priority){
 // In lab 3, there will be many background threads, and this priority field 
 //           determines the relative priority of these four threads
 int OS_AddPA28Task(void(*task)(void), uint32_t priority){
-  // put Lab 3 (and beyond) solution here
- 
-  return 0; // replace this line with solution
+  long sr;
+
+  int i;
+  for (i = 0; i < MAX_BUTTON_THREADS; i++) {
+    if (pa28_button_threads[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAX_BUTTON_THREADS) {
+    return 0;
+  }
+
+  OSCRITICAL_ENTER(sr);
+  // init background thread
+  pa28_button_threads[i].task = task;
+  pa28_button_threads[i].priority = priority;
+  pa28_button_threads[i].Status = Active;
+  OSCRITICAL_EXIT(sr);
+  
+  return 1; // successfully added task
 };
 
 
