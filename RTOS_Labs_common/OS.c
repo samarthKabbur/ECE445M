@@ -301,6 +301,8 @@ void OS_Init(void){
   }
   for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
     s2_button_threads[i].Status = Free;
+    s1_button_threads[i].Status = Free;
+    pa28_button_threads[i].Status = Free;  
       
     }
   
@@ -320,6 +322,84 @@ void OS_Init(void){
   // ST7735_SetCursor(0, 0);
   //Enable Interrupts occurs at OS_Launch
 }
+
+/* LINKED LIST HELPER FUNCTIONs */
+// unlinks a thread from the active circular doubly-linked list
+void RemoveFromActive(tcb_t *thread) {
+  if (thread->next == thread) {
+    RunPt = 0; 
+  } else {
+    thread->prev->next = thread->next;
+    thread->next->prev = thread->prev;
+
+    if (RunPt == thread) {
+      RunPt = thread->next; 
+    }
+  }
+}
+
+// adds thread to the blocked list
+void AddToBlocked(Sema4_t *semaPt, tcb_t *thread) {
+  thread->next = semaPt->BlockedPt; 
+  semaPt->BlockedPt = thread;
+}
+
+// removes the highest priority from blocked list
+// useful for os signal
+tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
+  tcb_t *pt = semaPt->BlockedPt;
+  tcb_t *bestPt = pt;
+  tcb_t *prev = 0;
+  tcb_t *bestPrev = 0;
+
+  int maxPriority = 255; 
+
+  // find highest priority from within blocked list
+  while (pt != 0) {
+    if (pt->priority < maxPriority) {
+      maxPriority = pt->priority;
+      bestPt = pt;
+      bestPrev = prev;
+    }
+    prev = pt;
+    pt = pt->next;
+  }
+
+  if (bestPt != 0) {
+    if (bestPrev == 0) {
+      semaPt->BlockedPt = bestPt->next;
+    } else {
+      bestPrev->next = bestPt->next;
+    }
+  }
+
+  return bestPt;
+}
+
+// Inserts a thread back into the active priority-sorted circular list.
+void AddToActive(tcb_t *thread) {
+  if (RunPt == 0) {  
+    thread->next = thread;
+    thread->prev = thread;
+    RunPt = thread;
+  } else {
+    tcb_t *pt = RunPt;
+    do {
+      if (thread->priority < pt->priority) {
+        break;   
+      }
+      pt = pt->next;
+    } while (pt != RunPt);
+
+    tcb_t *prevNode = pt->prev; 
+    thread->next = pt;
+    thread->prev = prevNode;
+    prevNode->next = thread;
+    pt->prev = thread;
+  }
+}
+
+/* End of linked list helper functions */
 
 // ******** OS_InitSemaphore ************
 // initialize semaphore 
