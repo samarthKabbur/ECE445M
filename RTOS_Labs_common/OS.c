@@ -67,25 +67,6 @@ volatile uint32_t TimeUs; // in microseconds
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
-enum state {Free, // free means unallocated or killed
-          Active  // active means allocated or not killed
-          };
-
-/* FOREGROUND THREADS 
-- Scheduled by Systick and Scheduler
-- Context switched by PendSV
-*/
-typedef struct tcb {
-  int *sp;  // pointer to stack, valid for threads not running
-  struct tcb *next; // linked-list pointer
-  struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
-  int id;
-  int sleep_st; // 0 means not sleeping, ie awake
-  int priority;
-  int blocked_st; // 0 means unblocked, 1 means blocked
-  enum state Status; // active or free
-} tcb_t;
-
 tcb_t tcbs [MAXTHREADS];
 int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
@@ -197,55 +178,36 @@ int isThreadAvailable(tcb_t *RunPt) {
 }
 
 void Scheduler(void) {
-  //want to run bestPt
+
+  // if the thread is to be blocked move it to the blocked LL
+  // otherwise remove it if it needs to be killed
+  if (RunPt->blocked_st != 0) {
+    Sema4_t *semaPt = (Sema4_t *)RunPt->blocked_st;
+    RemoveFromActive(RunPt);
+    AddToBlocked(semaPt, RunPt);
+  } else if (RunPt->Status == Free) {
+    RemoveFromActive(RunPt);
+  }
+
+  // priority scheduling from main thread pool
   int max = 255;
-  tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
+  tcb_t *start = RunPt->next; 
   tcb_t *pt = RunPt->next;
-  tcb_t *bestPt =0;
-  do{
-    if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
-      if(pt->priority < max|| bestPt ==0){
-        max = pt->priority; //changes highest priorty to current priority 
+  tcb_t *bestPt = 0;
+
+  do {
+    if (isThreadAvailable(pt)) { 
+      if (pt->priority < max || bestPt == 0) {
+        max = pt->priority; 
         bestPt = pt;
       }
     }
-    pt = pt->next; //skips at least one
-  }while(pt != start);
-  //hopefully at least one runnable thread
+    pt = pt->next; 
+  } while(pt != start);
 
-  //round robin within same priority 
-  // if (isThreadAvailable(RunPt) &&
-  //     RunPt->priority == max) {
-      
-      // pt = RunPt->next;
-      // while(pt != RunPt){
-      //   if(isThreadAvailable(pt) && pt->priority == max){
-      //     RunPt = pt; //run next same priority 
-      //     return;
-      //   }
-      //   pt = pt->next;
-
-      // }
-
-
-      // } //if this runs all the way through then no other same priority runnable
-
-
-      // round robin within same priority
-      pt = bestPt->next;
-      while(pt != bestPt){
-        if(isThreadAvailable(pt) && pt->priority == max){
-            bestPt = pt;
-            break;
-        }
-        pt = pt->next;
-    }
-
-
-      RunPt  = bestPt;
-
-
-
+  if (bestPt) {
+      RunPt = bestPt;
+  }
 }
 
 uint32_t OS_LockScheduler(void){
@@ -318,16 +280,92 @@ void OS_Init(void){
   //Enable Interrupts occurs at OS_Launch
 }
 
+/* LINKED LIST HELPER FUNCTIONs */
+// unlinks a thread from the active circular doubly-linked list
+void RemoveFromActive(tcb_t *thread) {
+  if (thread->next == thread) {
+    RunPt = 0; 
+  } else {
+    thread->prev->next = thread->next;
+    thread->next->prev = thread->prev;
+    
+    if (RunPt == thread) {
+      RunPt = thread->next; 
+    }
+  }
+}
+
+// adds thread to the blocked list
+void AddToBlocked(Sema4_t *semaPt, tcb_t *thread) {
+  thread->next = semaPt->BlockedPt; 
+  semaPt->BlockedPt = thread;
+}
+
+// removes the highest priority from blocked list
+// useful for os signal
+tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
+  tcb_t *pt = semaPt->BlockedPt;
+  tcb_t *bestPt = pt;
+  tcb_t *prev = 0;
+  tcb_t *bestPrev = 0;
+  
+  int maxPriority = 255; 
+  
+  // find highest priority from within blocked list
+  while (pt != 0) {
+    if (pt->priority < maxPriority) {
+      maxPriority = pt->priority;
+      bestPt = pt;
+      bestPrev = prev;
+    }
+    prev = pt;
+    pt = pt->next;
+  }
+  
+  if (bestPt != 0) {
+    if (bestPrev == 0) {
+      semaPt->BlockedPt = bestPt->next;
+    } else {
+      bestPrev->next = bestPt->next;
+    }
+  }
+  
+  return bestPt;
+}
+
+// Inserts a thread back into the active priority-sorted circular list.
+void AddToActive(tcb_t *thread) {
+  if (RunPt == 0) {  
+    thread->next = thread;
+    thread->prev = thread;
+    RunPt = thread;
+  } else {
+    tcb_t *pt = RunPt;
+    do {
+      if (thread->priority < pt->priority) {
+        break;   
+      }
+      pt = pt->next;
+    } while (pt != RunPt);
+
+    tcb_t *prevNode = pt->prev; 
+    thread->next = pt;
+    thread->prev = prevNode;
+    prevNode->next = thread;
+    pt->prev = thread;
+  }
+}
+
+/* ENd of linked list helpfer functions */
+
 // ******** OS_InitSemaphore ************
 // initialize semaphore 
 // input:  pointer to a semaphore
 // output: none
 void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
-  // put Lab 2 (and beyond) solution here
-  // i assume that this isn't a critical section
-  // because this function should only be called once
   semaPt->Value = value;
-}; 
+  semaPt->BlockedPt = 0; // Initialize the blocked list as empty
+}
 
 
 // ******** OS_Wait ************
@@ -336,18 +374,25 @@ void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
 // Lab3 block if less than zero
 // input:  pointer to a counting semaphore
 // output: none
+// ******** OS_Wait ************
+// Lab3 block if less than zero
+// input:  pointer to a counting semaphore
+// output: none
 void OS_Wait(Sema4_t *semaPt){
   long sr;
-  // put Lab 2 (and beyond) solution here
   OSCRITICAL_ENTER(sr);
-  while (semaPt->Value <= 0) {
-    OSCRITICAL_EXIT(sr);
-    OS_Suspend(); // implements cooperative spin lock
-    OSCRITICAL_ENTER(sr);
-  }
+  
   semaPt->Value--;
+  
+  if (semaPt->Value < 0) {
+    RunPt->blocked_st = (int)semaPt; 
+    
+    OSCRITICAL_EXIT(sr);
+    OS_Suspend();
+  }
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 // ******** OS_Signal ************
 // increment semaphore 
@@ -355,45 +400,102 @@ void OS_Wait(Sema4_t *semaPt){
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a counting semaphore
 // output: none
-void OS_Signal(Sema4_t *semaPt){
-  // put Lab 2 (and beyond) solution here
+// ******** OS_Signal ************
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a counting semaphore
+// output: none
+// ******** OS_Signal ************
+void OS_Signal(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
+  
   semaPt->Value++;
+  
+  if (semaPt->Value <= 0) {
+    tcb_t *wokenThread = RemoveHighestPriorityFromBlocked(semaPt);
+    
+    if (wokenThread != 0) {
+      wokenThread->blocked_st = 0; // Clear the blocked status
+      
+      AddToActive(wokenThread);    
+      
+      // get ipsr = 0 means we're not inside an ISR
+      // prevents suspending a background thread
+      if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+        OSCRITICAL_EXIT(sr);
+        OS_Suspend(); // preempt the current thread
+        return;
+      }
+    }
+  }
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 // ******** OS_bWait ************
 // Lab2 spinlock, set to 0
 // Lab3 block if less than zero
 // input:  pointer to a binary semaphore
 // output: none
-void OS_bWait(Sema4_t *semaPt){
-  // put Lab 2 (and beyond) solution here
+// ******** OS_bWait ************
+// Lab3 block if zero
+// input:  pointer to a binary semaphore
+// output: none
+// ******** OS_bWait ************
+// Lab3 block if zero
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bWait(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
-  while (semaPt->Value <= 0) {  // theoretically bsemaphore 
-                                // value will never be less than zero
+  
+  while (semaPt->Value == 0) {
+    RunPt->blocked_st = (int)semaPt; 
+    
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
-    OSCRITICAL_ENTER(sr);
+    
+    OSCRITICAL_ENTER(sr); 
   }
+  
   semaPt->Value = 0;
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 // ******** OS_bSignal ************
 // Lab2 spinlock, set to 1
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a binary semaphore
 // output: none
-void OS_bSignal(Sema4_t *semaPt){
-  // put Lab 2 (and beyond) solution here
+// ******** OS_bSignal ************
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bSignal(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
+  
   semaPt->Value = 1;
+  if (semaPt->BlockedPt != 0) {
+    
+    tcb_t *wokenThread = RemoveHighestPriorityFromBlocked(semaPt);
+    
+    if (wokenThread != 0) {
+      wokenThread->blocked_st = 0;
+      
+      AddToActive(wokenThread);    
+      
+      if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+        OSCRITICAL_EXIT(sr);
+        OS_Suspend();
+        return;
+      }
+    }
+  }
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 
 
@@ -841,60 +943,18 @@ void OS_Sleep(uint32_t sleepTime){
 // input:  none
 // output: none
 void OS_Kill(void){
-  // put Lab 2 (and beyond) solution here
   long sr;
-  // 1. set sleep to max so the scheduler (systick) won't try to run the thread
-  RunPt->sleep_st = 0xFFFFFFFF;
+  OSCRITICAL_ENTER(sr);
   
-  // 2. disable interrupts
-  // case for no thread existing (hopefully this usually won't be the case)
-  if (RunPt == (void*)0) {  
-    
-    return; // nothing to kill or suspend
-  } else {
-    OSCRITICAL_ENTER(sr);
-    RunPt->Status = Free; // 3. 4. mark the old thread as free
-
-    /* 5. unlink the old thread from the circular linked list */
-    // case for only one thread exists
-    if (RunPt == RunPt->next) {
-      RunPt->next = (void*)0;
-      RunPt->prev = (void*)0;
-      RunPt = (void*)0; // may cause hardfault without an idle thread
-    } else {
-      // case: multiple threads exist
-      tcb_t *to_be_killed = RunPt;
-      tcb_t *prevThread = to_be_killed->prev;
-      tcb_t *nextThread = to_be_killed->next;
-
-      prevThread->next = nextThread;
-      nextThread->prev = prevThread;
-
-       //RunPt = nextThread; // increment for scheduler to run on the next thread
-       //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
-    //which is where the priority 0 thread was instead of its actually thread
-    }
-    NumThreads--;
-    SysTick->VAL = 0; // 6. clear hardware counter (full time slice to next thread)
-    
-    // start next thread
-
-    OSCRITICAL_EXIT(sr);
-    OS_Suspend();
-    // having an issue where this killed thread is no longer in tcb thread/ no longer linked but if its the 
-    // running tcb(RunPt = killed_thread) when trying to switch threads we will never be able to 
-    // go to pt == RunPt since it is unlinked from the tcb queue 
-    // this leads to infinite loop
-    //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
-    //which is where the priority 0 thread was instead of its actually thread
-
-    while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
-  }
-}; 
-
-
-
-
+  RunPt->Status = Free;
+  NumThreads--;
+  
+  OSCRITICAL_EXIT(sr);
+  
+  OS_Suspend();
+  
+  while(1){};
+}
 
 // ******** OS_Suspend ************
 // suspend execution of currently running thread
@@ -904,7 +964,6 @@ void OS_Kill(void){
 // input:  none
 // output: none
 void OS_Suspend(void){
-  // put Lab 2 (and beyond) solution here
   SysTick->VAL = 0; // reset counter
   SCB->ICSR = 0x04000000; // trigger SysTick
 };

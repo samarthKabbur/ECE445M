@@ -34,11 +34,30 @@
 /**
  * \brief Semaphore structure. Feel free to change the type of semaphore, there are lots of good solutions
  */  
-struct  Sema4{
-  int32_t Value;   // >0 means free, otherwise means busy        
-// add other components here, if necessary to implement blocking
+struct Sema4 {
+  int32_t Value;         // >0 means free, otherwise means busy        
+  struct tcb *BlockedPt; // Pointer to the head of the blocked linked list
 };
 typedef struct Sema4 Sema4_t;
+
+enum state {Free, // free means unallocated or killed
+          Active  // active means allocated or not killed
+          };
+
+/* FOREGROUND THREADS 
+- Scheduled by Systick and Scheduler
+- Context switched by PendSV
+*/
+typedef struct tcb {
+  int *sp;  // pointer to stack, valid for threads not running
+  struct tcb *next; // linked-list pointer
+  struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
+  int id;
+  int sleep_st; // 0 means not sleeping, ie awake
+  int priority;
+  int blocked_st; // 0 means unblocked, 1 means blocked
+  enum state Status; // active or free
+} tcb_t;
 
 /**
  * @details  Initialize operating system, disable interrupts until OS_Launch.
@@ -49,6 +68,11 @@ typedef struct Sema4 Sema4_t;
  * @brief  Initialize OS
  */
 void OS_Init(void); 
+
+void RemoveFromActive(tcb_t *thread);
+void AddToBlocked(Sema4_t *semaPt, tcb_t *thread);
+tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt);
+void AddToActive(tcb_t *thread);
 
 // ******** OS_InitSemaphore ************
 // initialize semaphore 
