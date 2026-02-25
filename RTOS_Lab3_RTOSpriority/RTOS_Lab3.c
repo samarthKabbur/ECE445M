@@ -429,7 +429,7 @@ int Testmain1(void){  // Testmain1
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread0,128,0); 
   NumCreated += OS_AddThread(&Thread1,128,0); 
-  NumCreated += OS_AddThread(&Thread2,128,0); 
+  NumCreated += OS_AddThread(&Thread2,128,1); 
   // Count0 Count1 should be equal or off by one at all times
   // With a priority scheduler, Count2 should remain 0 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
@@ -680,7 +680,7 @@ int Testmain5(void){   // Testmain5
   // Count1 should exactly equal Count2
   // Count3 should be very large
   // Thread4e runs once making Count4 640 
-  // Count5 increments by 1, and Count4 increases by 640 every time S2 or PA28 is pressed
+  // Count5 increments by 1 and Count4 increases by 640 every time S2 or PA28 is pressed
   NumCreated = 0 ;
   OS_AddPeriodicThread(&BackgroundThread1e,1,0);  // 1ms, 1000Hz
   OS_AddS2Task(&BackgroundThread5e,1);
@@ -1071,8 +1071,14 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  Testmain1();
+  // Testmain1();
+  // Testmain2();
+  // Testmain3();
+  // Testmain4();
+  //Testmain5();
   //realmain();
+  TestmainFIFO();
+  
 }
 
 
