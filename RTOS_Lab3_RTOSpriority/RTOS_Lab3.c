@@ -78,6 +78,8 @@ void Logic_Init(void){
 #define TogglePB4() (GPIOB->DOUTTGL31_0 = (1<<4))
 #define TogglePB1() (GPIOB->DOUTTGL31_0 = (1<<1))
 #define TogglePB20() (GPIOB->DOUTTGL31_0 = (1<<20))
+#define SetPB20() (GPIOB->DOUTSET31_0 = (1<<20))
+#define ClearPB20() (GPIOB->DOUTCLR31_0 = (1<<20))
 
 uint32_t Checks; // number of times virus checking has run
 uint32_t ChecksWork; // number of checks in 10 second
@@ -522,7 +524,7 @@ int Testmain3(void){  // Testmain3
   OS_Init();          // initialize, disable interrupts
   Logic_Init();       // profile user threads
   Count0 = 0;  
-  NumCreated = 0 ;
+  NumCreated = 0;
   NumCreated += OS_AddThread(&Thread1c,128,1); 
   NumCreated += OS_AddThread(&Thread2c,128,2); 
 // Count2 should be huge
@@ -591,11 +593,19 @@ void Thread4d(void){ int i;
   Count4 = 0;
 }
 void Thread5d(void){
+  int watcher = 0;
   for(;;){
     OS_Wait(&Readyd);
     TogglePA9();        // toggle PA9
     Count5++;   // Count2 + Count5 should equal Count1 
     Lost = Count1-Count5-Count2;
+    if (Lost) {
+      SetPB20();
+      watcher = 1;
+    } else {
+      ClearPB20();
+      watcher = 0;
+    }
   }
 }
 void Thread6d(void){  
@@ -613,7 +623,6 @@ int Testmain4(void){   // Testmain4
   // Count3 increments every 2ms
   // Count4 increases by 64 every time PA28 or S2 is pressed
   // Lost should remain 0, meaning the number of signals matches the number of waits. 
-  // TODO: Lost equals 1
   NumCreated = 0 ;
   OS_AddS2Task(&BackgroundThread0d,1);
   OS_AddPA28Task(&BackgroundThread0d,1);
@@ -1077,9 +1086,10 @@ int main(void) { 			// main
   // Testmain2();
   // Testmain3();
   // Testmain4();
-  //Testmain5();
-  //realmain();
+  // Testmain5();
   TestmainFIFO();
+  //realmain();
+  
   
 }
 

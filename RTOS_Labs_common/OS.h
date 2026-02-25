@@ -41,7 +41,8 @@ struct Sema4 {
 typedef struct Sema4 Sema4_t;
 
 enum state {Free, // free means unallocated or killed
-          Active  // active means allocated or not killed
+          Active,  // active means allocated or not killed
+          Blocked // blocked means its not on the main thread pool
           };
 
 /* FOREGROUND THREADS 
@@ -53,10 +54,10 @@ typedef struct tcb {
   struct tcb *next; // linked-list pointer
   struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
   int id;
-  int sleep_st; // 0 means not sleeping, ie awake
+  int sleep_st; // 0 means not sleeping, anything else means sleeping
   int priority;
-  int blocked_st; // 0 means unblocked, 1 means blocked
-  enum state Status; // active or free
+  Sema4_t *blocked_ptr; // 0 means unblocked, otherwise is blocked and points to the semaphore that is blocking it
+  enum state Status; // active or free or blocked
 } tcb_t;
 
 /**
@@ -69,10 +70,16 @@ typedef struct tcb {
  */
 void OS_Init(void); 
 
-void RemoveFromActive(tcb_t *thread);
-void AddToBlocked(Sema4_t *semaPt, tcb_t *thread);
-tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt);
+/* Some helper functions for managing threads */
+
+// adds thread to the main thread pool
 void AddToActive(tcb_t *thread);
+
+// Removes thread from the main thread pool
+void RemoveFromActive(tcb_t *thread);
+
+// returns highest priority thread from the blocked thread pool
+tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt);
 
 // ******** OS_InitSemaphore ************
 // initialize semaphore 
