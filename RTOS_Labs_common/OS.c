@@ -182,14 +182,15 @@ void Scheduler(void) {
 
   tcb_t *currentPt = RunPt;
 
-  if (currentPt == 0) return;
-
-  // remove it if it needs to be killed
-  if (currentPt->Status == Free) {
+  // if the thread is to be blocked move it to the blocked LL
+  // otherwise remove it if it needs to be killed
+  if (currentPt->blocked_st != 0) {
+    Sema4_t *semaPt = (Sema4_t *)currentPt->blocked_st;
+    RemoveFromActive(currentPt);
+    AddToBlocked(semaPt, currentPt);
+  } else if (currentPt->Status == Free) {
     RemoveFromActive(currentPt);
   }
-
-  if (RunPt == 0) return;
 
   // priority scheduling from mains thread pool
   int max = 255;
@@ -385,12 +386,6 @@ void OS_Wait(Sema4_t *semaPt){
   
   if (semaPt->Value < 0) {
     RunPt->blocked_st = (int)semaPt; 
-
-    tcb_t *blockingThread = RunPt;
-    
-    // Move thread to blocked list
-    RemoveFromActive(blockingThread);
-    AddToBlocked(semaPt, blockingThread);
     
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
@@ -458,12 +453,6 @@ void OS_bWait(Sema4_t *semaPt) {
   
   while (semaPt->Value == 0) {
     RunPt->blocked_st = (int)semaPt; 
-
-    tcb_t *blockingThread = RunPt;
-    
-    // Move thread to blocked list
-    RemoveFromActive(blockingThread);
-    AddToBlocked(semaPt, blockingThread);
     
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
