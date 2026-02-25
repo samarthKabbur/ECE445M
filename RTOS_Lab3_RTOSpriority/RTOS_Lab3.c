@@ -1087,10 +1087,10 @@ int main(void) { 			// main
   // Testmain3();
   // Testmain4();
   // Testmain5();
-  TestmainFIFO();
+  // TestmainFIFO();
+  // Testmain6(); // TODO: need to implement periodic scheduler optimal schedule thing
+  Testmain7();
   //realmain();
-  
-  
 }
 
 

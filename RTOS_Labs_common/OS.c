@@ -258,9 +258,7 @@ void OS_Init(void){
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
-    //comment out for test 1
-
-  // UART_Init(1); // hardware priority 1
+  UART_Init(1); // hardware priority 1
 
   // ST7735_InitR(INITR_BLACKTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
   // ST7735_FillScreen(ST7735_BLACK);
