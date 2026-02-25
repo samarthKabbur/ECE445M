@@ -31,15 +31,18 @@ void Cmd_Flush(char* args, int l);
 void Cmd_Print(char* args, int l);
 void Cmd_Lab1_Results(char* args, int l);
 void Cmd_Lab2_Results(char* args, int l);
+void Cmd_Lab3_Results(char* args, int l);
 void Cmd_DFT(char* args, int l);
 void Cmd_Jitter(char* args, int l);
 void Cmd_Help(char* args, int l);
+
 
 Command commands[] = {
   {"flush", Cmd_Flush},
   {"print", Cmd_Print},
   {"lab1results", Cmd_Lab1_Results},
   {"lab2results", Cmd_Lab2_Results},
+  {"lab3results", Cmd_Lab3_Results},
   {"jitter", Cmd_Jitter},
   {"dft", Cmd_DFT},
   {"?", Cmd_Help},
@@ -78,8 +81,13 @@ void Cmd_Lab2_Results(char* args, int l){
   UART_OutString("\n");
 }
 
+void Cmd_Lab3_Results(char* args, int l){
+ Lab3();
+  UART_OutString("\n");
+}
+
 void Cmd_DFT(char* args, int l){
-// DFT();
+  DFT();
   UART_OutString("\n");
 }
 
@@ -94,7 +102,8 @@ void Cmd_Help(char* args, int l){
   UART_OutString("\r\nprint *message*       prints message onto screen");
   UART_OutString("\r\nlab1results           prints lab 1 results onto screen");
   UART_OutString("\r\nlab2results           prints lab 2 results onto screen");
-  UART_OutString("\r\ndft                   prints lab 2 dft results onto screen");
+  UART_OutString("\r\nlab3results           prints lab 3 results onto screen");
+  UART_OutString("\r\ndft                   prints lab 3 dft results onto screen");
   UART_OutString("\r\njitter                prints lab 2  jitter results onto screen");
   UART_OutString("\r\n?                     displays syntax of all commands");
   UART_OutString("\n");
