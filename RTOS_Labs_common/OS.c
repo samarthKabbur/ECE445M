@@ -58,31 +58,14 @@ void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
-volatile uint32_t TimeMs; // in ms
+volatile uint32_t TimeMs;
+volatile uint32_t TimeMsG8; // in ms
+volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
 #define MAXTHREADS 32  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
-
-enum state {Free, // free means unallocated or killed
-          Active  // active means allocated or not killed
-          };
-
-/* FOREGROUND THREADS 
-- Scheduled by Systick and Scheduler
-- Context switched by PendSV
-*/
-typedef struct tcb {
-  int *sp;  // pointer to stack, valid for threads not running
-  struct tcb *next; // linked-list pointer
-  struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
-  int id;
-  int sleep_st; // 0 means not sleeping, ie awake
-  int priority;
-  int blocked_st; // 0 means unblocked, 1 means blocked
-  enum state Status; // active or free
-} tcb_t;
 
 tcb_t tcbs [MAXTHREADS];
 int NumThreads; //for allocated  foreground threads
@@ -120,6 +103,7 @@ typedef struct button_task {
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
+button_task_t pa28_button_threads[MAX_BUTTON_THREADS];
 
 /* GLOBAL MAILBOX */
 
@@ -168,6 +152,7 @@ void OS_ClearMsTime(void){
 // For Labs 2 and beyond, it is ok to make the resolution to match the first call to OS_AddPeriodicThread
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
+  //Return TimeMSG8/G7 for check
   return TimeMs;
 };
 
@@ -180,7 +165,7 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-  // TogglePB22();
+  TogglePB22();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
 } // end SysTick_Handler
@@ -194,12 +179,36 @@ int isThreadAvailable(tcb_t *RunPt) {
 }
 
 void Scheduler(void) {
-  tcb_t *current = RunPt;
-  RunPt = RunPt->next;  // go to at least the next thread
-  while ((isThreadAvailable(RunPt) == 0) && (RunPt->next != current)) {
-    // if thread is not available, find a thread that is available
-    // and stop looping when we've come back around to the first thread
-    RunPt = RunPt->next;  // find a thread that is available
+
+  tcb_t *currentPt = RunPt;
+
+  if (currentPt == 0) return;
+
+  // remove it if it needs to be killed
+  if (currentPt->Status == Free) {
+    RemoveFromActive(currentPt);
+  }
+
+  if (RunPt == 0) return;
+
+  // priority scheduling from mains thread pool
+  int max = 255;
+  tcb_t *start = RunPt->next; 
+  tcb_t *pt = RunPt->next;
+  tcb_t *bestPt = 0;
+
+  do {
+    if (isThreadAvailable(pt)) { 
+      if (pt->priority < max || bestPt == 0) {
+        max = pt->priority; 
+        bestPt = pt;
+      }
+    }
+    pt = pt->next; 
+  } while(pt != start);
+
+  if (bestPt) {
+      RunPt = bestPt;
   }
 }
 
@@ -252,34 +261,110 @@ void OS_Init(void){
   }
   for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
     s2_button_threads[i].Status = Free;
-      
-    }
+    s1_button_threads[i].Status = Free;
+    pa28_button_threads[i].Status = Free;  
+  }
 
   TimerG8_IntArm(500, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
-  UART_Init(1); // hardware priority 1
+    //comment out for test 1
 
-  ST7735_InitR(INITR_BLACKTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
-  ST7735_FillScreen(ST7735_BLACK);
-  ST7735_SetCursor(0, 0);
-  ST7735_OutString("RTOS Lab 2\nSpring 2026\n");
-  
-  UART_OutString("ECE445M Lab 2\n\rSpring 2026\n\r");
+  // UART_Init(1); // hardware priority 1
+
+  // ST7735_InitR(INITR_BLACKTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
+  // ST7735_FillScreen(ST7735_BLACK);
+  // ST7735_SetCursor(0, 0);
   //Enable Interrupts occurs at OS_Launch
 }
+
+/* LINKED LIST HELPER FUNCTIONs */
+// unlinks a thread from the active circular doubly-linked list
+void RemoveFromActive(tcb_t *thread) {
+  if (thread->next == thread) {
+    RunPt = 0; 
+  } else {
+    thread->prev->next = thread->next;
+    thread->next->prev = thread->prev;
+    
+    if (RunPt == thread) {
+      RunPt = thread->next; 
+    }
+  }
+}
+
+// adds thread to the blocked list
+void AddToBlocked(Sema4_t *semaPt, tcb_t *thread) {
+  thread->next = semaPt->BlockedPt; 
+  semaPt->BlockedPt = thread;
+}
+
+// removes the highest priority from blocked list
+// useful for os signal
+tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
+  tcb_t *pt = semaPt->BlockedPt;
+  tcb_t *bestPt = pt;
+  tcb_t *prev = 0;
+  tcb_t *bestPrev = 0;
+  
+  int maxPriority = 255; 
+  
+  // find highest priority from within blocked list
+  while (pt != 0) {
+    if (pt->priority < maxPriority) {
+      maxPriority = pt->priority;
+      bestPt = pt;
+      bestPrev = prev;
+    }
+    prev = pt;
+    pt = pt->next;
+  }
+  
+  if (bestPt != 0) {
+    if (bestPrev == 0) {
+      semaPt->BlockedPt = bestPt->next;
+    } else {
+      bestPrev->next = bestPt->next;
+    }
+  }
+  
+  return bestPt;
+}
+
+// Inserts a thread back into the active priority-sorted circular list.
+void AddToActive(tcb_t *thread) {
+  if (RunPt == 0) {  
+    thread->next = thread;
+    thread->prev = thread;
+    RunPt = thread;
+  } else {
+    tcb_t *pt = RunPt;
+    do {
+      if (thread->priority < pt->priority) {
+        break;   
+      }
+      pt = pt->next;
+    } while (pt != RunPt);
+
+    tcb_t *prevNode = pt->prev; 
+    thread->next = pt;
+    thread->prev = prevNode;
+    prevNode->next = thread;
+    pt->prev = thread;
+  }
+}
+
+/* ENd of linked list helpfer functions */
 
 // ******** OS_InitSemaphore ************
 // initialize semaphore 
 // input:  pointer to a semaphore
 // output: none
 void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
-  // put Lab 2 (and beyond) solution here
-  // i assume that this isn't a critical section
-  // because this function should only be called once
   semaPt->Value = value;
-}; 
+  semaPt->BlockedPt = 0; // Initialize the blocked list as empty
+}
 
 
 // ******** OS_Wait ************
@@ -288,18 +373,33 @@ void OS_InitSemaphore(Sema4_t *semaPt, int32_t value){
 // Lab3 block if less than zero
 // input:  pointer to a counting semaphore
 // output: none
+// ******** OS_Wait ************
+// Lab3 block if less than zero
+// input:  pointer to a counting semaphore
+// output: none
 void OS_Wait(Sema4_t *semaPt){
   long sr;
-  // put Lab 2 (and beyond) solution here
   OSCRITICAL_ENTER(sr);
-  while (semaPt->Value <= 0) {
-    OSCRITICAL_EXIT(sr);
-    OS_Suspend(); // implements cooperative spin lock
-    OSCRITICAL_ENTER(sr);
-  }
+  
   semaPt->Value--;
+  
+  if (semaPt->Value < 0) {
+    RunPt->blocked_st = (int)semaPt; 
+
+    tcb_t *blockingThread = RunPt;
+    
+    // Move thread to blocked list
+    RemoveFromActive(blockingThread);
+    AddToBlocked(semaPt, blockingThread);
+    
+    OSCRITICAL_EXIT(sr);
+    OS_Suspend();
+
+    return;
+  }
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 // ******** OS_Signal ************
 // increment semaphore 
@@ -307,45 +407,108 @@ void OS_Wait(Sema4_t *semaPt){
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a counting semaphore
 // output: none
-void OS_Signal(Sema4_t *semaPt){
-  // put Lab 2 (and beyond) solution here
+// ******** OS_Signal ************
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a counting semaphore
+// output: none
+// ******** OS_Signal ************
+void OS_Signal(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
+  
   semaPt->Value++;
+  
+  if (semaPt->Value <= 0) {
+    tcb_t *wokenThread = RemoveHighestPriorityFromBlocked(semaPt);
+    
+    if (wokenThread != 0) {
+      wokenThread->blocked_st = 0; // Clear the blocked status
+      
+      AddToActive(wokenThread);    
+      
+      // get ipsr = 0 means we're not inside an ISR
+      // prevents suspending a background thread
+      if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+        OSCRITICAL_EXIT(sr);
+        OS_Suspend(); // preempt the current thread
+        return;
+      }
+    }
+  }
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 // ******** OS_bWait ************
 // Lab2 spinlock, set to 0
 // Lab3 block if less than zero
 // input:  pointer to a binary semaphore
 // output: none
-void OS_bWait(Sema4_t *semaPt){
-  // put Lab 2 (and beyond) solution here
+// ******** OS_bWait ************
+// Lab3 block if zero
+// input:  pointer to a binary semaphore
+// output: none
+// ******** OS_bWait ************
+// Lab3 block if zero
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bWait(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
-  while (semaPt->Value <= 0) {  // theoretically bsemaphore 
-                                // value will never be less than zero
+  
+  while (semaPt->Value == 0) {
+    RunPt->blocked_st = (int)semaPt; 
+
+    tcb_t *blockingThread = RunPt;
+    
+    // Move thread to blocked list
+    RemoveFromActive(blockingThread);
+    AddToBlocked(semaPt, blockingThread);
+    
     OSCRITICAL_EXIT(sr);
     OS_Suspend();
-    OSCRITICAL_ENTER(sr);
+    
+    OSCRITICAL_ENTER(sr); 
   }
+  
   semaPt->Value = 0;
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 // ******** OS_bSignal ************
 // Lab2 spinlock, set to 1
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a binary semaphore
 // output: none
-void OS_bSignal(Sema4_t *semaPt){
-  // put Lab 2 (and beyond) solution here
+// ******** OS_bSignal ************
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bSignal(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
+  
   semaPt->Value = 1;
+  if (semaPt->BlockedPt != 0) {
+    
+    tcb_t *wokenThread = RemoveHighestPriorityFromBlocked(semaPt);
+    
+    if (wokenThread != 0) {
+      wokenThread->blocked_st = 0;
+      
+      AddToActive(wokenThread);    
+      
+      if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+        OSCRITICAL_EXIT(sr);
+        OS_Suspend();
+        return;
+      }
+    }
+  }
+  
   OSCRITICAL_EXIT(sr);
-}; 
+}
 
 
 
@@ -394,29 +557,32 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   SetInitialStack(i, stackSize);  // this func was copied from the book
   Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
-  // insert RunPt into the LL
-  if (RunPt == (void*)0) {  // if RunPt is a nullptr
-    // then this is the first tcb in the LL: do init
-
-    tcbs[i].next = &tcbs[i];  // self reference
-    tcbs[i].prev = &tcbs[i];  // self reference
-    RunPt = &tcbs[i]; // point the RunPt to the first tcb
-    
+  // insert into  priority sorted circular doubly-linked list
+  if (RunPt == (void*)0) {  
+    // first thread in system
+    tcbs[i].next = &tcbs[i];
+    tcbs[i].prev = &tcbs[i];
+    RunPt = &tcbs[i];
   } else {
-    // otherwise add a tcb
-    tcb_t *tail = RunPt->prev;  // tail is the node immediately behind the head
-                                // where head is RunPt
-    
-    tcbs[i].next = RunPt;
-    tcbs[i].prev = tail;
-    
-    tail->next = &tcbs[i];
-    RunPt->prev = &tcbs[i];
 
-    // before: tail <--> RunPt
-    // adds the new node behind the head
-    // and after the tail
-    // After: Tail <--> tcbs[i] <--> RunPt
+    tcb_t *pt = RunPt;
+
+    // find first node with lower priority ( higher value)
+    do {
+      if (priority < pt->priority) {
+        break;   
+      }
+      pt = pt->next;
+    } while (pt != RunPt);
+
+    // insert before pt and after previous node
+    tcb_t *prevNode = pt->prev; 
+
+    tcbs[i].next = pt;
+    tcbs[i].prev = prevNode;
+
+    prevNode->next = &tcbs[i];
+    pt->prev = &tcbs[i];
   }
 
   OSCRITICAL_EXIT(sr);
@@ -533,15 +699,25 @@ int OS_AddPeriodicThread(void(*task)(void),
   if (i == MAX_PERIODIC_THREADS) {
     return 0; // fail upon no space available
   }
+ 
+  int j = i;
+  OSCRITICAL_ENTER(sr);
+// Shift higher priority elements up
+  while (j > 0 &&
+       periodic_threads[j-1].Status == Active &&
+       periodic_threads[j-1].priority > priority) {
+
+    periodic_threads[j] = periodic_threads[j-1];
+    j--;
+  }
 
   // init bg thread
-  OSCRITICAL_ENTER(sr);
-  periodic_threads[i].task = task;
-  periodic_threads[i].period = period;
-  periodic_threads[i].timeLeft = period;
-  periodic_threads[i].priority = priority;
-  periodic_threads[i].Status = Active;
-  periodic_threads[i].nextTriggerTime = OS_MsTime() + period;
+  periodic_threads[j].task = task;
+  periodic_threads[j].period = period;
+  periodic_threads[j].timeLeft = period;
+  periodic_threads[j].priority = priority;
+  periodic_threads[j].Status = Active;
+  periodic_threads[j].nextTriggerTime = OS_MsTime() + period;
   NumPeriodic++;
 
   OSCRITICAL_EXIT(sr);
@@ -608,7 +784,11 @@ void GROUP1_IRQHandler(void){
   
   if(GPIOA->CPU_INT.RIS&(1<<28)){ // PA28
     GPIOA->CPU_INT.ICLR = 1<<28;
-   
+    for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
+      if (pa28_button_threads[i].Status == Active) {
+        (*pa28_button_threads[i].task)(); // run the background thread
+      }
+    }
   }
 
   if(GPIOB->CPU_INT.RIS&(1<<21)){ // PB21
@@ -715,9 +895,27 @@ int OS_AddS2Task(void(*task)(void), uint32_t priority){
 // In lab 3, there will be many background threads, and this priority field 
 //           determines the relative priority of these four threads
 int OS_AddPA28Task(void(*task)(void), uint32_t priority){
-  // put Lab 3 (and beyond) solution here
- 
-  return 0; // replace this line with solution
+  long sr;
+
+  int i;
+  for (i = 0; i < MAX_BUTTON_THREADS; i++) {
+    if (pa28_button_threads[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAX_BUTTON_THREADS) {
+    return 0;
+  }
+
+  OSCRITICAL_ENTER(sr);
+  // init background thread
+  pa28_button_threads[i].task = task;
+  pa28_button_threads[i].priority = priority;
+  pa28_button_threads[i].Status = Active;
+  OSCRITICAL_EXIT(sr);
+  
+  return 1; // successfully added task
 };
 
 
@@ -735,6 +933,7 @@ void OS_Sleep(uint32_t sleepTime){
   OSCRITICAL_ENTER(sr);
   RunPt->sleep_st = sleepTime;  // Run_pt->sleep_st will be decremented with TimG8 every ms
   OSCRITICAL_EXIT(sr);
+  OS_Suspend();
 } 
 
 
@@ -744,50 +943,18 @@ void OS_Sleep(uint32_t sleepTime){
 // input:  none
 // output: none
 void OS_Kill(void){
-  // put Lab 2 (and beyond) solution here
-
-  // 1. set sleep to max so the scheduler (systick) won't try to run the thread
-  RunPt->sleep_st = 0xFFFFFFFF;
-
-  // 2. disable interrupts
   long sr;
-  // case for no thread existing (hopefully this usually won't be the case)
-  if (RunPt == (void*)0) {  
-    
-    return; // nothing to kill or suspend
-  } else {
-    OSCRITICAL_ENTER(sr);
-    RunPt->Status = Free; // 3. 4. mark the old thread as free
-
-    /* 5. unlink the old thread from the circular linked list */
-    // case for only one thread exists
-    if (RunPt == RunPt->next) {
-      RunPt->next = (void*)0;
-      RunPt->prev = (void*)0;
-      RunPt = (void*)0; // may cause hardfault without an idle thread
-    } else {
-      // case: multiple threads exist
-      tcb_t *to_be_killed = RunPt;
-      tcb_t *prevThread = to_be_killed->prev;
-      tcb_t *nextThread = to_be_killed->next;
-
-      prevThread->next = nextThread;
-      nextThread->prev = prevThread;
-
-      // RunPt = nextThread; // increment for scheduler to run on the next thread
-    }
-    
-    SysTick->VAL = 0; // 6. clear hardware counter (full time slice to next thread)
-
-    // start next thread
-    OSCRITICAL_EXIT(sr);
-    OS_Suspend();
-
-    while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
-  }
-}; 
-
-
+  OSCRITICAL_ENTER(sr);
+  
+  RunPt->Status = Free;
+  NumThreads--;
+  
+  OSCRITICAL_EXIT(sr);
+  
+  OS_Suspend();
+  
+  while(1){};
+}
 
 // ******** OS_Suspend ************
 // suspend execution of currently running thread
@@ -797,7 +964,6 @@ void OS_Kill(void){
 // input:  none
 // output: none
 void OS_Suspend(void){
-  // put Lab 2 (and beyond) solution here
   SysTick->VAL = 0; // reset counter
   SCB->ICSR = 0x04000000; // trigger SysTick
 };
@@ -955,6 +1121,7 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 void OS_Launch(uint32_t theTimeSlice){
   // units of theTimeSlice are in bus cycles (12.5 ns)
   // put Lab 2 (and beyond) solution here
+  //uncomment after test 1
   int systick_priority = 2;
   int pendsv_priority = 3;
 
