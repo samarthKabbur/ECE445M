@@ -1077,10 +1077,9 @@ int main(void) { 			// main
   // Testmain2();
   // Testmain3();
   // Testmain4();
-  // Testmain5();
-  TestmainFIFO();
-  // Testmain6();
+  //Testmain5();
   //realmain();
+  TestmainFIFO();
   
 }
 

@@ -1,4 +1,4 @@
-// *************os.c**************
+// *************OS.c**************
 // ECE445M Labs 1, 2, 3, 4, 5 and 6
 // Starter to labs 1,2,3,4,5,6
 // high level OS functions
@@ -116,13 +116,13 @@ typedef struct mailbox {
 mailbox_t mailbox;
 
 /* GLOBAL FIFO */
-#define FIFOSIZE 64 // can be any size
+#define FIFOSIZE 32 // can be any size
 
 typedef struct fifo {
   uint32_t volatile *putPt; // put next
   uint32_t volatile *getPt; // get next
   uint32_t data[FIFOSIZE];
-  Sema4_t currrent_size; // 0 means FIFO is empty, > 0 means fifo has data
+  Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
   Sema4_t mutex; // 1 means available, 0 means busy
   uint32_t lost_data;
 } fifo_t;
@@ -136,10 +136,13 @@ fifo_t fifo;
 // You are free to change how this works
 void OS_ClearMsTime(void){
   // using timer g7 for this feature
+  TogglePB1();
   long sr;
   OSCRITICAL_ENTER(sr);
+  TogglePB1();
   TimeMs = 0;
   TimerG7_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
+  TogglePB1();
   OSCRITICAL_EXIT(sr);
 };
 
@@ -178,6 +181,43 @@ int isThreadAvailable(tcb_t *RunPt) {
   return ((RunPt->sleep_st == 0) && (RunPt->blocked_st == 0) && (RunPt->Status == Active));
 }
 
+// void Scheduler(void) {
+//   //want to run bestPt
+//   int max = 255;
+//   tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
+//   tcb_t *pt = RunPt->next;
+//   tcb_t *bestPt =0;
+//   do{
+//     if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
+//       if(pt->priority < max|| bestPt ==0){
+//         max = pt->priority; //changes highest priorty to current priority 
+//         bestPt = pt;
+//       }
+//     }
+//     pt = pt->next; //skips at least one
+//   }while(pt != start);
+//   //hopefully at least one runnable thread
+
+
+
+//       // round robin within same priority
+//       pt = bestPt->next;
+//       while(pt != bestPt){
+//         if(isThreadAvailable(pt) && pt->priority == max){
+//             bestPt = pt;
+//             break;
+//         }
+//         pt = pt->next;
+//     }
+
+
+//       RunPt  = bestPt;
+
+
+
+// }
+//probably want to add to blocked before remover from active 
+
 void Scheduler(void) {
 
   tcb_t *currentPt = RunPt;
@@ -211,6 +251,7 @@ void Scheduler(void) {
   if (bestPt) {
       RunPt = bestPt;
   }
+
 }
 
 uint32_t OS_LockScheduler(void){
@@ -264,7 +305,10 @@ void OS_Init(void){
     s2_button_threads[i].Status = Free;
     s1_button_threads[i].Status = Free;
     pa28_button_threads[i].Status = Free;  
-  }
+      
+    }
+  
+  //_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
 
   TimerG8_IntArm(500, 80, 0);  // 1ms period, priority 0: used to run periodic background threads
   TimerG12_Init();
@@ -286,16 +330,17 @@ void RemoveFromActive(tcb_t *thread) {
   if (thread->next == thread) {
     RunPt = 0; 
   } else {
-    thread->prev->next = thread->next;
-    thread->next->prev = thread->prev;
+    thread->prev->next = thread->next; //correct
+    thread->next->prev = thread->prev; //correct
     
     if (RunPt == thread) {
-      RunPt = thread->next; 
+      RunPt = thread->next; //this may be an issue, changes runpt to next pt if removed thread 
     }
   }
 }
 
 // adds thread to the blocked list
+//dont quite understand this will ask
 void AddToBlocked(Sema4_t *semaPt, tcb_t *thread) {
   thread->next = semaPt->BlockedPt; 
   semaPt->BlockedPt = thread;
@@ -308,9 +353,9 @@ tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
   tcb_t *bestPt = pt;
   tcb_t *prev = 0;
   tcb_t *bestPrev = 0;
-  
+
   int maxPriority = 255; 
-  
+
   // find highest priority from within blocked list
   while (pt != 0) {
     if (pt->priority < maxPriority) {
@@ -321,7 +366,6 @@ tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
     prev = pt;
     pt = pt->next;
   }
-  
   if (bestPt != 0) {
     if (bestPrev == 0) {
       semaPt->BlockedPt = bestPt->next;
@@ -329,7 +373,6 @@ tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
       bestPrev->next = bestPt->next;
     }
   }
-  
   return bestPt;
 }
 
@@ -356,7 +399,7 @@ void AddToActive(tcb_t *thread) {
   }
 }
 
-/* ENd of linked list helpfer functions */
+/* End of linked list helper functions */
 
 // ******** OS_InitSemaphore ************
 // initialize semaphore 
@@ -384,7 +427,7 @@ void OS_Wait(Sema4_t *semaPt){
   
   semaPt->Value--;
   
-  if (semaPt->Value < 0) {
+  if (semaPt->Value < 0) { // why not = 0
     RunPt->blocked_st = (int)semaPt; 
     
     OSCRITICAL_EXIT(sr);
@@ -528,7 +571,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
       break;
     }
   }
-  
+
   if (i == MAXTHREADS) {
     return 0; // fail upon: no thread space available
   }
@@ -570,9 +613,12 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
     tcbs[i].next = pt;
     tcbs[i].prev = prevNode;
 
-    prevNode->next = &tcbs[i];
-    pt->prev = &tcbs[i];
-  }
+  prevNode->next = &tcbs[i];
+  pt->prev = &tcbs[i];
+
+//prevNode <---- newNode ----> pt
+
+}
 
   OSCRITICAL_EXIT(sr);
   return 1;
@@ -715,9 +761,10 @@ int OS_AddPeriodicThread(void(*task)(void),
 
 /* TIMG8 locks or unlocks periodic threads */
 void TIMG8_IRQHandler(void){
-  TogglePB22();
+  TogglePB20();
   if((TIMG8->CPU_INT.IIDX) == 1){ // this will acknowledge
-    TogglePB22();
+    TimeMsG8++;
+    TogglePB20();
     for (int i = 0; i < NumPeriodic; i++) {
       if (periodic_threads[i].Status == Active) {
         if (periodic_threads[i].timeLeft == 0) {
@@ -728,7 +775,7 @@ void TIMG8_IRQHandler(void){
         }
       }
     }
-    TogglePB22();
+    TogglePB20();
   }
 }
 
@@ -737,11 +784,11 @@ TIMG7 handles the millisecond clock
 and decrements sleeping threads
 */
 void TIMG7_IRQHandler(void){
-  TogglePB26();
+  TogglePB1();
   if((TIMG7->CPU_INT.IIDX) == 1){ // this will acknowledge
-    TogglePB26();
+    TogglePB1();
     TimeMs++; // increment the millisecond clock
-    TogglePB26();
+    TogglePB1();
     // decrement any sleeping threads once every ms
     for (int i = 0; i < NumThreads; i++) {
       if ((tcbs[i].sleep_st > 0) && (tcbs[i].Status == Active)) {
@@ -884,6 +931,8 @@ int OS_AddS2Task(void(*task)(void), uint32_t priority){
 // In lab 3, there will be many background threads, and this priority field 
 //           determines the relative priority of these four threads
 int OS_AddPA28Task(void(*task)(void), uint32_t priority){
+
+  //need to implement priority here 
   long sr;
 
   int i;
@@ -931,19 +980,75 @@ void OS_Sleep(uint32_t sleepTime){
 // kill the currently running thread, release its TCB and stack
 // input:  none
 // output: none
+// void OS_Kill(void){
+//   long sr;
+//   OSCRITICAL_ENTER(sr);
+  
+
+//   // 2. disable interrupts
+//   //long sr;
+//   // case for no thread existing (hopefully this usually won't be the case)
+//   if (RunPt == (void*)0) {  
+    
+//     return; // nothing to kill or suspend
+//   } else {
+//     //OSCRITICAL_ENTER(sr);
+//     RunPt->Status = Free; // 3. 4. mark the old thread as free
+
+//     /* 5. unlink the old thread from the circular linked list */
+//     // case for only one thread exists
+//     if (RunPt == RunPt->next) {
+//       RunPt->next = (void*)0;
+//       RunPt->prev = (void*)0;
+//       RunPt = (void*)0; // may cause hardfault without an idle thread
+//     } else {
+//       // case: multiple threads exist
+//       tcb_t *to_be_killed = RunPt;
+//       tcb_t *prevThread = to_be_killed->prev;
+//       tcb_t *nextThread = to_be_killed->next;
+
+//       prevThread->next = nextThread;
+//       nextThread->prev = prevThread;
+
+//        //RunPt = nextThread; // increment for scheduler to run on the next thread
+//        //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
+//     //which is where the priority 0 thread was instead of its actually thread
+//     }
+//     NumThreads--;
+//     SysTick->VAL = 0; // 6. clear hardware counter (full time slice to next thread)
+    
+//     // start next thread
+
+//     OSCRITICAL_EXIT(sr);
+//     OS_Suspend();
+//     // having an issue where this killed thread is no longer in tcb thread/ no longer linked but if its the 
+//     // running tcb(RunPt = killed_thread) when trying to switch threads we will never be able to 
+//     // go to pt == RunPt since it is unlinked from the tcb queue 
+//     // this leads to infinite loop
+//     //even when we switch to next thread the priority 1 thread ends up returning here instead to os_kill
+//     //which is where the priority 0 thread was instead of its actually thread
+
+//     while(1){};        // can not return (must return in Lab 5 since called from SVC_hander)
+//   }
+// };
+
+
+//shorter os kill
 void OS_Kill(void){
   long sr;
   OSCRITICAL_ENTER(sr);
-  
+
   RunPt->Status = Free;
   NumThreads--;
-  
+
   OSCRITICAL_EXIT(sr);
-  
+
   OS_Suspend();
-  
+
   while(1){};
 }
+
+
 
 // ******** OS_Suspend ************
 // suspend execution of currently running thread
@@ -970,7 +1075,7 @@ void OS_Fifo_Init(uint32_t size){
   fifo.getPt = &fifo.data[0]; // empty
   fifo.putPt = &fifo.data[0]; // empty
   fifo.lost_data = 0; // no data lost yet
-  OS_InitSemaphore(&fifo.currrent_size, 0);
+  OS_InitSemaphore(&fifo.current_size, 0);
   OS_InitSemaphore(&fifo.mutex, 1);
 }
 
@@ -984,21 +1089,41 @@ void OS_Fifo_Init(uint32_t size){
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
   // put Lab 2 (and beyond) solution here
-  if (fifo.currrent_size.Value == FIFOSIZE) {
+  if (fifo.current_size.Value == FIFOSIZE && ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE-1] && fifo.getPt == &fifo.data[0]))) {
     fifo.lost_data++;
     return 0; // fail if fifo is full
   }
-  
+  // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
+  //     return 0;
+  //   }
   *(fifo.putPt) = data;
   fifo.putPt++;
 
-  if (fifo.putPt == &fifo.data[FIFOSIZE]) {
+  if (fifo.putPt == &fifo.data[FIFOSIZE-1]) {
     fifo.putPt = &fifo.data[0]; // wrap
   }
 
-  OS_Signal(&fifo.currrent_size);
+  OS_Signal(&fifo.current_size);
   return 1;
 }
+// int OS_Fifo_Put(uint32_t data){
+//   uint32_t *nextPut = fifo.putPt + 1;
+
+//   if(nextPut == &fifo.data[FIFOSIZE]){
+//     nextPut = &fifo.data[0];
+//   }
+
+//   if(nextPut == fifo.getPt){
+//     fifo.lost_data++;
+//     return 0; // full
+//   }
+
+//   *(fifo.putPt) = data;
+//   fifo.putPt = nextPut;
+
+//   OS_Signal(&fifo.current_size);
+//   return 1;
+// }
 
 // ******** OS_Fifo_Get ************
 // Remove one data sample from the Fifo
@@ -1007,14 +1132,15 @@ int OS_Fifo_Put(uint32_t data){
 // Outputs: data 
 uint32_t OS_Fifo_Get(void){
   // put Lab 2 (and beyond) solution here
-
-  OS_Wait(&fifo.currrent_size);  // block if empty
+  //if (fifo.getPt == fifo.putPt){}
+  OS_Wait(&fifo.current_size);  // block if empty
+  
   OS_Wait(&fifo.mutex); // block if busy
 
   uint32_t data = *(fifo.getPt);
   fifo.getPt++;
 
-  if (fifo.getPt == &fifo.data[FIFOSIZE]) {
+  if (fifo.getPt == &fifo.data[FIFOSIZE-1]) {
     fifo.getPt = &fifo.data[0]; // wrap
   }
 
@@ -1031,8 +1157,8 @@ uint32_t OS_Fifo_Get(void){
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
   // put Lab 2 (and beyond) solution here
-  //return fifo.currrent_size.Value; // replace this line with solution
-  return 0;
+  return fifo.current_size.Value; // replace this line with solution
+  //return 0;
 }
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
