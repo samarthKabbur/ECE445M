@@ -19,8 +19,11 @@
 
 extern void Lab1_Results(uint32_t d);
 extern void Lab2(void);
+extern void Lab3(void);
 extern void DFT(void);
 extern void Jitter(void);
+extern void Lab4(void);
+extern void Robot(void);
 
 typedef struct{
   const char *name;
@@ -43,6 +46,8 @@ Command commands[] = {
   {"lab1results", Cmd_Lab1_Results},
   {"lab2results", Cmd_Lab2_Results},
   {"lab3results", Cmd_Lab3_Results},
+  {"lab4results", Cmd_Lab4_Results},
+  {"robot", Cmd_Robot},
   {"jitter", Cmd_Jitter},
   {"dft", Cmd_DFT},
   {"?", Cmd_Help},
@@ -86,6 +91,16 @@ void Cmd_Lab3_Results(char* args, int l){
   UART_OutString("\n");
 }
 
+void Cmd_Lab4_Results(char* args, int l){
+ Lab4();
+  UART_OutString("\n");
+}
+
+void Cmd_Robot(char* args, int l){
+  Robot();
+  UART_OutString("\n");
+}
+
 void Cmd_DFT(char* args, int l){
   DFT();
   UART_OutString("\n");
@@ -103,6 +118,8 @@ void Cmd_Help(char* args, int l){
   UART_OutString("\r\nlab1results           prints lab 1 results onto screen");
   UART_OutString("\r\nlab2results           prints lab 2 results onto screen");
   UART_OutString("\r\nlab3results           prints lab 3 results onto screen");
+  UART_OutString("\r\nlab4results           prints lab 3 results onto screen");
+  UART_OutString("\r\nrobot                runs robot from lab 4");
   UART_OutString("\r\ndft                   prints lab 3 dft results onto screen");
   UART_OutString("\r\njitter                prints lab 2  jitter results onto screen");
   UART_OutString("\r\n?                     displays syntax of all commands");
