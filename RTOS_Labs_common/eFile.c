@@ -91,6 +91,20 @@ int eFile_Init(void){ // initialize file system
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Format(void){ // erase disk, add format
 
+  uint32_t scheduler_lock = OS_LockScheduler();
+  if (!OpenFlag) {
+    OS_UnLockScheduler(scheduler_lock);
+    return FAIL;  // file system not initialized
+  }
+
+  // ERASE ALL FILES
+  if (eDisk_WriteBlock((const BYTE *)&BlankDirectory, 0)) {
+    OS_UnLockScheduler(scheduler_lock);
+    return FAIL;  // write block error
+  }
+
+  
+
 }
 
 // bring directory from flash into RAM
