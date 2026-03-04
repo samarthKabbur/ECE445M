@@ -10,56 +10,41 @@
 #include "../RTOS_Labs_common/eFile.h"
 #include <stdio.h>
 
-#define SUCCESS 0
-#define FAIL 1
+#define MAXFILES 60
+#define MAXBLOCKS 249
+#define NONAME {0,0,0,0,0,0,0,0} 
 
-int OpenFlag=0;              // 0 means not initialized
+typedef struct Entry {
+  char Name[8]; // name of the file, 8 bytes
+  uint8_t First;  // index of the first location, 1 byte
+} Entry_t;  // 12 bytes
 
-int WOpenFile;               // directory index of file open for writing (0 to 31)
-#define MAXBLOCK 200         // largest block number, 
-#define DATASIZE 506         // 512 -4(bytes for the link pointer) (-2 data counter)
-struct aBlock{
-  unsigned long next;    // pointer to next block
-  unsigned short size;   // number of bytes in this block 0 to DATASIZE
-  char data[DATASIZE];   // blockes are exactly 512 bytes
-};                                
-typedef struct aBlock BlockType;
-BlockType WCurrentBlock;          // 512 bytes of RAM copy of block used during writing
-unsigned long WBlockNum;          // which block is stored in WCurrentBlock 
+typedef struct Directory {
+  Entry_t File[MAXFILES]; // 12 bytes * 60 files = 720 bytes
+  uint8_t Free_Index; // 1 byte
+} Directory_t;  // 724 bytes = 2 blocks
 
-int ROpenFile;                    // directory index of file open for reading (0 to 31)
-BlockType RCurrentBlock;          // 512 bytes
-unsigned long RBlockNum;          // which block is stored in RCurrentBlock
-unsigned long RByteCnt;           // which byte will be read next (0 to DATASIZE-1)
-
-unsigned long TempBlock[128];     // 512-byte block used temporarily
-
-struct Entry{                // size = 16 bytes/file
-  char Name[8];              // file name, up to 7 characters
-  unsigned long First;       // first block     ((Size/DATASIZE)+1 = number of blocks)
-  unsigned long Size;        // number of bytes (Size%DATASIZE = bytes in last block)
-};  
-typedef struct Entry EntryType;
-struct aDirectory{
-  EntryType File[31];    // up to 31 files
-  EntryType Free;        // last entry is free space
-};                                
-typedef struct aDirectory DirectoryType;
-#define NONE {0,0,0,0,0,0,0,0}            
-const DirectoryType BlankDirectory = { 
-{ { NONE,0,0},    // first file
-  { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, 
-  { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, 
-  { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, 
-  { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, 
-  { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, 
-  { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, { NONE,0,0}, 
-  { NONE,0,0}},  // 31st file
-  { NONE,1,0}    // free blocks, block 1 is first free
+// For formatting the SDC
+const Directory_t BlankDirectory = {
+  {
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
+    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}
+  }, // 60 DATA FILES
+  {NONAME, 0}
 };
-DirectoryType Directory;          // RAM copy of directory
-int DirectoryIn;                  // 1 if Directory is loaded
-unsigned long DCurrentEntry;      // current directory entry  
+
+Directory_t Directory;  // RAM copy of directory = 2 blocks
+uint8_t FAT[MAXBLOCKS]; // File Allocation Table = 1 block
 
 //---------- eFile_Init-----------------
 // Activate the file system, without formating
