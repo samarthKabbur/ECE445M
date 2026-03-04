@@ -35,6 +35,8 @@ void Cmd_Print(char* args, int l);
 void Cmd_Lab1_Results(char* args, int l);
 void Cmd_Lab2_Results(char* args, int l);
 void Cmd_Lab3_Results(char* args, int l);
+void Cmd_Lab4_Results(char* args, int l);
+void Cmd_Robot(char* args, int l);
 void Cmd_DFT(char* args, int l);
 void Cmd_Jitter(char* args, int l);
 void Cmd_Help(char* args, int l);

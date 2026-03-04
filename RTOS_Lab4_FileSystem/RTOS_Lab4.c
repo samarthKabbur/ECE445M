@@ -477,6 +477,7 @@ void TestDisk(void){  DSTATUS result;  uint32_t block;  int i; uint8_t n;
     }
     SetPA8();     // PA8 high for 100 block writes
     if(eDisk_WriteBlock(buffer,block))diskError("eDisk_WriteBlock",block); // save to disk
+    //TogglePA16();
     ClrPA8();     
   }  
   UART_OutString("Reading blocks\n\r");
