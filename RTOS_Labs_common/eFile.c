@@ -12,7 +12,16 @@
 
 #define MAXFILES 60
 #define MAXBLOCKS 249
-#define NONAME {0,0,0,0,0,0,0,0} 
+#define NONAME {0,0,0,0,0,0,0,0}
+#define DATASIZE 510  // = 512 - 2 (data counter)
+#define BLOCKSIZE 512 // bytes per block
+#define SUCCESS 0
+#define FAIL 1
+
+typedef struct Block {
+  unsigned short size; // number of bytes in this block (0 to DATASIZE)
+  char data[DATASIZE];
+} Block_t;  // 512 bytes = 1 block
 
 typedef struct Entry {
   char Name[8]; // name of the file, 8 bytes
@@ -43,15 +52,37 @@ const Directory_t BlankDirectory = {
   {NONAME, 0}
 };
 
+int OpenFlag = 0; // 0 means file system not initialized
+int DirectoryInFlag; // 1 means directory is loaded 
+
 Directory_t Directory;  // RAM copy of directory = 2 blocks
 uint8_t FAT[MAXBLOCKS]; // File Allocation Table = 1 block
 
+int WOpenFile; // directory index of the currently open file for writing (0 to 60)
+Block_t WCurrentBlock; // bytes of RAM copy of block used during writing
+unsigned long WBlockNum; // which block is stored in WCurrentBlock
+
+int ROpenFile; // directory index of the currently open file for reading (0 to 60)
+Block_t RCurrentBlock; // 512 bytes of RAM copy of block used during reading
+unsigned long RBlockNum; // which block is stored in RCurrentBlock
+unsigned long RByteCnt; // which byte will be read next (0 to DATASIZE-1)
+
+unsigned long TempBlock[128]; // 512 byte block used temporarily
+
 //---------- eFile_Init-----------------
-// Activate the file system, without formating
+// Activate the file system, without formatting
 // Input: none
 // Output: 0 if successful and 1 on failure (already initialized)
 int eFile_Init(void){ // initialize file system
+  if (OpenFlag) return SUCCESS;
 
+  eDisk_Init(0); // initialize hardware, drive 0
+  OpenFlag = 1;
+  WOpenFile = 255; // not open WCurrentBlock is unused
+  ROpenFile = 255; // not open RCurrentBlock is unused
+  DirectoryInFlag = 0; // directory not loaded
+  
+  return SUCCESS;
 }
 
 //---------- eFile_Format-----------------
