@@ -63,7 +63,16 @@ int DirectoryIn;                  // 1 if Directory is loaded
 // Input: none
 // Output: 0 if successful and 1 on failure (already initialized)
 int eFile_Init(void){ // initialize file system
-return 0;
+
+  if(OpenFlag){
+    return SUCCESS; // already open
+  }
+  eDisk_Init(0);   // initialize hardware, drive 0
+  OpenFlag = 1;
+  WOpenFile = 255; // not open WCurrentBlock is unused
+  ROpenFile = 255; // not open RCurrentBlock is unused
+  DirectoryIn = 0; // directory not loaded
+  return SUCCESS;
 }
 
 //---------- eFile_Format-----------------
