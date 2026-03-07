@@ -23,6 +23,7 @@
 #define DSIZE 2
 #define FSIZE 3
 #define NULLINDEX 0
+#define NOT_OPEN 255
 
 typedef struct Block {
   uint16_t size; // number of bytes in this block (0 to DATASIZE)
@@ -114,7 +115,7 @@ Filesystem_t Filesystem; // RAM Copy of filesystem and directory
 
 int DCurrentEntry;
 int WOpenFile; // directory index of the currently open file for writing (0 to 60)
-Block_t WCurrentBlock; // bytes of RAM copy of block used during writing
+Block_t WCurrentBlock; // RAM copy of block current open for writing
 unsigned long WBlockNum; // which block is stored in WCurrentBlock
 
 int ROpenFile; // directory index of the currently open file for reading (0 to 60)
@@ -133,8 +134,8 @@ int eFile_Init(void){ // initialize file system
 
   eDisk_Init(0); // initialize hardware, drive 0
   OpenFlag = 1;
-  WOpenFile = 255; // not open WCurrentBlock is unused
-  ROpenFile = 255; // not open RCurrentBlock is unused
+  WOpenFile = NOT_OPEN; // not open WCurrentBlock is unused
+  ROpenFile = NOT_OPEN; // not open RCurrentBlock is unused
   FilesystemIn = 0; // filesystem not loaded
 
   return SUCCESS;
@@ -260,19 +261,19 @@ int eFile_Create( const char name[]){  // create new file, make it empty
     if (strcmp(Filesystem.Directory.File[i].Name, name) == 0) return FAIL; // file with name match alr exists
   }
 
-  int i;
-  i = FindFreeBlock();
-  if (i == -1) return FAIL; // no free space left
+  int free_block_index;
+  free_block_index = FindFreeBlock();
+  if (free_block_index == -1) return FAIL; // no free space left
 
   // BEGIN ALLOCATION
   if (AllocateBlock(&first)) return FAIL; // allocation fail
 
   // update directory
-  strcpy(Filesystem.Directory.File[i].Name, name);
-  Filesystem.Directory.File[i].First = first;
+  strcpy(Filesystem.Directory.File[free_block_index].Name, name);
+  Filesystem.Directory.File[free_block_index].First = first;
 
   // update FAT
-  Filesystem.FAT[i] = NULLINDEX; // first block in the file so it points to null
+  Filesystem.FAT[free_block_index] = NULLINDEX; // first block in the file so it points to null
 
   return BackupFilesystem(); // restore filesystem back to flash
 }
@@ -282,7 +283,36 @@ int eFile_Create( const char name[]){  // create new file, make it empty
 // Input: file name is an ASCII string up to seven characters
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WOpen( const char name[]){      // open a file for writing 
-return FAIL;
+  int open_file_idx;
+  if (!OpenFlag) return FAIL; // not initialized
+  if (WOpenFile!=NOT_OPEN) return FAIL; // already open
+  if (!FilesystemIn) {
+    if (FetchFilesystem()) return FAIL; // problem fetching filesystem
+  }
+
+  // search for matching filename
+  int file_index = 0; 
+  while ((file_index < MAXFILES) && (strcmp(Filesystem.Directory.File[file_index].Name, name))) {
+    i++;
+  }
+  if ((file_index == MAXFILES) || (file_index == ROpenFile)) {  // can't have the same file open for read and write
+    return FAIL;
+  }
+
+  WOpenFile = file_index;
+  WBlockNum = Filesystem.Directory.File[file_index].First;
+  int next_file_index = Filesystem.FAT[file_index]; // fat contains index to next file
+  while (next_file_index != NULLINDEX) {  // keep going till end of file
+    WBlockNum = next_file_index;
+    next_file_index = Filesystem.FAT[next_file_index];  // traverse
+  }
+
+  if (eDisk_ReadBlock((BYTE *)&WCurrentBlock, WBlockNum)) {
+    WOpenFile = NOT_OPEN; // set to not open
+    return FAIL;  // failed to read the data block
+  }
+
+  return SUCCESS;
 }
 
 //---------- eFile_Write-----------------
@@ -290,7 +320,12 @@ return FAIL;
 // Input: data to be saved
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Write( const char data){unsigned long newBlock;
-return FAIL;
+
+
+
+
+
+  return FAIL;
 
 }
 
@@ -453,7 +488,7 @@ int i;
   if(!OpenFlag){
     return FAIL;   // not initialized
   }
-  if(ROpenFile!=255){
+  if(ROpenFile!=NOT_OPEN){
     return FAIL;   // already open
   }
   if(!FilesystemIn){ // load if not previously loaded
@@ -471,7 +506,7 @@ int i;
   ROpenFile = i;
   RBlockNum = Filesystem.Directory.File[i].First;
   if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
-    ROpenFile = 255;
+    ROpenFile = NOT_OPEN;
     return 1;   // trouble reading a data block
   }                              
   RByteCnt = 0; // start at the top of the block
@@ -487,7 +522,7 @@ int eFile_ReadNext( char *pt){       // get next byte
   if(!OpenFlag){
     return FAIL;   // not initialized
   }
-  if(ROpenFile==255){
+  if(ROpenFile==NOT_OPEN){
     return FAIL;   // not open
   }
   if(RByteCnt < RCurrentBlock.size){ // this block have data?
@@ -500,7 +535,7 @@ int eFile_ReadNext( char *pt){       // get next byte
   // }
   // RBlockNum = RCurrentBlock.next;   // next block
   if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
-    ROpenFile = 255;
+    ROpenFile = NOT_OPEN;
     return FAIL;   // trouble reading a data block
   }                              
   RByteCnt = 0; // start at the top of the block
@@ -534,10 +569,10 @@ int eFile_RClose(void){ // close the file for writing
   if(!OpenFlag){
     return FAIL;   // not initialized
   }
-  if(ROpenFile==255){
+  if(ROpenFile==NOT_OPEN){
     return FAIL;   // not open
   }
-  ROpenFile = 255; // Now closed for reading
+  ROpenFile = NOT_OPEN; // Now closed for reading
   return SUCCESS;
 }
 
@@ -610,8 +645,8 @@ int eFile_DClose(void){ // close the directory
 int eFile_Unmount(void){ 
   if(OpenFlag){
     OpenFlag = 0;    // closed
-    WOpenFile = 255; // not open
-    ROpenFile = 255; // not open
+    WOpenFile = NOT_OPEN; // not open
+    ROpenFile = NOT_OPEN; // not open
     FilesystemIn = 0; // directory not loaded
     return SUCCESS;  
   }
