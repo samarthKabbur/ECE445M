@@ -33,36 +33,37 @@ typedef struct Block {
 typedef struct Entry {
   char Name[8]; // name of the file, 8 bytes
   uint8_t First;  // index of the first location, 1 byte
-} Entry_t;  // 12 bytes
+  unsigned long Size;        // number of bytes (Size%DATASIZE = bytes in last block)
+} Entry_t;  // 16 bytes
 
 typedef struct Directory {
-  Entry_t File[MAXFILES]; // 12 bytes * 60 files = 720 bytes
-} Directory_t;  // 724 bytes = 2 blocks
+  Entry_t File[MAXFILES]; // 16 bytes * 60 files = 960 bytes
+} Directory_t;  // 960 bytes = 2 blocks
 
-uint8_t FAT[MAXBLOCKS]; // File Allocation Table = 1/2 block
 
 typedef struct Filesystem {
   Directory_t Directory;          // file directory
   uint8_t Bitmap[MAXBLOCKS/8];    // 32-byte free-space bitmap
   uint8_t FAT[MAXBLOCKS];         // FAT table (256 bytes)
-} Filesystem_t; // 3 blocks ?
+  uint8_t padding[1536 - 1248];   // fill to 3 blocks, need this or else stack is over written with garbage- used in testmain3 when efile_mount called before os_launch
+} Filesystem_t; // 3 blocks 
 
 //will probably put this in header file
 const Filesystem_t BlankFilesystem = {
     // Directory
     {
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},
-      {NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0},{NONAME,0}
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},
+      {NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0},{NONAME,0,0}
     },
     
     // Bitmap: first 3 blocks (0–2) used, rest free
@@ -104,7 +105,9 @@ const Filesystem_t BlankFilesystem = {
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    }
+    },
+
+    {0}
   
 };
 
@@ -123,7 +126,6 @@ Block_t RCurrentBlock; // 512 bytes of RAM copy of block used during reading
 unsigned long RBlockNum; // which block is stored in RCurrentBlock
 unsigned long RByteCnt; // which byte will be read next (0 to DATASIZE-1)
 
-uint16_t TempBlock[128]; // 512 byte block used temporarily
 
 //---------- eFile_Init-----------------
 // Activate the file system, without formatting
@@ -276,6 +278,7 @@ int eFile_Create( const char name[]){  // create new file, make it empty
   // update directory
   strcpy(Filesystem.Directory.File[free_file_entry].Name, name);
   Filesystem.Directory.File[free_file_entry].First = first;
+  Filesystem.Directory.File[free_file_entry].Size = 0;  // empty file
 
   // update FAT
   Filesystem.FAT[first] = NULLINDEX; // first block in the file so it points to null
@@ -349,6 +352,8 @@ if(!OpenFlag){
   }
   WCurrentBlock.data[WCurrentBlock.size] = data; // save into RAM buffer
   WCurrentBlock.size++;
+  Filesystem.Directory.File[WOpenFile].Size++;
+  
   return SUCCESS;
 }
 
@@ -654,7 +659,7 @@ int eFile_DirNext( char *name[], unsigned long *size){  // get next entry
   while(DCurrentEntry<60){
     if(Filesystem.Directory.File[DCurrentEntry].Name[0]){  // file exists, if name is nonzero
       *name = Filesystem.Directory.File[DCurrentEntry].Name;
-      //*size = Filesystem.Directory.File[DCurrentEntry].Size;
+      *size = Filesystem.Directory.File[DCurrentEntry].Size;
       DCurrentEntry++;
       return SUCCESS;
     }
