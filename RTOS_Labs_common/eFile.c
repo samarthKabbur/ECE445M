@@ -480,15 +480,15 @@ int i;
     }
   }
   i = 0;          // search for matching filename
-  while((i<31) && (strcmp(Directory.File[i].Name,name))){
+  while((i<60) && (strcmp(Filesystem.Directory.File[i].Name,name))){
     i++;
   }
-  if((i==31)||(i==WOpenFile)){   // can't have the same file open for read and write
+  if((i==60)||(i==WOpenFile)){   // can't have the same file open for read and write
     return FAIL;   // file does not exist
   }
   ROpenFile = i;
-  RBlockNum = Directory.File[i].First;
-  if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
+  RBlockNum = Filesystem.Directory.File[i].First; //get first block to read from
+  if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block, data is now in RCurrentBlock
     ROpenFile = 255;
     return 1;   // trouble reading a data block
   }                              
@@ -513,10 +513,11 @@ int eFile_ReadNext( char *pt){       // get next byte
     RByteCnt++;
     return SUCCESS; 
   }
-  // if(RCurrentBlock.next==0){    // no more blocks
-  //   return FAIL; // end of file
-  // }
-  // RBlockNum = RCurrentBlock.next;   // next block
+  uint8_t nextBlock = Filesystem.FAT[RBlockNum];
+    if(nextBlock == 0){  // 0 = end of file
+        return FAIL;      // no more data
+    }
+    RBlockNum = nextBlock;
   if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
     ROpenFile = 255;
     return FAIL;   // trouble reading a data block
