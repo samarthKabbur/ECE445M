@@ -22,9 +22,11 @@
 #define DBLOCKNUM 0
 #define DSIZE 2
 #define FSIZE 3
+#define NULLINDEX 0
+#define NOT_OPEN 255
 
 typedef struct Block {
-  unsigned short size; // number of bytes in this block (0 to DATASIZE)
+  uint16_t size; // number of bytes in this block (0 to DATASIZE)
   char data[DATASIZE];
 } Block_t;  // 512 bytes = 1 block
 
@@ -44,24 +46,6 @@ typedef struct Filesystem {
   uint8_t Bitmap[MAXBLOCKS/8];    // 32-byte free-space bitmap
   uint8_t FAT[MAXBLOCKS];         // FAT table (256 bytes)
 } Filesystem_t; // 3 blocks ?
-
-// For formatting the SDC
-const Directory_t BlankDirectory = {
-  {
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0},
-    {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}, {NONAME, 0}
-  }, // 60 DATA FILES
-};
 
 //will probably put this in header file
 const Filesystem_t BlankFilesystem = {
@@ -125,15 +109,13 @@ const Filesystem_t BlankFilesystem = {
 };
 
 int OpenFlag = 0; // 0 means file system not initialized
-int DirectoryIn; // 1 means directory is loaded 
 int FilesystemIn;
 
-Directory_t Directory;  // RAM copy of directory = 2 blocks
-Filesystem_t Filesystem; //RAM Copy
+Filesystem_t Filesystem; // RAM Copy of filesystem and directory
 
 int DCurrentEntry;
 int WOpenFile; // directory index of the currently open file for writing (0 to 60)
-Block_t WCurrentBlock; // bytes of RAM copy of block used during writing
+Block_t WCurrentBlock; // RAM copy of block current open for writing
 unsigned long WBlockNum; // which block is stored in WCurrentBlock
 
 int ROpenFile; // directory index of the currently open file for reading (0 to 60)
@@ -141,7 +123,7 @@ Block_t RCurrentBlock; // 512 bytes of RAM copy of block used during reading
 unsigned long RBlockNum; // which block is stored in RCurrentBlock
 unsigned long RByteCnt; // which byte will be read next (0 to DATASIZE-1)
 
-unsigned long TempBlock[128]; // 512 byte block used temporarily
+uint16_t TempBlock[128]; // 512 byte block used temporarily
 
 //---------- eFile_Init-----------------
 // Activate the file system, without formatting
@@ -152,10 +134,9 @@ int eFile_Init(void){ // initialize file system
 
   eDisk_Init(0); // initialize hardware, drive 0
   OpenFlag = 1;
-  WOpenFile = 255; // not open WCurrentBlock is unused
-  ROpenFile = 255; // not open RCurrentBlock is unused
-  FilesystemIn = 0;
-  DirectoryIn = 0; // directory not loaded
+  WOpenFile = NOT_OPEN; // not open WCurrentBlock is unused
+  ROpenFile = NOT_OPEN; // not open RCurrentBlock is unused
+  FilesystemIn = 0; // filesystem not loaded
 
   return SUCCESS;
 }
@@ -179,8 +160,6 @@ int eFile_Format(void){ // erase disk, add format
   }
    OS_UnLockScheduler(scheduler_lock);
    return SUCCESS;
-  
- 
 }
 
 //bring filesystem from flash to ram
@@ -195,32 +174,11 @@ int FetchFilesystem(void){
 
 }
 
-// bring directory from flash into RAM
-// Output: 1 if successful and 0 on failure (e.g., trouble reading from flash)
-int FetchDirectory(void){
-   DirectoryIn = 1;  
-  if(FetchFilesystem()){
-    return FAIL;        // problem fetching filesystem
-  }
-  DirectoryIn = 1;  
-  return SUCCESS; 
-
-}
-
-// save RAM-copy of directory out to flash
-// Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
-int BackupDirectory(void){
-  return eDisk_Write(0, (const BYTE *)&Directory,DBLOCKNUM, DSIZE); // first block is directory
-
-}
-
-// save RAM-copy of directory out to flash
+// save RAM-copy of filesystem out to flash
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int BackupFilesystem(void){
-  return eDisk_Write(0, (const BYTE *)&Filesystem,DBLOCKNUM, FSIZE); // first block is directory
-
+  return eDisk_Write(0, (const BYTE *)&Filesystem,DBLOCKNUM, FSIZE); // first 3 blocks are filesystem
 }
-
 
 //---------- eFile_Mount-----------------
 // Mount the file system, without formating
@@ -230,10 +188,10 @@ int eFile_Mount(void){ // initialize file system
 if(!OpenFlag){
     return FAIL; // not initialized
   }  
- if(DirectoryIn){
+ if(FilesystemIn){
    return FAIL; // already mounted
  }
-  if(FetchDirectory()){
+  if(FetchFilesystem()){
     return FAIL;        // problem fetching directory
   }
   return SUCCESS;
@@ -254,8 +212,6 @@ int Bitmap_IsFree(uint16_t block){
 void Bitmap_SetUsed(uint16_t block){
   Filesystem.Bitmap[block/8] |= (1 << (block%8));
 }
-
-
 
 int FindFreeBlock(void){
   for(int i = DATA_START_BLOCK; i < MAXBLOCKS; i++){
@@ -282,9 +238,10 @@ int AllocateBlock(uint8_t *pt){
     *pt = block;                   // return block index
 
     // Optional: write bitmap back to SD card
-   
+    WCurrentBlock.size = 0;
 
-    return SUCCESS; // success
+     return eDisk_WriteBlock((const BYTE *)&WCurrentBlock,*pt); // update new block size
+
 }
 
 //---------- eFile_Create-----------------
@@ -292,7 +249,38 @@ int AllocateBlock(uint8_t *pt){
 // Input: file name is an ASCII string up to seven characters 
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Create( const char name[]){  // create new file, make it empty 
-return FAIL;
+  uint8_t first;
+
+  // CHECKS
+  if (!OpenFlag) return FAIL; // not initialized
+  if (strlen(name) > 7) return FAIL;  // name too long
+  if (FilesystemIn == 0) { // read if not already in memory
+    if (FetchFilesystem()) return FAIL;  // read error
+  }
+  for (int i = 0; i < MAXFILES; i++) {
+    if (strcmp(Filesystem.Directory.File[i].Name, name) == 0) return FAIL; // file with name match alr exists
+  }
+    
+  int free_file_entry = 0;        // search for free directory entry spot which is different than searching for free block(cant use findfreeblock)
+  while((free_file_entry<MAXFILES)&&(Filesystem.Directory.File[free_file_entry].Name[0])){
+    free_file_entry++;
+  }
+  if(free_file_entry==MAXFILES){
+    return FAIL;   // full directory, up to 60 files
+  }
+
+  // BEGIN ALLOCATION
+  if (AllocateBlock(&first)) return FAIL; // allocation fail
+  //first gives free block index
+
+  // update directory
+  strcpy(Filesystem.Directory.File[free_file_entry].Name, name);
+  Filesystem.Directory.File[free_file_entry].First = first;
+
+  // update FAT
+  Filesystem.FAT[first] = NULLINDEX; // first block in the file so it points to null
+
+  return BackupFilesystem(); // restore filesystem back to flash
 }
 
 //---------- eFile_WOpen-----------------
@@ -300,16 +288,68 @@ return FAIL;
 // Input: file name is an ASCII string up to seven characters
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WOpen( const char name[]){      // open a file for writing 
-return FAIL;
+  int open_file_idx;
+  if (!OpenFlag) return FAIL; // not initialized
+  if (WOpenFile!=NOT_OPEN) return FAIL; // already open
+  if (!FilesystemIn) {
+    if (FetchFilesystem()) return FAIL; // problem fetching filesystem
+  }
+  // search for matching filename
+  int file_index = 0; 
+  while ((file_index < MAXFILES) && (strcmp(Filesystem.Directory.File[file_index].Name, name))) {
+    file_index++;
+  }
+  if ((file_index == MAXFILES) || (file_index == ROpenFile)) {  // can't have the same file open for read and write
+    return FAIL;
+  }
+
+  WOpenFile = file_index;
+  WBlockNum = Filesystem.Directory.File[file_index].First;
+  int next_file_index = Filesystem.FAT[file_index]; // fat contains index to next file
+  while (next_file_index != NULLINDEX) {  // keep going till end of file
+    WBlockNum = next_file_index;
+    next_file_index = Filesystem.FAT[next_file_index];  // traverse
+  }
+
+  if (eDisk_ReadBlock((BYTE *)&WCurrentBlock, WBlockNum)) {
+    WOpenFile = NOT_OPEN; // set to not open
+    return FAIL;  // failed to read the data block
+  }
+
+  return SUCCESS;
 }
 
 //---------- eFile_Write-----------------
 // Save at end of the open file
 // Input: data to be saved
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
-int eFile_Write( const char data){unsigned long newBlock;
-return FAIL;
-
+int eFile_Write( const char data){uint8_t newBlock;
+if(!OpenFlag){
+    return FAIL;   // not initialized
+  }
+  if(WOpenFile==NOT_OPEN){
+    return FAIL;   // not open
+  }
+  if(WCurrentBlock.size >= DATASIZE){ // this block full?
+    if(AllocateBlock(&newBlock)){
+      eDisk_WriteBlock((const BYTE *)&WCurrentBlock,WBlockNum); // save full block to disk
+      WOpenFile = NOT_OPEN;       // disk full, close
+      BackupFilesystem();
+      return FAIL;            // problem allocating next block
+    }
+    Filesystem.FAT[WBlockNum] = newBlock;   // link previous to new one
+    if(eDisk_WriteBlock((const BYTE *)&WCurrentBlock,WBlockNum)){ // save full block to disk
+      WOpenFile = NOT_OPEN;
+      return FAIL;   //trouble writing a data block
+    }
+    WBlockNum = newBlock; // new one becomes current
+    Filesystem.FAT[WBlockNum] = NULLINDEX;  // new one has null pointer
+    WCurrentBlock.size = 0;     // new one is empty
+    
+  }
+  WCurrentBlock.data[WCurrentBlock.size] = data; // save into RAM buffer
+  WCurrentBlock.size++;
+  return SUCCESS;
 }
 
 //---------- eFile_WriteString-----------------
@@ -458,7 +498,17 @@ int eFile_WriteUFix2(uint32_t num){
 // Input: none
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WClose(void){ // close the file for writing
-return FAIL;
+if(!OpenFlag){
+    return FAIL;     // not initialized
+  }
+  if(WOpenFile==NOT_OPEN){
+    return FAIL;     // not open
+  }
+  WOpenFile = NOT_OPEN; // Now closed for writing
+  if(eDisk_WriteBlock((const BYTE *)&WCurrentBlock,WBlockNum)){ // save full block to disk
+    return FAIL;   // trouble writing a data block
+  }
+  return BackupFilesystem();    // restore directory back to flash
 }
 
 
@@ -471,11 +521,11 @@ int i;
   if(!OpenFlag){
     return FAIL;   // not initialized
   }
-  if(ROpenFile!=255){
+  if(ROpenFile!=NOT_OPEN){
     return FAIL;   // already open
   }
-  if(!DirectoryIn){ // load if not previously loaded
-    if(!FetchDirectory()){
+  if(!FilesystemIn){ // load if not previously loaded
+    if(!FetchFilesystem()){
       return FAIL;   // problem fetching directory
     }
   }
@@ -487,9 +537,9 @@ int i;
     return FAIL;   // file does not exist
   }
   ROpenFile = i;
-  RBlockNum = Filesystem.Directory.File[i].First; //get first block to read from
-  if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block, data is now in RCurrentBlock
-    ROpenFile = 255;
+  RBlockNum = Filesystem.Directory.File[i].First;
+  if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
+    ROpenFile = NOT_OPEN;
     return 1;   // trouble reading a data block
   }                              
   RByteCnt = 0; // start at the top of the block
@@ -505,7 +555,7 @@ int eFile_ReadNext( char *pt){       // get next byte
   if(!OpenFlag){
     return FAIL;   // not initialized
   }
-  if(ROpenFile==255){
+  if(ROpenFile==NOT_OPEN){
     return FAIL;   // not open
   }
   if(RByteCnt < RCurrentBlock.size){ // this block have data?
@@ -519,7 +569,7 @@ int eFile_ReadNext( char *pt){       // get next byte
     }
     RBlockNum = nextBlock;
   if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
-    ROpenFile = 255;
+    ROpenFile = NOT_OPEN;
     return FAIL;   // trouble reading a data block
   }                              
   RByteCnt = 0; // start at the top of the block
@@ -553,10 +603,10 @@ int eFile_RClose(void){ // close the file for writing
   if(!OpenFlag){
     return FAIL;   // not initialized
   }
-  if(ROpenFile==255){
+  if(ROpenFile==NOT_OPEN){
     return FAIL;   // not open
   }
-  ROpenFile = 255; // Now closed for reading
+  ROpenFile = NOT_OPEN; // Now closed for reading
   return SUCCESS;
 }
 
@@ -566,7 +616,8 @@ int eFile_RClose(void){ // close the file for writing
 // Input: file name is a single ASCII letter
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Delete( const char name[]){  // remove this file 
-  return BackupDirectory();    // restore directory back to flash
+  // TODO: delete file
+  return BackupFilesystem();    // restore filesystem back to flash
 }                             
 
 
@@ -579,8 +630,8 @@ int eFile_DOpen( const char name[]){ // open directory
   if(!OpenFlag){
     return FAIL;       // not initialized
   }
-  if(!DirectoryIn){ // load if not previously loaded
-    if(FetchDirectory()){
+  if(!FilesystemIn){ // load if not previously loaded
+    if(FetchFilesystem()){
       return FAIL;     // problem fetching directory
     }
   }  
@@ -597,7 +648,7 @@ int eFile_DirNext( char *name[], unsigned long *size){  // get next entry
   if(!OpenFlag){
     return FAIL;       // not initialized
   }
-  if(!DirectoryIn){ 
+  if(!FilesystemIn){ 
     return FAIL;       // not opened
   }  
   while(DCurrentEntry<60){
@@ -628,9 +679,9 @@ int eFile_DClose(void){ // close the directory
 int eFile_Unmount(void){ 
   if(OpenFlag){
     OpenFlag = 0;    // closed
-    WOpenFile = 255; // not open
-    ROpenFile = 255; // not open
-    DirectoryIn = 0; // directory not loaded
+    WOpenFile = NOT_OPEN; // not open
+    ROpenFile = NOT_OPEN; // not open
+    FilesystemIn = 0; // directory not loaded
     return SUCCESS;  
   }
   return FAIL;          // error, because not open
