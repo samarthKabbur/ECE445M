@@ -229,19 +229,18 @@ int FindFreeBlock(void){
 // assumes directory is loaded into RAM
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int AllocateBlock(uint8_t *pt){
-    int block = FindFreeBlock();   // find first free block
-    if(block == -1){
-        return FAIL; // failure, no free blocks
-    }
+  int block = FindFreeBlock();   // find first free block
+  if(block == -1){
+      return FAIL; // failure, no free blocks
+  }
 
-    Bitmap_SetUsed(block);         // mark it as used
-    *pt = block;                   // return block index
+  Bitmap_SetUsed(block);         // mark it as used
+  *pt = block;                   // return block index
 
-    // Optional: write bitmap back to SD card
+  // Optional: write bitmap back to SD card
+  WCurrentBlock.size = 0;
 
-    // note: no need to write anything to block since we're using FAT
-
-    return SUCCESS; // success
+  return eDisk_WriteBlock((const BYTE *)&WCurrentBlock,*pt); // update new block size
 }
 
 //---------- eFile_Create-----------------
@@ -257,23 +256,28 @@ int eFile_Create( const char name[]){  // create new file, make it empty
   if (FilesystemIn == 0) { // read if not already in memory
     if (FetchFilesystem()) return FAIL;  // read error
   }
-  for (int i = 0; i < MAXBLOCKS; i++) {
+  for (int i = 0; i < MAXFILES; i++) {
     if (strcmp(Filesystem.Directory.File[i].Name, name) == 0) return FAIL; // file with name match alr exists
   }
-
-  int free_block_index;
-  free_block_index = FindFreeBlock();
-  if (free_block_index == -1) return FAIL; // no free space left
+    
+  int free_file_entry = 0;        // search for free directory entry spot which is different than searching for free block(cant use findfreeblock)
+  while((free_file_entry<MAXFILES)&&(Filesystem.Directory.File[free_file_entry].Name[0])){
+    free_file_entry++;
+  }
+  if(free_file_entry==MAXFILES){
+    return FAIL;   // full directory, up to 60 files
+  }
 
   // BEGIN ALLOCATION
   if (AllocateBlock(&first)) return FAIL; // allocation fail
+  //first gives free block index
 
   // update directory
-  strcpy(Filesystem.Directory.File[free_block_index].Name, name);
-  Filesystem.Directory.File[free_block_index].First = first;
+  strcpy(Filesystem.Directory.File[free_file_entry].Name, name);
+  Filesystem.Directory.File[free_file_entry].First = first;
 
   // update FAT
-  Filesystem.FAT[free_block_index] = NULLINDEX; // first block in the file so it points to null
+  Filesystem.FAT[first] = NULLINDEX; // first block in the file so it points to null
 
   return BackupFilesystem(); // restore filesystem back to flash
 }
@@ -289,11 +293,10 @@ int eFile_WOpen( const char name[]){      // open a file for writing
   if (!FilesystemIn) {
     if (FetchFilesystem()) return FAIL; // problem fetching filesystem
   }
-
   // search for matching filename
   int file_index = 0; 
   while ((file_index < MAXFILES) && (strcmp(Filesystem.Directory.File[file_index].Name, name))) {
-    i++;
+    file_index++;
   }
   if ((file_index == MAXFILES) || (file_index == ROpenFile)) {  // can't have the same file open for read and write
     return FAIL;
@@ -319,14 +322,33 @@ int eFile_WOpen( const char name[]){      // open a file for writing
 // Save at end of the open file
 // Input: data to be saved
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
-int eFile_Write( const char data){unsigned long newBlock;
-
-
-
-
-
-  return FAIL;
-
+int eFile_Write( const char data){uint8_t newBlock;
+if(!OpenFlag){
+    return FAIL;   // not initialized
+  }
+  if(WOpenFile==NOT_OPEN){
+    return FAIL;   // not open
+  }
+  if(WCurrentBlock.size >= DATASIZE){ // if this block is full, allocate a new block
+    if(AllocateBlock(&newBlock)){
+      eDisk_WriteBlock((const BYTE *)&WCurrentBlock,WBlockNum); // save full block to disk
+      WOpenFile = NOT_OPEN;       // disk full, close file
+      BackupFilesystem();
+      return FAIL;            // problem allocating next block
+    }
+    Filesystem.FAT[WBlockNum] = newBlock;   // link previous to new one
+    if(eDisk_WriteBlock((const BYTE *)&WCurrentBlock,WBlockNum)){ // save full block to disk
+      WOpenFile = NOT_OPEN;
+      return FAIL;   //trouble writing a data block
+    }
+    WBlockNum = newBlock; // new one becomes current
+    Filesystem.FAT[WBlockNum] = NULLINDEX;  // new one has null pointer
+    WCurrentBlock.size = 0;     // new one is empty
+    
+  }
+  WCurrentBlock.data[WCurrentBlock.size] = data; // save into RAM buffer
+  WCurrentBlock.size++;
+  return SUCCESS;
 }
 
 //---------- eFile_WriteString-----------------
@@ -475,7 +497,17 @@ int eFile_WriteUFix2(uint32_t num){
 // Input: none
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_WClose(void){ // close the file for writing
-return FAIL;
+if(!OpenFlag){
+    return FAIL;     // not initialized
+  }
+  if(WOpenFile==NOT_OPEN){
+    return FAIL;     // not open
+  }
+  WOpenFile = NOT_OPEN; // Now closed for writing
+  if(eDisk_WriteBlock((const BYTE *)&WCurrentBlock,WBlockNum)){ // save full block to disk
+    return FAIL;   // trouble writing a data block
+  }
+  return BackupFilesystem();    // restore directory back to flash
 }
 
 
@@ -497,10 +529,10 @@ int i;
     }
   }
   i = 0;          // search for matching filename
-  while((i<31) && (strcmp(Filesystem.Directory.File[i].Name,name))){
+  while((i<60) && (strcmp(Filesystem.Directory.File[i].Name,name))){
     i++;
   }
-  if((i==31)||(i==WOpenFile)){   // can't have the same file open for read and write
+  if((i==60)||(i==WOpenFile)){   // can't have the same file open for read and write
     return FAIL;   // file does not exist
   }
   ROpenFile = i;
@@ -530,10 +562,11 @@ int eFile_ReadNext( char *pt){       // get next byte
     RByteCnt++;
     return SUCCESS; 
   }
-  // if(RCurrentBlock.next==0){    // no more blocks
-  //   return FAIL; // end of file
-  // }
-  // RBlockNum = RCurrentBlock.next;   // next block
+  uint8_t nextBlock = Filesystem.FAT[RBlockNum];
+    if(nextBlock == 0){  // 0 = end of file
+        return FAIL;      // no more data
+    }
+    RBlockNum = nextBlock;
   if(eDisk_ReadBlock((BYTE *)&RCurrentBlock,RBlockNum)){  // fetch data block
     ROpenFile = NOT_OPEN;
     return FAIL;   // trouble reading a data block
