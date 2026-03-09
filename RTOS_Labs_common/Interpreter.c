@@ -24,6 +24,11 @@ extern void DFT(void);
 extern void Jitter(void);
 extern void Lab4(void);
 extern void Robot(void);
+extern uint32_t Running;           // true while robot is running
+extern uint32_t NumCreated;   // number of foreground threads created
+
+extern  Sema4_t LCDFree;
+//extern void eFile_Format();
 
 typedef struct{
   const char *name;
@@ -37,6 +42,10 @@ void Cmd_Lab2_Results(char* args, int l);
 void Cmd_Lab3_Results(char* args, int l);
 void Cmd_Lab4_Results(char* args, int l);
 void Cmd_Robot(char* args, int l);
+void Cmd_Format(char* args, int l);
+void Cmd_Dir(char* args, int l);
+void Cmd_Delete(char* args, int l);
+void Cmd_PrintFile(char* args, int l);
 void Cmd_DFT(char* args, int l);
 void Cmd_Jitter(char* args, int l);
 void Cmd_Help(char* args, int l);
@@ -50,6 +59,10 @@ Command commands[] = {
   {"lab3results", Cmd_Lab3_Results},
   {"lab4results", Cmd_Lab4_Results},
   {"robot", Cmd_Robot},
+  {"dir", Cmd_Dir},
+  {"delete", Cmd_Delete},
+  {"type", Cmd_PrintFile},
+  {"format", Cmd_Format},
   {"jitter", Cmd_Jitter},
   {"dft", Cmd_DFT},
   {"?", Cmd_Help},
@@ -89,7 +102,7 @@ void Cmd_Lab2_Results(char* args, int l){
 }
 
 void Cmd_Lab3_Results(char* args, int l){
- Lab3();
+// Lab3();
   UART_OutString("\n");
 }
 
@@ -99,7 +112,10 @@ void Cmd_Lab4_Results(char* args, int l){
 }
 
 void Cmd_Robot(char* args, int l){
-  Robot();
+  if(Running==0){
+    Running = 1;  // prevents you from starting two test threads
+    NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+  }
   UART_OutString("\n");
 }
 
@@ -113,6 +129,99 @@ void Cmd_Jitter(char* args, int l){
   UART_OutString("\n");
 }
 
+void Cmd_Format(char* args, int l){
+ if(eFile_Format())            diskError("eFile_Format",0); 
+  UART_OutString("\n");
+}
+
+void Cmd_Dir(char* args, int l){
+  char *name;
+  unsigned long size;
+  unsigned int num = 0;
+  unsigned long total = 0;
+
+  UART_OutString("\n\r");
+  OS_bWait(&LCDFree);
+  if(eFile_DOpen(""))
+    diskError("eFile_DOpen",0);
+
+  while(!eFile_DirNext(&name, &size)){
+    UART_OutString("Filename = ");
+    UART_OutString(name);
+    UART_OutString("  Size = ");
+    UART_OutUDec(size);
+    UART_OutString(" bytes\n\r");
+
+    total += size;
+    num++;
+  }
+
+  UART_OutString("Files = ");
+  UART_OutUDec(num);
+  UART_OutString("\n\r");
+
+  UART_OutString("Total bytes = ");
+  UART_OutUDec(total);
+  UART_OutString("\n\r");
+
+  if(eFile_DClose())
+    diskError("eFile_DClose",0);
+  OS_bSignal(&LCDFree);
+}
+
+void Cmd_Delete(char* args, int l){
+  if(args == 0){
+    UART_OutString("Error: specify filename\n");
+    return;
+  }
+  OS_bWait(&LCDFree);
+  if(eFile_Delete(args)){
+    UART_OutString("Delete failed\n");
+  } else {
+    UART_OutString("File deleted\n");
+  }
+  OS_bSignal(&LCDFree);
+}
+
+void Cmd_PrintFile(char* args, int l){
+  int status;
+  char data;
+  OS_bWait(&LCDFree);
+  if(args == 0){
+    UART_OutString("Error: specify filename\n");
+    OS_bSignal(&LCDFree);
+    return;
+  }
+
+  if(eFile_ROpen(args)){
+    UART_OutString("Error: cannot open file\n");
+    OS_bSignal(&LCDFree);
+    return;
+  }
+
+  while(1){
+    status = eFile_ReadNext(&data);
+    
+
+    if(status){
+      break;   // end of file
+    }
+
+    UART_OutChar(data);
+  }
+
+  if(eFile_RClose()){
+    UART_OutString("Error closing file\n");
+    OS_bSignal(&LCDFree);
+  }
+  OS_bSignal(&LCDFree);
+
+  UART_OutString("\n");
+}
+
+
+  
+
 
 void Cmd_Help(char* args, int l){
   UART_OutString("\r\nflush                 clears screen");
@@ -121,12 +230,16 @@ void Cmd_Help(char* args, int l){
   UART_OutString("\r\nlab2results           prints lab 2 results onto screen");
   UART_OutString("\r\nlab3results           prints lab 3 results onto screen");
   UART_OutString("\r\nlab4results           prints lab 3 results onto screen");
-  UART_OutString("\r\nrobot                runs robot from lab 4");
+  UART_OutString("\r\ndir                   list files");
+  UART_OutString("\r\ndelete *filename*     delete file");
+  UART_OutString("\r\ntype *filename*       print file contents");
+  UART_OutString("\r\nformat                formats files");
+  UART_OutString("\r\nrobot                 runs robot from lab 4");
   UART_OutString("\r\ndft                   prints lab 3 dft results onto screen");
   UART_OutString("\r\njitter                prints lab 2  jitter results onto screen");
   UART_OutString("\r\n?                     displays syntax of all commands");
   UART_OutString("\n");
-  ST7735_FillScreen(ST7735_BLACK);
+  //ST7735_FillScreen(ST7735_BLACK);
   // ST7735_DrawString(0, l, "flush", ST7735_YELLOW);
   // l++;
   // ST7735_DrawString(0, l, "print *message*", ST7735_YELLOW);

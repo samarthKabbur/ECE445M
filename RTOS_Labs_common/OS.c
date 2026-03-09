@@ -116,14 +116,16 @@ typedef struct mailbox {
 mailbox_t mailbox;
 
 /* GLOBAL FIFO */
-#define FIFOSIZE 32 // can be any size
+#define FIFOSIZE 256 // can be any size
 
 typedef struct fifo {
-  uint32_t volatile *putPt; // put next
-  uint32_t volatile *getPt; // get next
+  uint32_t volatile PutI; // put index
+  uint32_t volatile GetI; // get index
   uint32_t data[FIFOSIZE];
   Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
   Sema4_t mutex; // 1 means available, 0 means busy
+  Sema4_t room_left;
+  uint32_t size;
   uint32_t lost_data;
 } fifo_t;
 
@@ -408,7 +410,7 @@ tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
   //     bestPrev->next = bestPt->next;
   //   }
   // }
-  for (int i = 0; i < MAXTHREADS; i++) {
+  for (int i = 0; i < NumThreads; i++) {
     if (tcbs[i].Status == Blocked && tcbs[i].blocked_ptr == semaPt) {
       if (tcbs[i].priority < maxPriority) {
         maxPriority = tcbs[i].priority;
@@ -495,7 +497,7 @@ void OS_Wait(Sema4_t *semaPt){
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
     
-    OSCRITICAL_EXIT(sr);
+    //OSCRITICAL_EXIT(sr);
     OS_Suspend();
 
     // 4. restore i bit to its previous value
@@ -564,17 +566,19 @@ void OS_bWait(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
   
-  while (semaPt->Value == 0) {
+  if (semaPt->Value == 0) {
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
+
     
    // OSCRITICAL_EXIT(sr);
     OS_Suspend();
     
    // OSCRITICAL_ENTER(sr); 
   }
-  
+  else{
   semaPt->Value = 0;
+  }
   
   OSCRITICAL_EXIT(sr);
 }
@@ -591,29 +595,21 @@ void OS_bWait(Sema4_t *semaPt) {
 void OS_bSignal(Sema4_t *semaPt) {
   long sr;
   OSCRITICAL_ENTER(sr);
-  
-  semaPt->Value = 1;
-  if (semaPt->BlockedPt != 0) {
-    
-    tcb_t *wokenThread = RemoveHighestPriorityFromBlocked(semaPt);
-    
-    if (wokenThread != 0) {
-      wokenThread->blocked_ptr = 0;
-      wokenThread->Status = Active;
 
-      //AddToActive(wokenThread);    
-      
-      if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
-        OSCRITICAL_EXIT(sr);
-        OS_Suspend();
-        return;
-      }
+  tcb_t *wokenThread = RemoveHighestPriorityFromBlocked(semaPt);
+  if (wokenThread != 0) {
+    wokenThread->blocked_ptr = 0;
+    wokenThread->Status = Active;
+
+    if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+      OS_Suspend();
     }
+  } else {
+    semaPt->Value = 1;
   }
-  
+
   OSCRITICAL_EXIT(sr);
 }
-
 
 
 // ******** OS_AddThread *************** 
@@ -1099,7 +1095,7 @@ void OS_Kill(void){
 // output: none
 void OS_Suspend(void){
   SysTick->VAL = 0; // reset counter
-  SCB->ICSR = 0x04000000; // trigger SysTick
+  SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // trigger SysTick
 };
   
 // ******** OS_Fifo_Init ************
@@ -1112,11 +1108,16 @@ void OS_Suspend(void){
 //    e.g., 4 to 64 elements
 //    e.g., must be a power of 2,4,8,16,32,64,128,256
 void OS_Fifo_Init(uint32_t size){
-  fifo.getPt = &fifo.data[0]; // empty
-  fifo.putPt = &fifo.data[0]; // empty
+  fifo.GetI = 0; // empty
+  fifo.PutI = 0; // empty
   fifo.lost_data = 0; // no data lost yet
+  if(size >FIFOSIZE){
+    return;
+  }
   OS_InitSemaphore(&fifo.current_size, 0);
+  OS_InitSemaphore(&fifo.room_left, size);
   OS_InitSemaphore(&fifo.mutex, 1);
+  fifo.size = size;
 }
 
 // ******** OS_Fifo_Put ************
@@ -1127,64 +1128,79 @@ void OS_Fifo_Init(uint32_t size){
 //          false if data not saved, because it was full
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
-int OS_Fifo_Put(uint32_t data){
-  // put Lab 2 (and beyond) solution here
-  if (fifo.current_size.Value == FIFOSIZE && ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE-1] && fifo.getPt == &fifo.data[0]))) {
-    fifo.lost_data++;
-    return 0; // fail if fifo is full
-  }
-  // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
-  //     return 0;
-  //   }
-  *(fifo.putPt) = data;
-  fifo.putPt++;
-
-  if (fifo.putPt == &fifo.data[FIFOSIZE-1]) {
-    fifo.putPt = &fifo.data[0]; // wrap
-  }
-
-  OS_Signal(&fifo.current_size);
-  return 1;
-}
 // int OS_Fifo_Put(uint32_t data){
-//   uint32_t *nextPut = fifo.putPt + 1;
-
-//   if(nextPut == &fifo.data[FIFOSIZE]){
-//     nextPut = &fifo.data[0];
-//   }
-
-//   if(nextPut == fifo.getPt){
+//   // put Lab 2 (and beyond) solution here
+//   if (fifo.current_size.Value == FIFOSIZE ) {
 //     fifo.lost_data++;
-//     return 0; // full
+//     return 0; // fail if fifo is full
 //   }
-
+//   // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
+//   //     return 0;
+//   //   }
 //   *(fifo.putPt) = data;
-//   fifo.putPt = nextPut;
+//   fifo.putPt++;
+
+//   if (fifo.putPt == &fifo.data[FIFOSIZE]) {
+//     fifo.putPt = &fifo.data[0]; // wrap
+//   }
 
 //   OS_Signal(&fifo.current_size);
 //   return 1;
 // }
+int OS_Fifo_Put(uint32_t data){
+  long sr;
+  OSCRITICAL_ENTER(sr);
+  uint32_t newPutI = (fifo.PutI+1)&(fifo.size-1);
+  if (newPutI == fifo.GetI){ // FIFO Full 
+    fifo.lost_data++;
+    return 0;
+    
+  } else {
+    fifo.data[(fifo.PutI & (fifo.size - 1))] = data; // put in FIFO
+    fifo.PutI = newPutI;
+  }
+ OSCRITICAL_EXIT(sr);
+ OS_Signal(&fifo.current_size);
+  return 1; 
+}
 
 // ******** OS_Fifo_Get ************
 // Remove one data sample from the Fifo
 // Called in foreground, will spin/block if empty
 // Inputs:  none
 // Outputs: data 
-uint32_t OS_Fifo_Get(void){
-  // put Lab 2 (and beyond) solution here
-  //if (fifo.getPt == fifo.putPt){}
-  OS_Wait(&fifo.current_size);  // block if empty
+// uint32_t OS_Fifo_Get(void){
+//   // put Lab 2 (and beyond) solution here
+//   //if (fifo.getPt == fifo.putPt){}
+//   OS_Wait(&fifo.current_size);  // block if empty
   
+//   OS_Wait(&fifo.mutex); // block if busy
+
+//   uint32_t data = *(fifo.getPt);
+//   fifo.getPt++;
+
+//   if (fifo.getPt == &fifo.data[FIFOSIZE]) {
+//     fifo.getPt = &fifo.data[0]; // wrap
+//   }
+
+//   OS_Signal(&fifo.mutex);
+//   return data;
+// }
+uint32_t OS_Fifo_Get(void){long sr;
+  
+  OS_Wait(&fifo.current_size);// block if empty
   OS_Wait(&fifo.mutex); // block if busy
-
-  uint32_t data = *(fifo.getPt);
-  fifo.getPt++;
-
-  if (fifo.getPt == &fifo.data[FIFOSIZE-1]) {
-    fifo.getPt = &fifo.data[0]; // wrap
+  OSCRITICAL_ENTER(sr);
+  uint32_t data;
+  if (fifo.PutI == fifo.GetI){ // FIFO is empty, this should never run cause we would block if empty
+    return 0;
+  } else {
+    data  = fifo.data[(fifo.GetI & (fifo.size - 1))];
+    fifo.GetI = (fifo.GetI+1) & (fifo.size - 1);
   }
-
+  OSCRITICAL_EXIT(sr);
   OS_Signal(&fifo.mutex);
+  OS_Signal(&fifo.room_left);
   return data;
 }
 
@@ -1197,7 +1213,7 @@ uint32_t OS_Fifo_Get(void){
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
   // put Lab 2 (and beyond) solution here
-  return fifo.current_size.Value; // replace this line with solution
+ return fifo.PutI - fifo.GetI;// replace this line with solution
   //return 0;
 }
 // ******** OS_MailBox_Init ************
@@ -1260,12 +1276,15 @@ uint32_t OS_Time(void){
 //   this function and OS_Time have the same resolution and precision 
 uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
   // put Lab 2 (and beyond) solution here
+  long sr;
+  OSCRITICAL_ENTER(sr)
   uint32_t result = 0;
     if (stop >= start) {
       result = stop - start;
     } else {
       result = start - stop;
     }
+    OSCRITICAL_EXIT(sr);
     return result;
 };
 

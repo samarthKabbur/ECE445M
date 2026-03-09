@@ -45,7 +45,7 @@ typedef struct Filesystem {
   Directory_t Directory;          // file directory
   uint8_t Bitmap[MAXBLOCKS/8];    // 32-byte free-space bitmap
   uint8_t FAT[MAXBLOCKS];         // FAT table (256 bytes)
-  uint8_t padding[1536 - 1248];   // fill to 3 blocks, need this or else stack is over written with garbage- used in testmain3 when efile_mount called before os_launch
+  uint8_t padding[1536 - sizeof(Directory_t) - MAXBLOCKS/8 - MAXBLOCKS];
 } Filesystem_t; // 3 blocks 
 
 //will probably put this in header file
@@ -68,7 +68,7 @@ const Filesystem_t BlankFilesystem = {
     
     // Bitmap: first 3 blocks (0–2) used, rest free
     {
-        0x03, // blocks 0–2 used (bits 0–2)
+        0x07, // blocks 0–2 used (bits 0–2)
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -240,10 +240,10 @@ int AllocateBlock(uint8_t *pt){
     *pt = block;                   // return block index
 
     // Optional: write bitmap back to SD card
-    WCurrentBlock.size = 0;
+    //WCurrentBlock.size = 0;
 
-     return eDisk_WriteBlock((const BYTE *)&WCurrentBlock,*pt); // update new block size
-
+    // return eDisk_WriteBlock((const BYTE *)&WCurrentBlock,*pt); // update new block size
+  return SUCCESS;
 }
 
 //---------- eFile_Create-----------------
@@ -274,7 +274,7 @@ int eFile_Create( const char name[]){  // create new file, make it empty
   // BEGIN ALLOCATION
   if (AllocateBlock(&first)) return FAIL; // allocation fail
   //first gives free block index
-
+  WCurrentBlock.size = 0; 
   // update directory
   strcpy(Filesystem.Directory.File[free_file_entry].Name, name);
   Filesystem.Directory.File[free_file_entry].First = first;
@@ -621,7 +621,38 @@ int eFile_RClose(void){ // close the file for writing
 // Input: file name is a single ASCII letter
 // Output: 0 if successful and 1 on failure (e.g., trouble writing to flash)
 int eFile_Delete( const char name[]){  // remove this file 
-  // TODO: delete file
+  int i; uint8_t blknum;
+
+  if(!OpenFlag){
+    return FAIL;   // not initialized
+  }
+  if(WOpenFile!=NOT_OPEN){
+    return FAIL;     // can't delete a file, if one open for writing
+  }
+  if(!FilesystemIn){ // load if not previously loaded
+    if(FetchFilesystem()){
+      return FAIL;   // problem fetching directory
+    }
+  }
+  i = 0;          // search for matching filename
+  while((i<MAXFILES) && (strcmp(Filesystem.Directory.File[i].Name , name))){
+    i++;
+  }
+  if(i==MAXFILES){
+    return FAIL;   // file doesn't exist
+  }
+  Filesystem.Directory.File[i].Name[0] = 0;  // delete directory entry
+  Filesystem.Directory.File[i].Size = 0;  // empty file
+  
+  blknum = Filesystem.Directory.File[i].First;
+  uint8_t nextblk;
+    while(blknum){    // keep reading until find the last block
+      Bitmap_SetFree(blknum);
+      nextblk = Filesystem.FAT[blknum];
+      Filesystem.FAT[blknum] = NULLINDEX;
+      blknum = nextblk;
+    Filesystem.Directory.File[i].First = 0;
+  }
   return BackupFilesystem();    // restore filesystem back to flash
 }                             
 
