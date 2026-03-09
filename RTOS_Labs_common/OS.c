@@ -170,7 +170,7 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-   //TogglePB4();
+   // TogglePB4();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
 } // end SysTick_Handler
@@ -182,81 +182,6 @@ void SysTick_Handler(void) {
 int isThreadAvailable(tcb_t *RunPt) {
   return ((RunPt->sleep_st == 0) && (RunPt->blocked_ptr == 0) && (RunPt->Status == Active));
 }
-
-// void Scheduler(void) {
-//   //want to run bestPt
-//   int max = 255;
-//   tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
-//   tcb_t *pt = RunPt->next;
-//   tcb_t *bestPt =0;
-//   do{
-//     if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
-//       if(pt->priority < max|| bestPt ==0){
-//         max = pt->priority; //changes highest priorty to current priority 
-//         bestPt = pt;
-//       }
-//     }
-//     pt = pt->next; //skips at least one
-//   }while(pt != start);
-//   //hopefully at least one runnable thread
-
-
-
-//       // round robin within same priority
-//       pt = bestPt->next;
-//       while(pt != bestPt){
-//         if(isThreadAvailable(pt) && pt->priority == max){
-//             bestPt = pt;
-//             break;
-//         }
-//         pt = pt->next;
-//     }
-
-
-//       RunPt  = bestPt;
-
-
-
-// }
-//probably want to add to blocked before remover from active 
-
-// void Scheduler(void) {
-
-//   tcb_t *currentPt = RunPt;
-
-//   // if the thread is to be blocked move it to the blocked LL
-//   // otherwise remove it if it needs to be killed
-//   if (currentPt->blocked_st != 0) {
-//     Sema4_t *semaPt = (Sema4_t *)currentPt->blocked_st;
-//     RemoveFromActive(currentPt);
-//     AddToBlocked(semaPt, currentPt);
-//   } else if (currentPt->Status == Free) {
-//     RemoveFromActive(currentPt);
-//   }
-
-//   // priority scheduling from mains thread pool
-//   int max = 255;
-//   tcb_t *start = RunPt->next; 
-//   tcb_t *pt = RunPt->next;
-//   tcb_t *bestPt = 0;
-
-//   do {
-//     if (isThreadAvailable(pt)) { 
-//       if (pt->priority < max || bestPt == 0) {
-//         max = pt->priority; 
-//         bestPt = pt;
-//       }
-//     }
-//     pt = pt->next; 
-//   } while(pt != start);
-
-//   if (bestPt) {
-//       RunPt = bestPt;
-//   }
-
-
-
-// }
 
 // TODO: probably want to add to blocked before remover from active 
 void Scheduler(void) {
@@ -1128,25 +1053,6 @@ void OS_Fifo_Init(uint32_t size){
 //          false if data not saved, because it was full
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
-// int OS_Fifo_Put(uint32_t data){
-//   // put Lab 2 (and beyond) solution here
-//   if (fifo.current_size.Value == FIFOSIZE ) {
-//     fifo.lost_data++;
-//     return 0; // fail if fifo is full
-//   }
-//   // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
-//   //     return 0;
-//   //   }
-//   *(fifo.putPt) = data;
-//   fifo.putPt++;
-
-//   if (fifo.putPt == &fifo.data[FIFOSIZE]) {
-//     fifo.putPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.current_size);
-//   return 1;
-// }
 int OS_Fifo_Put(uint32_t data){
   long sr;
   OSCRITICAL_ENTER(sr);
@@ -1169,23 +1075,6 @@ int OS_Fifo_Put(uint32_t data){
 // Called in foreground, will spin/block if empty
 // Inputs:  none
 // Outputs: data 
-// uint32_t OS_Fifo_Get(void){
-//   // put Lab 2 (and beyond) solution here
-//   //if (fifo.getPt == fifo.putPt){}
-//   OS_Wait(&fifo.current_size);  // block if empty
-  
-//   OS_Wait(&fifo.mutex); // block if busy
-
-//   uint32_t data = *(fifo.getPt);
-//   fifo.getPt++;
-
-//   if (fifo.getPt == &fifo.data[FIFOSIZE]) {
-//     fifo.getPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.mutex);
-//   return data;
-// }
 uint32_t OS_Fifo_Get(void){long sr;
   
   OS_Wait(&fifo.current_size);// block if empty
