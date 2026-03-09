@@ -129,7 +129,9 @@ void DAS(void){
       }
       if(jitter > MaxJitter3){
         MaxJitter3 = jitter; // in 12.5 ns
+        jitter = 0;
       }       // jitter should be 0    
+      jitter = 0;
       JitterHistogram3[jitter]++; 
     }
     ChecksWork = Checks;
@@ -740,7 +742,7 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  Testmain1();
+  realmain();
 }
 
 
