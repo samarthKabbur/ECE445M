@@ -129,9 +129,11 @@ void DAS(void){
       }
       if(jitter > MaxJitter3){
         MaxJitter3 = jitter; // in 12.5 ns
-        jitter = 0;
+        // jitter = 0;
       }       // jitter should be 0    
-      jitter = 0;
+      if(jitter >= JitterSize3){
+        jitter = JitterSize3 -1;
+      }
       JitterHistogram3[jitter]++; 
     }
     ChecksWork = Checks;
@@ -729,7 +731,9 @@ int Testmain3(void){   // Testmain3
   NumCreated += OS_AddThread(&VirusDetector,128,3); 
 
   if(eFile_Init())              diskError("eFile_Init",0); 
-  if(eFile_Format())            diskError("eFile_Format",0); 
+  int error = eFile_Format();
+  if(error == 2)            diskError("eFile_Format",2); 
+  if(error == 1)            diskError("eFile_Format",0);
   if(eFile_Mount())             diskError("eFile_Mount",0);
 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here

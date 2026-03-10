@@ -158,10 +158,13 @@ int eFile_Format(void){ // erase disk, add format
   // ERASE ALL FILES
   if (eDisk_Write(0,(const BYTE *)&BlankFilesystem, DBLOCKNUM, FSIZE)) {
     OS_UnLockScheduler(scheduler_lock);
-    return FAIL;  // write block error
+    return 2;  // write block error
   }
+  Filesystem = BlankFilesystem;
+  
    OS_UnLockScheduler(scheduler_lock);
    return SUCCESS;
+   
 }
 
 //bring filesystem from flash to ram
