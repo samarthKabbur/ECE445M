@@ -556,7 +556,7 @@ int OS_AddProcessThread(void(*task)(void),
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
-  OSCRITICAL_ENTER(sr);
+   OSCRITICAL_ENTER(sr);
   // find a thread that is free
   int i;
   for (i = 0; i < MAXTHREADS; i++) {
@@ -582,7 +582,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   SetInitialStack(i, stackSize);  // this func was copied from the book
   Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
-
+ //OSCRITICAL_ENTER(sr);
   // insert into  priority sorted circular doubly-linked list
 if (RunPt == (void*)0) {  
   // first thread in system
@@ -814,7 +814,7 @@ void GROUP1_IRQHandler(void){
   
   if(GPIOA->CPU_INT.RIS&(1<<28)){ // PA28
     GPIOA->CPU_INT.ICLR = 1<<28;
-    for (int i = 0; i < MAX_BUTTON_THREADS; i++) {
+    for (int i = 0; i < MAX_BUTTON_THREADS ; i++) {
       if (pa28_button_threads[i].Status == Active) {
         (*pa28_button_threads[i].task)(); // run the background thread
       }
@@ -964,6 +964,7 @@ int OS_AddPA28Task(void(*task)(void), uint32_t priority){
   pa28_button_threads[i].task = task;
   pa28_button_threads[i].priority = priority;
   pa28_button_threads[i].Status = Active;
+  NumButtonThreads++;
   OSCRITICAL_EXIT(sr);
   
   return 1; // successfully added task
