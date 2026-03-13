@@ -9,6 +9,8 @@ void EndCritical(long);
 #define  OSCRITICAL_ENTER() { sr = StartCritical(); }
 #define  OSCRITICAL_EXIT()  { EndCritical(sr); }
 
+/* HEAP DEFINITION */
+uint32_t heap[MAX_PROCESSES][NUM_BLOCKS_PER_PROCESS * BLOCK_SIZE_IN_BYTES];
 
 //******** Heap_Init *************** 
 // Initialize the Heap

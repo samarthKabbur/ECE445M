@@ -20,6 +20,7 @@
 extern void Lab1_Results(uint32_t d);
 extern void Lab2(void);
 extern void Lab3(void);
+extern void Lab4(void);
 extern void DFT(void);
 extern void Jitter(void);
 extern void Lab4(void);
@@ -107,7 +108,7 @@ void Cmd_Lab3_Results(char* args, int l){
 }
 
 void Cmd_Lab4_Results(char* args, int l){
- Lab4();
+  // Lab4();
   UART_OutString("\n");
 }
 
