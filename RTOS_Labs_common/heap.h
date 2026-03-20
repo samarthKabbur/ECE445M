@@ -22,11 +22,6 @@ typedef struct heap_stats {
   uint32_t free;   // number of bytes available to allocate
 } heap_stats_t;
 
-#define MAX_PROCESSES 32
-#define NUM_BLOCKS_PER_PROCESS 64
-#define BLOCK_SIZE_IN_BYTES 4
-
-
 /**
  * @details Initialize the Heap
  * @param  none
