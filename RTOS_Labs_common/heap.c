@@ -44,8 +44,8 @@ int32_t Heap_Init(void){
   // such that each process' heap will have one giant free block to start with.
 
   for (int i = 0; i < MAX_PROCESSES - 1; i++){
-    heap[i][0] = HEAP_SIZE_IN_WORDS - 2;  // Header
-    heap[i][HEAP_SIZE_IN_WORDS - 1] = HEAP_SIZE_IN_WORDS - 2; // Trailer
+    heap[i][0] = -(HEAP_SIZE_IN_WORDS - 2);  // Header
+    heap[i][HEAP_SIZE_IN_WORDS - 1] = -(HEAP_SIZE_IN_WORDS - 2); // Trailer
   }
   
   return 0;
@@ -58,18 +58,38 @@ int32_t Heap_Init(void){
 //   desiredBytes: desired number of bytes to allocate
 // output: void* pointing to the allocated memory or will return NULL
 //   if there isn't sufficient space to satisfy allocation request
-void* Heap_Malloc(int32_t desiredBytes){ int sr;
+void* Heap_Malloc(int32_t desiredBytes, uint8_t pid){ int sr;
 
   // going with first fit for now
   // Four special cases:
   // no merge, merge above, merge below, merge both above and below
 
-  // Find first free block
+  // Heap functions will expect the calling process to pass in its PID.
 
-  // stuck here of how to access the process id and link it to the heap
+  // Find first free block that has enough size
+  int32_t block_size;
+  uint8_t index = 0;
+  uint8_t free;
+  do {
+    block_size = heap[pid][index];  // load size
+
+    // check if free
+    if (block_size < 0) {
+      free = 1; // free
+      block_size = block_size * -1; // make positive
+    } else {
+      free = 0; // not free
+    }
+
+    index += block_size + 2;  // move to next block. + 2 to account for the counters.
+  } while ((block_size < desiredBytes) && (index < HEAP_SIZE_IN_WORDS) && (free == 0)); 
+  // ^ keep searching while within bounds, not free, and not big enough
+
+  if (index == HEAP_SIZE_IN_WORDS) {
+    return 0;  // NULL, no space left
+  }
   
-  
-  return 0; //NULL
+  return (void*)heap[pid][index - 2]; // move back one block
 }
 
 
