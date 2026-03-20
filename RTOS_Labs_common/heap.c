@@ -9,6 +9,9 @@ void EndCritical(long);
 #define  OSCRITICAL_ENTER() { sr = StartCritical(); }
 #define  OSCRITICAL_EXIT()  { EndCritical(sr); }
 
+#define TRUE 1
+#define FALSE 0
+
 /* HEAP DEFINITION */
 #define MAX_PROCESSES 32
 #define HEAP_SIZE_IN_WORDS 64
@@ -58,7 +61,11 @@ int32_t Heap_Init(void){
 //   desiredBytes: desired number of bytes to allocate
 // output: void* pointing to the allocated memory or will return NULL
 //   if there isn't sufficient space to satisfy allocation request
-void* Heap_Malloc(int32_t desiredBytes, uint8_t pid){ int sr;
+void* Heap_Malloc(int32_t desiredBytes){ //, uint8_t pid){ 
+
+  uint8_t pid = 0;  // temp since idk how to pass in the pid yet
+  
+  int sr;
 
   // going with first fit for now
   // Four special cases:
@@ -66,7 +73,7 @@ void* Heap_Malloc(int32_t desiredBytes, uint8_t pid){ int sr;
 
   // Heap functions will expect the calling process to pass in its PID.
 
-  // Find first free block that has enough size
+  // 1. Find first free block that has enough size
   int32_t block_size;
   uint8_t index = 0;
   uint8_t free;
@@ -75,19 +82,43 @@ void* Heap_Malloc(int32_t desiredBytes, uint8_t pid){ int sr;
 
     // check if free
     if (block_size < 0) {
-      free = 1; // free
+      free = TRUE; // free
       block_size = block_size * -1; // make positive
     } else {
-      free = 0; // not free
+      free = FALSE; // not free
     }
 
     index += block_size + 2;  // move to next block. + 2 to account for the counters.
-  } while ((block_size < desiredBytes) && (index < HEAP_SIZE_IN_WORDS) && (free == 0)); 
+  } while ((block_size < desiredBytes) && (index < HEAP_SIZE_IN_WORDS) && (free == FALSE)); 
   // ^ keep searching while within bounds, not free, and not big enough
 
+  // 2. Return early if no space available
   if (index == HEAP_SIZE_IN_WORDS) {
     return 0;  // NULL, no space left
   }
+
+  // 3. Check if 
+  if (block_size == desiredBytes) {
+    
+  }
+
+  index -= (block_size + 2); // move index back to block of interest
+
+  // 3. Mark block as allocated
+  heap[pid][index] = block_size;  // update header
+  heap[pid][index + block_size + 1] = block_size; // update trailer
+
+  // 4. Check for Merge Above
+  uint8_t merge_above = FALSE;
+  if (heap[pid][index - 1] < 0) { // negative means free
+    merge_above = TRUE;
+  } else {
+    merge_above = FALSE;
+  }
+
+  // 5. Check for Merge Below
+  uint8_t merge_below = FALSE;
+  if ()
   
   return (void*)heap[pid][index - 2]; // move back one block
 }
