@@ -552,6 +552,9 @@ void OS_bSignal(Sema4_t *semaPt) {
 int OS_AddProcessThread(void(*task)(void), 
    uint32_t stackSize, uint32_t priority, uint32_t pid){
 	   return 0;
+      // im guessing the existence of this function means that the process gets added
+      // to the scheduler add just one foreground thread.
+      // Means that Heap_Malloc will allow each thread to have its own virtual heap.
    }
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
@@ -571,7 +574,8 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 
  //OSCRITICAL_ENTER(sr);
   // init tcb fields
-  tcbs[i].id = i; 
+  tcbs[i].id = i;
+  tcbs[i].pid = i; 
   tcbs[i].priority = priority;
   tcbs[i].blocked_ptr = 0;
   tcbs[i].sleep_st = 0;
@@ -643,8 +647,8 @@ void SetInitialStack(int i, uint32_t stackSize) {
 // This function will be needed for Lab 5
 // In Labs 2-4, this function can be ignored
 int OS_AddProcess(void *text, void *data, uint32_t stackSize, uint32_t priority){ 
-  
   return 0;
+  // should set all threads in the process to have the same pid
 }
 
 
