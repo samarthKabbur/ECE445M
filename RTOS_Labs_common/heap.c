@@ -3,14 +3,12 @@
 
 #include <stdint.h>
 #include "../RTOS_Labs_common/heap.h"
+#include "../RTOS_Labs_common//OS.h"
 
 long StartCritical(void);
 void EndCritical(long);
 #define  OSCRITICAL_ENTER(sr) { sr = StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
-
-#define TRUE 1
-#define FALSE 0
 
 /* HEAP DEFINITION */
 #define MAX_PROCESSES 32
@@ -63,6 +61,8 @@ int32_t Heap_Init(void){
 //   if there isn't sufficient space to satisfy allocation request
 void* Heap_Malloc(int32_t desiredBytes) { // wrapper function
   return Heap_Malloc_Logic(desiredBytes, OS_Id());  // all threads in one process will have to share the same PID, set by add process
+
+  // Heap is given access to the OS here. Not sure if that's a good or bad thing...
 }
 
 void* Heap_Malloc_Logic(int32_t desiredBytes, uint8_t pid){ 
@@ -130,8 +130,18 @@ void* Heap_Malloc_Logic(int32_t desiredBytes, uint8_t pid){
 //notes: the allocated memory block will be zeroed out
 void* Heap_Calloc(int32_t desiredBytes){  
   
-    return 0; //NULL
+  int32_t *data = (int32_t *)Heap_Malloc(desiredBytes); // allocate
+  int32_t desiredWords = (desiredBytes + 3) / 4;  // round up to nearest word
 
+  if (data == 0) {
+    return 0;  // failed allocation
+  }
+
+  for (int i = 0; i < desiredWords; i++) {
+    data[i] = 0;  // initialize data to zero
+  }
+
+  return data;
 }
 
 
