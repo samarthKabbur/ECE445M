@@ -39,7 +39,7 @@ int32_t Heap_Init(void);
  *         if there isn't sufficient space to satisfy allocation request
  * @brief  Allocate memory
  */
-void* Heap_Malloc(int32_t desiredBytes); //, uint8_t pid);
+void* Heap_Malloc(int32_t desiredBytes, uint8_t pid);
 
 
 /**

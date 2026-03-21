@@ -6,8 +6,8 @@
 
 long StartCritical(void);
 void EndCritical(long);
-#define  OSCRITICAL_ENTER() { sr = StartCritical(); }
-#define  OSCRITICAL_EXIT()  { EndCritical(sr); }
+#define  OSCRITICAL_ENTER(sr) { sr = StartCritical(); }
+#define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
 #define TRUE 1
 #define FALSE 0
@@ -61,66 +61,59 @@ int32_t Heap_Init(void){
 //   desiredBytes: desired number of bytes to allocate
 // output: void* pointing to the allocated memory or will return NULL
 //   if there isn't sufficient space to satisfy allocation request
-void* Heap_Malloc(int32_t desiredBytes){ //, uint8_t pid){ 
-
-  uint8_t pid = 0;  // temp since idk how to pass in the pid yet
+void* Heap_Malloc(int32_t desiredBytes, uint8_t pid){ 
   
   int sr;
-
+  OSCRITICAL_ENTER(sr);
   // going with first fit for now
-  // Four special cases:
-  // no merge, merge above, merge below, merge both above and below
-
   // Heap functions will expect the calling process to pass in its PID.
 
   // 1. Find first free block that has enough size
-  int32_t block_size;
-  uint8_t index = 0;
-  uint8_t free;
-  do {
-    block_size = heap[pid][index];  // load size
+  int32_t desiredWords = (desiredBytes + 3) / 4;  // round up to nearest word
 
-    // check if free
-    if (block_size < 0) {
-      free = TRUE; // free
-      block_size = block_size * -1; // make positive
+  if (desiredWords <= 0) {
+    OSCRITICAL_EXIT(sr);
+    return 0;
+  }
+
+  int32_t i = 0;
+  while (i < HEAP_SIZE_IN_WORDS) {
+    int32_t blockSize = heap[pid][i]; // block size in words
+    int isFree = (blockSize < 0);
+    
+    int32_t absBlockSize;
+    if (isFree) {
+      absBlockSize = -blockSize;  // if free, then the blocksize would've been negative
     } else {
-      free = FALSE; // not free
+      absBlockSize = blockSize;
     }
 
-    index += block_size + 2;  // move to next block. + 2 to account for the counters.
-  } while ((block_size < desiredBytes) && (index < HEAP_SIZE_IN_WORDS) && (free == FALSE)); 
-  // ^ keep searching while within bounds, not free, and not big enough
+    if(isFree && (absBlockSize >= desiredWords)) {
+      // if block is big enough, check if we should split
+      if (absBlockSize >= (desiredWords + 2)) {
+        // split block
+        heap[pid][i] = desiredWords;  // header
+        heap[pid][i + desiredWords + 1] = desiredWords; // trailer
 
-  // 2. Return early if no space available
-  if (index == HEAP_SIZE_IN_WORDS) {
-    return 0;  // NULL, no space left
+        int32_t remainingBlock = absBlockSize - desiredWords - 2;
+        heap[pid][i + desiredWords + 2] = -remainingBlock;  // header
+        heap[pid][i + absBlockSize + 1] = -remainingBlock;
+      } else {
+        // allocate entire block without splitting
+        heap[pid][i] = absBlockSize;  // header. make positive to indicate its being used
+        heap[pid][i + absBlockSize + 1] = absBlockSize; // trailer
+      }
+      
+      OSCRITICAL_EXIT(sr);
+      return (void*)&heap[pid][i + 1];  // ptr to first word after the header
+    }
+
+    // move to next block if not free
+    i += absBlockSize + 2;
   }
 
-  // 3. Check if 
-  if (block_size == desiredBytes) {
-    
-  }
-
-  index -= (block_size + 2); // move index back to block of interest
-
-  // 3. Mark block as allocated
-  heap[pid][index] = block_size;  // update header
-  heap[pid][index + block_size + 1] = block_size; // update trailer
-
-  // 4. Check for Merge Above
-  uint8_t merge_above = FALSE;
-  if (heap[pid][index - 1] < 0) { // negative means free
-    merge_above = TRUE;
-  } else {
-    merge_above = FALSE;
-  }
-
-  // 5. Check for Merge Below
-  uint8_t merge_below = FALSE;
-  if ()
-  
-  return (void*)heap[pid][index - 2]; // move back one block
+  OSCRITICAL_EXIT(sr);
+  return 0; // none found
 }
 
 
