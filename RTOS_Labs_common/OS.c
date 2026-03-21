@@ -668,6 +668,10 @@ uint32_t OS_Id(void){
   return RunPt->id;
 }
 
+uint32_t OS_PId(void) {
+  return RunPt->pid;
+}
+
 uint32_t lcm2(uint32_t n1,uint32_t n2){
   uint32_t n;
   if(n1 > n2){

@@ -73,6 +73,7 @@ void* Heap_Realloc(void* oldBlock, int32_t desiredBytes);
  * @brief  Free memory
  */
 int32_t Heap_Free(void* pointer);
+int32_t Heap_Free_Logic(void* pointer, uint8_t pid);
 
 
 /**

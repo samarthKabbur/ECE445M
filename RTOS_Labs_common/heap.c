@@ -60,7 +60,7 @@ int32_t Heap_Init(void){
 // output: void* pointing to the allocated memory or will return NULL
 //   if there isn't sufficient space to satisfy allocation request
 void* Heap_Malloc(int32_t desiredBytes) { // wrapper function
-  return Heap_Malloc_Logic(desiredBytes, OS_Id());  // all threads in one process will have to share the same PID, set by add process
+  return Heap_Malloc_Logic(desiredBytes, OS_PId());  // all threads in one process will have to share the same PID, set by add process
 
   // Heap is given access to the OS here. Not sure if that's a good or bad thing...
 }
@@ -96,12 +96,12 @@ void* Heap_Malloc_Logic(int32_t desiredBytes, uint8_t pid){
       // if block is big enough, check if we should split
       if (absBlockSize >= (desiredWords + 2)) {
         // split block
-        heap[pid][i] = desiredWords;  // header
+        heap[pid][i] = desiredWords;                    // header
         heap[pid][i + desiredWords + 1] = desiredWords; // trailer
 
         int32_t remainingBlock = absBlockSize - desiredWords - 2;
         heap[pid][i + desiredWords + 2] = -remainingBlock;  // header
-        heap[pid][i + absBlockSize + 1] = -remainingBlock;
+        heap[pid][i + absBlockSize + 1] = -remainingBlock;  // trailer
       } else {
         // allocate entire block without splitting
         heap[pid][i] = absBlockSize;  // header. make positive to indicate its being used
@@ -157,8 +157,24 @@ void* Heap_Calloc(int32_t desiredBytes){
 //   are copied to the new block
 void* Heap_Realloc(void* oldBlock, int32_t desiredBytes){
  
-    return 0; // NULL
+  // 1. Allocate New Block
+  int32_t *newBlock = (int32_t *)Heap_Malloc(desiredBytes);
+  if (newBlock == 0) {
+    return 0; // failed allocation
+  }
 
+  // 2. Copy Contents of Old Block to New Block
+  int32_t *old_block_data = (int32_t *)oldBlock;
+  int32_t oldSize = old_block_data[-1]; // go back one word to access the size
+
+  for (int i = 0; i < oldSize; i++) {
+    newBlock[i] = old_block_data[i];
+  }
+
+  // 3. Deallocate Old Block
+  Heap_Free(oldBlock);
+
+  return (void*)newBlock;
 }
 
 
@@ -170,8 +186,77 @@ void* Heap_Realloc(void* oldBlock, int32_t desiredBytes){
 //  HEAP_ERROR_CORRUPTED_HEAP if heap has been corrupted or trying to
 //  unallocate memory that has already been unallocated;
 int32_t Heap_Free(void* pointer){ int sr;
- 
-  return 0;
+  return Heap_Free_Logic(pointer, OS_PId());
+}
+
+int32_t Heap_Free_Logic(void* pointer, uint8_t pid) {
+  if (pointer == 0) {
+    return 0; // fail on invalid free
+  }
+
+  uint8_t merge_above;
+  uint8_t merge_below;
+
+  int32_t *block_data = (int32_t *)pointer;
+  int32_t block_size = block_data[-1];  // block size is positive, since it is assumed to be previously allocated
+  int32_t header_index = block_data - &heap[pid][0] - 1;  // index of the header relative to heap
+  
+  // Four cases:
+  // No merge, Merge Above, Merge Below, and Merge both Above and Below
+  // Two special cases:
+  // If the block is the first block in the heap, cannot merge it above
+  // If block is the last block in the heap, cannot merge it below
+
+  // 1. Check for merge above
+  if (block_data[-2] < 0) {
+    merge_above = 1;  // previous block is free, merge above
+  } 
+  if (header_index == 0) {
+    merge_above = 0;  // special case where it is the first block
+  }
+
+  // 2. Check for merge below
+  if (block_data[block_size + 1] < 0) {
+    merge_below = 1; // next block is free, merge below
+  }
+  if ((header_index + block_size + 2) >= HEAP_SIZE_IN_WORDS) {
+    merge_below = 0;  // special case where it is the last block
+  }
+
+  // 3. Handle merges
+  if (merge_above && merge_below) {
+    // Merge both above and below
+    int32_t prev_size = -block_data[-2];
+    int32_t next_size = -block_data[block_size + 1];
+    int32_t merged_size = prev_size + block_size + next_size + 4;  // +4 for both pairs of counters
+    
+    // Update prev block's header and new trailer
+    block_data[-(prev_size + 2)] = -merged_size;  // prev block header
+    block_data[block_size + next_size + 3] = -merged_size;  // next block's trailer
+    
+  } else if (merge_above) {
+    // Merge above only
+    int32_t prev_size = -block_data[-2];
+    int32_t merged_size = prev_size + block_size + 2;
+    
+    block_data[-(prev_size + 2)] = -merged_size;  // prev header
+    block_data[block_size] = -merged_size;  // current trailer
+    
+  } else if (merge_below) {
+    // Merge below only
+    int32_t next_size = -block_data[block_size + 1];
+    int32_t merged_size = block_size + next_size + 2;
+    
+    block_data[-1] = -merged_size;  // current header
+    block_data[block_size + next_size + 2] = -merged_size;  // next trailer
+    
+  } else {
+    // 4. No merge, just deallocate
+    block_data[-1] = -block_size;
+    block_data[block_size] = -block_size;
+  }
+
+return 1;
 }
 
 

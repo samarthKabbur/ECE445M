@@ -345,7 +345,6 @@ struct Program{
   uint32_t StackSize;   // size of stack segment
   uint32_t DataSize;    // size of data segment (globals)
   char Name[8];         // ASCII string
-  uint8_t pid;          // Process ID to access heap segment
 };
 typedef struct Program Program_t;
 
