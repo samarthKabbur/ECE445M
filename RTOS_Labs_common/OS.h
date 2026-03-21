@@ -53,7 +53,8 @@ typedef struct tcb {
   int *sp;  // pointer to stack, valid for threads not running
   struct tcb *next; // linked-list pointer
   struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
-  int id;
+  uint32_t id;  // thread ID (unique per thread)
+  uint32_t pid; // process ID (same for all threads in a process)
   int sleep_st; // 0 means not sleeping, anything else means sleeping
   int priority;
   Sema4_t *blocked_ptr; // 0 means unblocked, otherwise is blocked and points to the semaphore that is blocking it

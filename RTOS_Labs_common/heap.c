@@ -61,7 +61,11 @@ int32_t Heap_Init(void){
 //   desiredBytes: desired number of bytes to allocate
 // output: void* pointing to the allocated memory or will return NULL
 //   if there isn't sufficient space to satisfy allocation request
-void* Heap_Malloc(int32_t desiredBytes, uint8_t pid){ 
+void* Heap_Malloc(int32_t desiredBytes) { // wrapper function
+  return Heap_Malloc_Logic(desiredBytes, OS_Id());  // all threads in one process will have to share the same PID, set by add process
+}
+
+void* Heap_Malloc_Logic(int32_t desiredBytes, uint8_t pid){ 
   
   int sr;
   OSCRITICAL_ENTER(sr);
