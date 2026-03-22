@@ -178,21 +178,35 @@ SVC_Handler:
     PUSH    {R4-R5,LR}
 
         /* 1. Get the return address off the stack */
-        LDR R0, [SP, #36]       /* this is the PC saved during exception stack push */
+        /* 
+        Current state of the stack after an exception save and context save:
+        R4      <- SP + 0
+        R5      <- SP + 4
+        LR
+        R0
+        R1
+        R2
+        R3
+        R7
+        LR
+        PC      <- SP + 36
+        xPSR
+        */
+        LDR R0, [SP, #36]       /* R0 = PC */ 
 
         /* 2. Extract the SVC immediate value */
-        SUBS R0, R0, #2 /* SVC is the instruction directly before the saved PC */
-        LDRB R0, [R0]   /* the lower byte of the SVC instruction has the index */
+        SUBS R0, R0, #2 /* SVC instruction was encoded here at PC - 2*/
+        LDRB R0, [R0]
         MOVS R1, #0xFF
-        ANDS R0, R0, R1 /* R0 contains the index */
+        ANDS R0, R0, R1 /* extract the low byte which containts the SVC imm value */
 
         /* 3. Index into the jump table */
         MOVS R1, #4
         MULS R0, R0, R1
-        
+
         LDR R1, =SVCJumpTable
-        ADDS R1, R1, R0
-        BX R1
+        ADDS R0, R0, R1
+        BX R0
 
     POP     {R4-R5,PC}
 SVCJumpTable:
