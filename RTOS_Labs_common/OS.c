@@ -63,6 +63,7 @@ volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
+#define MAX_PROCESSES 32 // should match whats in heap.c
 #define MAXTHREADS 32  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
@@ -130,6 +131,36 @@ typedef struct fifo {
 } fifo_t;
 
 fifo_t fifo;
+
+//Process Control Block(PCB)
+
+typedef enum {
+  PROC_FREE = 0,
+  PROC_ACTIVE = 1
+} proc_status_t;
+
+typedef struct process_control_block {
+  uint8_t pid;              // Process ID
+
+  proc_status_t status;     // FREE or ACTIVE
+
+  // Memory layout
+  uint32_t StartOffset;     // pointer to code (text)
+  uint32_t CodeSize;
+  uint32_t DataSize;
+  uint32_t StackSize;
+
+  void *data;               // pointer to data segment (optional)
+
+  char Name[8];             // process name
+
+  // Thread tracking (simple version)
+  uint8_t numThreads;       
+} pcb_t;
+
+
+pcb_t pcbs[MAX_PROCESSES];
+ uint8_t CurrentPID; // set to RunPt->pid; somewhere, most likely in scheduler 
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -253,6 +284,7 @@ void OS_Init(void){
   NumThreads = 0;
   NumPeriodic = 0;
   NumButtonThreads = 0;
+  CurrentPID = 0;
   // mark all foreground threads as free
   for (int i = 0; i < MAXTHREADS; i++) {
     tcbs[i].Status = Free;
@@ -549,12 +581,75 @@ void OS_bSignal(Sema4_t *semaPt) {
 // In Lab 3, you can ignore the stackSize fields
 // In Lab 4, the stackSize can be 128, 256, or 512 bytes
 
+//same as addthread pretty much just with known pid
 int OS_AddProcessThread(void(*task)(void), 
-   uint32_t stackSize, uint32_t priority, uint32_t pid){
-	   return 0;
-      // im guessing the existence of this function means that the process gets added
-      // to the scheduler add just one foreground thread.
-      // Means that Heap_Malloc will allow each thread to have its own virtual heap.
+   void *data, uint32_t stackSize, uint32_t priority, uint32_t pid){
+	   long sr;
+   OSCRITICAL_ENTER(sr);
+  // find a thread that is free
+  int i;
+  for (i = 0; i < MAXTHREADS; i++) {
+    if (tcbs[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAXTHREADS) {
+    return 0; // fail upon: no thread space available
+  }
+
+ //OSCRITICAL_ENTER(sr);
+  // init tcb fields
+  tcbs[i].id = i;
+  tcbs[i].pid = pid; 
+  tcbs[i].priority = priority;
+  tcbs[i].blocked_ptr = 0;
+  tcbs[i].sleep_st = 0;
+  tcbs[i].Status = Active;
+  NumThreads++;
+
+  // init stack
+  SetInitialStack(i, stackSize);  // this func was copied from the book
+  //change R7 to datasegment
+  Stacks[i][stackSize-9] = (int32_t)(data);  // R7
+  Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+
+ //OSCRITICAL_ENTER(sr);
+  // insert into  priority sorted circular doubly-linked list
+if (RunPt == (void*)0) {  
+  // first thread in system
+  tcbs[i].next = &tcbs[i];
+  tcbs[i].prev = &tcbs[i];
+  RunPt = &tcbs[i];
+} else {
+
+  tcb_t *pt = RunPt;
+
+  // find first node with lower priority ( higher value)
+  do {
+    if (priority < pt->priority) {
+      break;   
+    }
+    pt = pt->next;
+  } while (pt != RunPt);
+
+  // insert before pt and after previous node
+  tcb_t *prevNode = pt->prev; 
+
+  tcbs[i].next = pt;
+  tcbs[i].prev = prevNode;
+
+  prevNode->next = &tcbs[i];
+  pt->prev = &tcbs[i];
+
+//prevNode <---- newNode ----> pt
+
+}
+
+  OSCRITICAL_EXIT(sr);
+  return 1;
+
+  
    }
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
@@ -574,8 +669,12 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 
  //OSCRITICAL_ENTER(sr);
   // init tcb fields
-  tcbs[i].id = i;
-  tcbs[i].pid = i; 
+  tcbs[i].id = i; 
+  tcbs[i].pid = CurrentPID; //cant be i cause then changes for each thread in process ; this may cause and issue with
+  //background threads since they dont "belong" to a process ie should be 0 but they still call os_addthread
+  //was thinking to call os_addthread with os_addprocessthread with pid = 0 but doesnt work for forground
+  //threads, so this just sets pid for background threads to current pid for process it interrupts which
+  //idk if thats accurate 
   tcbs[i].priority = priority;
   tcbs[i].blocked_ptr = 0;
   tcbs[i].sleep_st = 0;
@@ -622,6 +721,7 @@ if (RunPt == (void*)0) {
   return 1;
 }
 
+
 void SetInitialStack(int i, uint32_t stackSize) {
   tcbs[i].sp = &Stacks[i][stackSize - 12];  // <-tcb[i].sp;
   Stacks[i][stackSize-1] = 0x01000000;  // thumb bit
@@ -647,14 +747,130 @@ void SetInitialStack(int i, uint32_t stackSize) {
 // This function will be needed for Lab 5
 // In Labs 2-4, this function can be ignored
 int OS_AddProcess(void *text, void *data, uint32_t stackSize, uint32_t priority){ 
-  return 0;
   // should set all threads in the process to have the same pid
+  long sr;
+  OSCRITICAL_ENTER(sr);
+
+  // Find free PCB slot
+  int i;
+  for(i = 0; i < MAX_PROCESSES; i++){
+    if(pcbs[i].status == PROC_FREE){
+      break;
+    }
+  }
+
+  if(i == MAX_PROCESSES){
+    OSCRITICAL_EXIT(sr);
+    return 0; // no process slots available
+  }
+
+  // Assign PID (simple: index+1), none should be 0, 0 is reserved for initial threads
+  uint8_t pid = i + 1;
+
+ 
+
+ // Add main thread with correct PID, i dont know if we actually need to do this
+    if(OS_AddProcessThread(text, data, stackSize, priority, pid) == 0){
+        OSCRITICAL_EXIT(sr);
+        return 0;
+    }
+
+    // Initialize PCB
+    pcbs[i].pid = pid;
+    pcbs[i].status = PROC_ACTIVE;
+    pcbs[i].StartOffset = (uint32_t)text;
+    pcbs[i].StackSize = stackSize;
+    pcbs[i].numThreads = 1;
+
+    OSCRITICAL_EXIT(sr);
+    return 1;
 }
 
+// Load program from disk and launch process
+//  open file for reading
+//  read StartOffset,CodeSize,StackSize,DataSize,Name
+//  Allocate spaces in RAM for data, stack, and code segments 
+//  Reads the object code from file into the code segment
+//  Closes the file
+//  Add program as a process, create a thread for it, and execute
+//    SP => stack segment
+//    R7 => data segment
+//    PC => code segment (entry point at first location)
+// Inputs: name is the name of the file on SDC
+//         priority is the thread priority
+// Output: 1 success, 0 failure
 
+
+//may be called in init
 int OS_LoadProgram(char *name, uint32_t priority){
-  
-  return 0;
+ long sr;
+    OSCRITICAL_ENTER(sr);
+
+    //  Open the program file
+    if(eFile_ROpen(name)){
+        OSCRITICAL_EXIT(sr);
+        return 0; // fail if file can't open
+    }
+
+    //  Read program header, this could be wrong basing off of slides example
+    //     .text
+    //    .thumb
+    //    .align 2
+    //    .global ProgramBlock
+    // ProgramBlock:
+    //    .long Start-ProgramBlock      // offset to start
+    //    .long EndProcess-ProgramBlock // size of code segment
+    //    .long 128                     // size of stack segment
+    //    .long DataSize                // size of data segment
+    //    .string "Fuzzy"               // program name
+    //    .align 2     
+    // Start:
+
+    // EndProcess:
+    Program_t prog;
+    if(eFileReadNextWord(&prog.StartOffset)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
+    if(eFileReadNextWord(&prog.CodeSize)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
+    if(eFileReadNextWord(&prog.StackSize)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
+    if(eFileReadNextWord(&prog.DataSize)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
+
+    
+    for(int i = 0; i < 8; i++){
+        char letter;
+        if(eFile_ReadNext(&letter)){ eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
+        prog.Name[i] = letter;
+    }
+    
+    //  Allocate code and data segments on heap, stack separate 
+    uint8_t *codeSegment = Heap_Malloc(prog.CodeSize); // dont think pid would be assigned correctly
+    uint8_t *dataSegment = Heap_Malloc(prog.DataSize); //would need to search for pid first and not in addprocess?
+    if(!codeSegment || !dataSegment){
+        eFile_RClose();
+        OSCRITICAL_EXIT(sr);
+        return 0;
+    }
+
+    // Read object code into code segment
+    for(uint32_t i = 0; i < prog.CodeSize; i++){
+        char byte;
+        if(eFile_ReadNext(&byte)){  // fail if EOF or read error
+            eFile_RClose();
+            OSCRITICAL_EXIT(sr);
+            return 0;
+        }
+        codeSegment[i] = (uint8_t)byte;
+    }
+
+    // Close the file
+    eFile_RClose();
+
+    // Add process with main thread
+    if(OS_AddProcess(codeSegment, dataSegment, prog.StackSize, priority) == 0){
+        OSCRITICAL_EXIT(sr);
+        return 0; // failed to create process
+    }
+
+    OSCRITICAL_EXIT(sr);
+    return 1; 
 }
 
 
