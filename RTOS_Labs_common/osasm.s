@@ -177,6 +177,23 @@ BX LR                 /* Exception return will restore remaining context */
 SVC_Handler:
     PUSH    {R4-R5,LR}
 
+        /* 1. Get the return address off the stack */
+        LDR R0, [SP, #36]       /* this is the PC saved during exception stack push */
+
+        /* 2. Extract the SVC immediate value */
+        SUBS R0, R0, #2 /* SVC is the instruction directly before the saved PC */
+        LDRB R0, [R0]   /* the lower byte of the SVC instruction has the index */
+        MOVS R1, #0xFF
+        ANDS R0, R0, R1 /* R0 contains the index */
+
+        /* 3. Index into the jump table */
+        MOVS R1, #4
+        MULS R0, R0, R1
+        
+        LDR R1, =SVCJumpTable
+        ADDS R1, R1, R0
+        BX R1
+
     POP     {R4-R5,PC}
 SVCJumpTable:
     .long       OS_Id
