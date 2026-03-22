@@ -83,6 +83,7 @@ int32_t Heap_Free_Logic(void* pointer, uint8_t pid);
  * @brief  Get heap usage
  */
 int32_t Heap_Stats(heap_stats_t *stats);
+int32_t Heap_Stats_Logic(heap_stats_t *stats, uint8_t pid);
 
 
 #endif //#ifndef HEAP_H

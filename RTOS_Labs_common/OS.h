@@ -136,6 +136,7 @@ int OS_AddThread(void(*task)(void),
 // Inputs: none
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void);
+uint32_t OS_PId(void);
 
 //******** OS_AddPeriodicThread *************** 
 // Add a background periodic thread

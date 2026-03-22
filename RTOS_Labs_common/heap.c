@@ -11,7 +11,7 @@ void EndCritical(long);
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
 /* HEAP DEFINITION */
-#define MAX_PROCESSES 32
+#define MAX_PROCESSES 8
 #define HEAP_SIZE_IN_WORDS 64
 static int32_t heap[MAX_PROCESSES][HEAP_SIZE_IN_WORDS];
   // Each process has its own section of heap to prevent overflow, so 32 virtual heaps.
@@ -44,12 +44,12 @@ int32_t Heap_Init(void){
   // Heap_Init() will init two counters at the header and trailer,
   // such that each process' heap will have one giant free block to start with.
 
-  for (int i = 0; i < MAX_PROCESSES - 1; i++){
+  for (int i = 0; i < MAX_PROCESSES; i++){
     heap[i][0] = -(HEAP_SIZE_IN_WORDS - 2);  // Header
     heap[i][HEAP_SIZE_IN_WORDS - 1] = -(HEAP_SIZE_IN_WORDS - 2); // Trailer
   }
   
-  return 0;
+  return 0; // 0 is apparently success for heap init
 }
 
 
@@ -191,11 +191,11 @@ int32_t Heap_Free(void* pointer){ int sr;
 
 int32_t Heap_Free_Logic(void* pointer, uint8_t pid) {
   if (pointer == 0) {
-    return 0; // fail on invalid free
+    return 1; // fail on invalid free, 1 is apparently fail for heap_free
   }
 
-  uint8_t merge_above;
-  uint8_t merge_below;
+  uint8_t merge_above = 0;
+  uint8_t merge_below = 0;
 
   int32_t *block_data = (int32_t *)pointer;
   int32_t block_size = block_data[-1];  // block size is positive, since it is assumed to be previously allocated
@@ -208,19 +208,14 @@ int32_t Heap_Free_Logic(void* pointer, uint8_t pid) {
   // If block is the last block in the heap, cannot merge it below
 
   // 1. Check for merge above
-  if (block_data[-2] < 0) {
-    merge_above = 1;  // previous block is free, merge above
-  } 
-  if (header_index == 0) {
-    merge_above = 0;  // special case where it is the first block
+  if ((header_index > 0) && (block_data[-2] < 0)) {
+    merge_above = 1;
   }
 
   // 2. Check for merge below
-  if (block_data[block_size + 1] < 0) {
-    merge_below = 1; // next block is free, merge below
-  }
-  if ((header_index + block_size + 2) >= HEAP_SIZE_IN_WORDS) {
-    merge_below = 0;  // special case where it is the last block
+  if (((header_index + block_size + 2) < HEAP_SIZE_IN_WORDS) 
+        && (block_data[block_size + 1] < 0)) {
+          merge_below = 1;
   }
 
   // 3. Handle merges
@@ -231,15 +226,15 @@ int32_t Heap_Free_Logic(void* pointer, uint8_t pid) {
     int32_t merged_size = prev_size + block_size + next_size + 4;  // +4 for both pairs of counters
     
     // Update prev block's header and new trailer
-    block_data[-(prev_size + 2)] = -merged_size;  // prev block header
-    block_data[block_size + next_size + 3] = -merged_size;  // next block's trailer
+    block_data[-(prev_size + 3)] = -merged_size;  // prev block header
+    block_data[block_size + next_size + 2] = -merged_size;  // next block's trailer
     
   } else if (merge_above) {
     // Merge above only
     int32_t prev_size = -block_data[-2];
     int32_t merged_size = prev_size + block_size + 2;
     
-    block_data[-(prev_size + 2)] = -merged_size;  // prev header
+    block_data[-(prev_size + 3)] = -merged_size;  // prev header
     block_data[block_size] = -merged_size;  // current trailer
     
   } else if (merge_below) {
@@ -256,7 +251,7 @@ int32_t Heap_Free_Logic(void* pointer, uint8_t pid) {
     block_data[block_size] = -block_size;
   }
 
-return 1;
+return 0; // 0 is apparently success for heap_free
 }
 
 
@@ -275,7 +270,33 @@ int32_t Heap_Test(void){
 // input: none
 // output: a heap_stats_t that describes the current usage of the heap
 int32_t Heap_Stats(heap_stats_t *stats){
-  
+  return Heap_Stats_Logic(stats, OS_PId());
+}
+
+int32_t Heap_Stats_Logic(heap_stats_t *stats, uint8_t pid) {
+  stats->size = HEAP_SIZE_IN_WORDS * 4; // heap size in bytes
+
+  // Find number of bytes used and number of bytes free
+  uint32_t used_bytes = 0;
+  uint32_t free_bytes = 0;
+
+  for (int i = 0; i < HEAP_SIZE_IN_WORDS;) {
+    int32_t block_size = heap[pid][i];  // read header
+    int32_t abs_block_size;
+    
+    if (block_size < 0) {
+      abs_block_size = -block_size;
+      free_bytes += abs_block_size * 4;
+    } else {
+      abs_block_size = block_size;
+      used_bytes += abs_block_size * 4;
+    }
+
+    i+= abs_block_size + 2; // move to next block
+  }
+
+  stats->used = used_bytes;
+  stats->free = free_bytes;
   
   return 0;
 }
