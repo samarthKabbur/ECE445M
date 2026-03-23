@@ -72,7 +72,7 @@ tcb_t tcbs [MAXTHREADS];
 int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
-// int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
 // Stacks will now be stored on the Heap
 
 /* BACKGROUND PERIODIC THREADS 
@@ -610,14 +610,16 @@ int OS_AddProcessThread(void(*task)(void),
   NumThreads++;
 
   // init stack
-  int32_t* stack = AllocateAndSetInitialStack(stackSize, i);
-  if (stack == 0) {
-    OSCRITICAL_EXIT(sr);
-    return 1; // failed allocation
-  }
+  // int32_t* stack = AllocateAndSetInitialStack(stackSize, i);
+  // if (stack == 0) {
+  //   OSCRITICAL_EXIT(sr);
+  //   return 1; // failed allocation
+  // }
+  SetInitialStack(i, stackSize);
+
   //change R7 to datasegment
-  stack[stackSize-9] = (int32_t)(data);  // R7
-  stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  Stacks[i][stackSize-9] = (int32_t)(data);  // R7
+  Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
  //OSCRITICAL_ENTER(sr);
   // insert into  priority sorted circular doubly-linked list
@@ -686,12 +688,14 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   NumThreads++;
 
   // Allocate and init stack
-  int32_t* stack = AllocateAndSetInitialStack(stackSize, i);
-  if (stack == 0) {
-    OSCRITICAL_EXIT(sr);
-    return 1; // failed allocation
-  }
-  stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  // int32_t* stack = AllocateAndSetInitialStack(stackSize, i);
+  // if (stack == 0) {
+  //   OSCRITICAL_EXIT(sr);
+  //   return 1; // failed allocation
+  // }
+  // stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  SetInitialStack(i, stackSize);  // this func was copied from the book
+  Stacks[i][stackSize - 2] = (int32_t)(task);
 
   // insert into  priority sorted circular doubly-linked list
   if (RunPt == (void*)0) {  
@@ -725,6 +729,21 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 
   OSCRITICAL_EXIT(sr);
   return 1;
+}
+
+void SetInitialStack(int i, uint32_t stackSize) {
+  tcbs[i].sp = &Stacks[i][stackSize - 12];  // <-tcb[i].sp;
+  Stacks[i][stackSize-1] = 0x01000000;  // thumb bit
+  Stacks[i][stackSize-3] = 0x14141414;  // R14
+  Stacks[i][stackSize-4] = 0x12121212;  // R12
+  Stacks[i][stackSize-5] = 0x03030303;  // R3
+  Stacks[i][stackSize-6] = 0x02020202;  // R2
+  Stacks[i][stackSize-7] = 0x01010101;  // R1
+  Stacks[i][stackSize-8] = 0x00000000; // R0
+  Stacks[i][stackSize-9] = 0x07070707;  // R7
+  Stacks[i][stackSize-10] = 0x06060606; // R6
+  Stacks[i][stackSize-11] = 0x05050505; // R5
+  Stacks[i][stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
 }
 
 int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i) {

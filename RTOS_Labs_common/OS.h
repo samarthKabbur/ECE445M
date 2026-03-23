@@ -131,6 +131,7 @@ void OS_bSignal(Sema4_t *semaPt);
 int OS_AddThread(void(*task)(void), 
    uint32_t stackSize, uint32_t priority);
 
+void SetInitialStack(int i, uint32_t stackSize);
 int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i);
 
 //******** OS_Id *************** 
