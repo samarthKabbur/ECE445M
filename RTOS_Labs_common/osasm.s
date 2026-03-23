@@ -175,7 +175,7 @@ BX LR                 /* Exception return will restore remaining context */
         .global    ST7735_Message
 .type SVC_Handler, %function
 SVC_Handler:
-    PUSH    {R4-R5,LR}
+    /* PUSH    {R4-R5,LR} */
 
         /* 1. Get the return address off the stack */
         /* 
@@ -192,25 +192,25 @@ SVC_Handler:
         PC      <- SP + 36
         xPSR
         */
-        LDR R0, [SP, #36]       /* R0 = PC */ 
+        LDR R4, [SP, #24]       /* R4 = PC */ 
 
         /* 2. Extract the SVC immediate value */
-        SUBS R0, R0, #2 /* SVC instruction was encoded here at PC - 2*/
-        LDRB R0, [R0]
-        MOVS R1, #0xFF
-        ANDS R0, R0, R1 /* extract the low byte which containts the SVC imm value */
+        SUBS R4, R4, #2 /* SVC instruction was encoded here at PC - 2*/
+        LDRB R4, [R4]
+        MOVS R5, #0xFF
+        ANDS R4, R4, R5 /* extract the low byte which containts the SVC imm value */
 
         /* 3. Index into the jump table */
-        MOVS R1, #4
-        MULS R0, R0, R1
+        MOVS R5, #4
+        MULS R4, R4, R5
 
-        LDR R1, =SVCJumpTable
-        ADDS R0, R0, R1
+        LDR R5, =SVCJumpTable
+        ADDS R4, R4, R5
 
-        LDRH R0, [R0]
-        BX R0
+        LDRH R4, [R4]
+        BX R4
 
-    POP     {R4-R5,PC}
+ /* POP     {R4-R5,PC} */
 SVCJumpTable:
     .long       OS_Id
     .long       OS_Kill

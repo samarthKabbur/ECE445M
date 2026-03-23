@@ -161,7 +161,9 @@ typedef struct process_control_block {
 
 
 pcb_t pcbs[MAX_PROCESSES];
- uint8_t CurrentPID; // set to RunPt->pid; somewhere, most likely in scheduler 
+uint8_t CurrentPID; // set to RunPt->pid; somewhere, most likely in scheduler 
+
+extern Sema4_t LCDFree;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -834,6 +836,7 @@ int OS_AddProcess(void *text, void *data, uint32_t stackSize, uint32_t priority)
 
 //may be called in init
 int OS_LoadProgram(char *name, uint32_t priority){
+  OS_bWait(&LCDFree);
  long sr;
     OSCRITICAL_ENTER(sr);
 
@@ -909,6 +912,7 @@ int OS_LoadProgram(char *name, uint32_t priority){
         return 0; // failed to create process
     }
 
+    OS_bSignal(&LCDFree);
     OSCRITICAL_EXIT(sr);
     return 1; 
 }
@@ -1266,7 +1270,7 @@ void OS_Kill(void){
   RunPt->Status = Free;
   NumThreads--;
   RemoveFromActive(RunPt);
-
+  
   OSCRITICAL_EXIT(sr);
 
   OS_Suspend();
