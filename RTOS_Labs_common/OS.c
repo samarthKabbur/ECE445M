@@ -316,6 +316,8 @@ void OS_Init(void){
   // ST7735_FillScreen(ST7735_BLACK);
    ST7735_SetCursor(0, 0);
   //Enable Interrupts occurs at OS_Launch
+
+  Heap_Init();
 }
 
 /* LINKED LIST HELPER FUNCTIONs */
@@ -870,17 +872,17 @@ int OS_LoadProgram(char *name, uint32_t priority){
     }
     
     //  Allocate code and data segments on heap, stack separate 
-    uint8_t *codeSegment = Heap_Malloc(prog.CodeSize); // dont think pid would be assigned correctly
-    uint8_t *dataSegment = Heap_Malloc(prog.DataSize); //would need to search for pid first and not in addprocess?
+    uint8_t *codeSegment = (uint8_t*)Heap_Malloc(prog.CodeSize); // dont think pid would be assigned correctly
+    uint8_t *dataSegment = (uint8_t*)Heap_Malloc(prog.DataSize); //would need to search for pid first and not in addprocess?
     if(!codeSegment || !dataSegment){
         eFile_RClose();
         OSCRITICAL_EXIT(sr);
         return 0;
     }
-    void *entryPoint = (void *)(codeSegment + prog.StartOffset);
+    void *entryPoint = (void *)(codeSegment); // + prog.StartOffset);
 
     // Read object code into code segment
-    for(uint32_t i = 0; i < prog.CodeSize; i++){
+    for(uint32_t i = 0; i < prog.CodeSize - prog.StartOffset; i++){
         char byte;
         if(eFile_ReadNext(&byte)){  // fail if EOF or read error
             eFile_RClose();
@@ -896,7 +898,10 @@ int OS_LoadProgram(char *name, uint32_t priority){
     // void *entryPoint = codeSegment + prog.StartOffset;
 
     // Close the file
-    eFile_RClose();
+    if(eFile_RClose())  {
+      OSCRITICAL_EXIT(sr);
+      return 0;
+    }
     
     // Add process with main thread
     if(OS_AddProcess(entryPoint, dataSegment, prog.StackSize, priority) == 0){

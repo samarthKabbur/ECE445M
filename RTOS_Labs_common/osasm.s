@@ -206,6 +206,8 @@ SVC_Handler:
 
         LDR R1, =SVCJumpTable
         ADDS R0, R0, R1
+
+        LDRH R0, [R0]
         BX R0
 
     POP     {R4-R5,PC}

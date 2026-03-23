@@ -944,8 +944,8 @@ int Testmain6(void){   // Testmain6
   // create initial foreground threads
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&ProcessLoadTest6,128,1);  
-  NumCreated += OS_AddThread(&Chaos3,128,1);  
-  NumCreated += OS_AddThread(&VirusDetector,128,3); 
+  // NumCreated += OS_AddThread(&Chaos3,128,1);  
+  // NumCreated += OS_AddThread(&VirusDetector,128,3); 
   NumProcessCreated = 0;
 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
@@ -958,7 +958,7 @@ int main(void) { 			// main
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   // realmain();
-  Testmain2();
+  Testmain6();
 }
 
 
