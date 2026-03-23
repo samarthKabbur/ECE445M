@@ -66,13 +66,14 @@ volatile uint32_t TimeUs; // in microseconds
 #define MAX_PROCESSES 32 // should match whats in heap.c
 #define MAXTHREADS 32  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
-                      // (STACKSIZE * NUMTHREADS bytes per stack)
+// (STACKSIZE * NUMTHREADS bytes per stack)
 
 tcb_t tcbs [MAXTHREADS];
 int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
 int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+// TODO: Stacks will now be stored on the Heap
 
 /* BACKGROUND PERIODIC THREADS 
 - scheduled by TimerG8
@@ -650,7 +651,7 @@ if (RunPt == (void*)0) {
   return 1;
 
   
-   }
+}
 
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
@@ -667,7 +668,6 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
     return 0; // fail upon: no thread space available
   }
 
- //OSCRITICAL_ENTER(sr);
   // init tcb fields
   tcbs[i].id = i; 
   tcbs[i].pid = CurrentPID; //cant be i cause then changes for each thread in process ; this may cause and issue with
@@ -681,18 +681,21 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   tcbs[i].Status = Active;
   NumThreads++;
 
-  // init stack
-  SetInitialStack(i, stackSize);  // this func was copied from the book
-  Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  // Allocate and init stack
+  int32_t* stack = AllocateAndSetInitialStack(stackSize, i);
+  if (stack == 0) {
+    OSCRITICAL_EXIT(sr);
+    return 1; // failed allocation
+  }
+  stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
- //OSCRITICAL_ENTER(sr);
   // insert into  priority sorted circular doubly-linked list
-if (RunPt == (void*)0) {  
-  // first thread in system
-  tcbs[i].next = &tcbs[i];
-  tcbs[i].prev = &tcbs[i];
-  RunPt = &tcbs[i];
-} else {
+  if (RunPt == (void*)0) {  
+    // first thread in system
+    tcbs[i].next = &tcbs[i];
+    tcbs[i].prev = &tcbs[i];
+    RunPt = &tcbs[i];
+  } else {
 
   tcb_t *pt = RunPt;
 
@@ -713,28 +716,31 @@ if (RunPt == (void*)0) {
   prevNode->next = &tcbs[i];
   pt->prev = &tcbs[i];
 
-//prevNode <---- newNode ----> pt
-
-}
+  // prevNode <---- newNode ----> pt
+  }
 
   OSCRITICAL_EXIT(sr);
   return 1;
 }
 
+int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i) {
+  int32_t* stack = (int32_t*)Heap_Malloc(stackSize * 4); // mul by 4 to convert from words to bytes
+  if (stack == 0) return 0; // failed allocation
 
-void SetInitialStack(int i, uint32_t stackSize) {
-  tcbs[i].sp = &Stacks[i][stackSize - 12];  // <-tcb[i].sp;
-  Stacks[i][stackSize-1] = 0x01000000;  // thumb bit
-  Stacks[i][stackSize-3] = 0x14141414;  // R14
-  Stacks[i][stackSize-4] = 0x12121212;  // R12
-  Stacks[i][stackSize-5] = 0x03030303;  // R3
-  Stacks[i][stackSize-6] = 0x02020202;  // R2
-  Stacks[i][stackSize-7] = 0x01010101;  // R1
-  Stacks[i][stackSize-8] = 0x00000000; // R0
-  Stacks[i][stackSize-9] = 0x07070707;  // R7
-  Stacks[i][stackSize-10] = 0x06060606; // R6
-  Stacks[i][stackSize-11] = 0x05050505; // R5
-  Stacks[i][stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
+  tcbs[i].sp = &stack[stackSize - 12];  // <-tcb[i].sp;
+  stack[stackSize-1] = 0x01000000;  // thumb bit
+  stack[stackSize-3] = 0x14141414;  // R14
+  stack[stackSize-4] = 0x12121212;  // R12
+  stack[stackSize-5] = 0x03030303;  // R3
+  stack[stackSize-6] = 0x02020202;  // R2
+  stack[stackSize-7] = 0x01010101;  // R1
+  stack[stackSize-8] = 0x00000000; // R0
+  stack[stackSize-9] = 0x07070707;  // R7
+  stack[stackSize-10] = 0x06060606; // R6
+  stack[stackSize-11] = 0x05050505; // R5
+  stack[stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
+
+  return stack;
 }
 
 // ******** OS_AddProcess *************** 
