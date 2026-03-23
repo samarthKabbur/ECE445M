@@ -72,8 +72,8 @@ tcb_t tcbs [MAXTHREADS];
 int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
-int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
-// TODO: Stacks will now be stored on the Heap
+// int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+// Stacks will now be stored on the Heap
 
 /* BACKGROUND PERIODIC THREADS 
 - scheduled by TimerG8
@@ -610,10 +610,14 @@ int OS_AddProcessThread(void(*task)(void),
   NumThreads++;
 
   // init stack
-  SetInitialStack(i, stackSize);  // this func was copied from the book
+  int32_t* stack = AllocateAndSetInitialStack(stackSize, i);
+  if (stack == 0) {
+    OSCRITICAL_EXIT(sr);
+    return 1; // failed allocation
+  }
   //change R7 to datasegment
-  Stacks[i][stackSize-9] = (int32_t)(data);  // R7
-  Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  stack[stackSize-9] = (int32_t)(data);  // R7
+  stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
  //OSCRITICAL_ENTER(sr);
   // insert into  priority sorted circular doubly-linked list
