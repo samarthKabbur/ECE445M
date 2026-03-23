@@ -877,6 +877,7 @@ int OS_LoadProgram(char *name, uint32_t priority){
         OSCRITICAL_EXIT(sr);
         return 0;
     }
+    void *entryPoint = (void *)(codeSegment + prog.StartOffset);
 
     // Read object code into code segment
     for(uint32_t i = 0; i < prog.CodeSize; i++){
@@ -889,11 +890,16 @@ int OS_LoadProgram(char *name, uint32_t priority){
         codeSegment[i] = (uint8_t)byte;
     }
 
+    // im unsure if we read data into data segment 
+    
+    
+    void *entryPoint = codeSegment + prog.StartOffset;
+
     // Close the file
     eFile_RClose();
-
+    
     // Add process with main thread
-    if(OS_AddProcess(codeSegment, dataSegment, prog.StackSize, priority) == 0){
+    if(OS_AddProcess(entryPoint, dataSegment, prog.StackSize, priority) == 0){
         OSCRITICAL_EXIT(sr);
         return 0; // failed to create process
     }
