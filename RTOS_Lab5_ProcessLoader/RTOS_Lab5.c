@@ -566,17 +566,26 @@ void PrintObjectCode(char *name){int i; char data; int status;
   if(eFileReadNextWord(&codesize))  diskError("eFileReadNextWord",0); 
   if(eFileReadNextWord(&stacksize)) diskError("eFileReadNextWord",0); 
   if(eFileReadNextWord(&datasize) ) diskError("eFileReadNextWord",0); 
+  if((startoffset > codesize) || (codesize == 0) || (codesize > 4096)){
+    UART_OutString("\n\rBad object header = ");UART_OutString(name);
+    UART_OutString("\n\r");
+    if(eFile_RClose())  diskError("eFile_RClose",0);
+    return;
+  }
 
   UART_OutString("\n\rFilename = "); 
   i=16; int endofName=1;
   while(i<startoffset){
     status = eFile_ReadNext(&data);
-    if(status == 0) {
-      if(data){
-        if(endofName) UART_OutChar(data);
-      }
-      else endofName=0;
+    if(status){
+      UART_OutString("\n\rUnexpected EOF in name field\n\r");
+      if(eFile_RClose())  diskError("eFile_RClose",0);
+      return;
     }
+    if(data){
+      if(endofName) UART_OutChar(data);
+    }
+    else endofName=0;
     i++;
   }
   UART_OutString("\n\r StartOffset= "); UART_OutUDec(startoffset); 
