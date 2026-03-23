@@ -893,7 +893,7 @@ int OS_LoadProgram(char *name, uint32_t priority){
     // im unsure if we read data into data segment 
     
     
-    void *entryPoint = codeSegment + prog.StartOffset;
+    // void *entryPoint = codeSegment + prog.StartOffset;
 
     // Close the file
     eFile_RClose();
