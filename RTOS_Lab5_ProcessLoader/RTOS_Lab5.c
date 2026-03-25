@@ -926,8 +926,18 @@ void ProcessLoadTest6(void){
   UART_OutString("\n\rOS_LoadProgram Blinky ok\n\r");
   OS_Kill();
 }
+
 void ProcessLoadProg2(void){
-  NumProcessCreated += OS_LoadProgram("Prog2",1);
+  static uint8_t fails = 0;
+  uint8_t process_created = 0;
+  process_created += OS_LoadProgram("Prog2",1);
+  NumProcessCreated +=  process_created;
+  if (process_created == 0) {
+    fails++;
+    ST7735_Message(1, 1, "Fail proc= ", fails);
+  } else {
+    ST7735_Message(1, 2, "Success proc= ", NumProcessCreated);
+  }
 }
 
 int Testmain6(void){   // Testmain6 

@@ -49,6 +49,13 @@ enum state {Free, // free means unallocated or killed
 - Scheduled by Systick and Scheduler
 - Context switched by PendSV
 */
+
+typedef struct malloc {
+  int *sp;  // start of stack
+  int *code;  // for programs
+  int *data;  // for programs
+} malloc_t;
+
 typedef struct tcb {
   int *sp;  // pointer to stack, valid for threads not running
   struct tcb *next; // linked-list pointer
@@ -59,6 +66,7 @@ typedef struct tcb {
   int priority;
   Sema4_t *blocked_ptr; // 0 means unblocked, otherwise is blocked and points to the semaphore that is blocking it
   enum state Status; // active or free or blocked
+  malloc_t malloc;
 } tcb_t;
 
 /**
@@ -132,7 +140,7 @@ int OS_AddThread(void(*task)(void),
    uint32_t stackSize, uint32_t priority);
 
 void SetInitialStack(int i, uint32_t stackSize);
-int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i);
+int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i, uint8_t pid);
 
 //******** OS_Id *************** 
 // returns the thread ID for the currently running thread
@@ -225,6 +233,8 @@ void OS_Sleep(uint32_t sleepTime);
 // input:  none
 // output: none
 void OS_Kill(void); 
+
+void Deallocate_Thread(void);
 
 // ******** OS_Suspend ************
 // suspend execution of currently running thread

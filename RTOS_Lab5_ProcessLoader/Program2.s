@@ -42,7 +42,7 @@ Start2:
 h: LDR  R3,str2off
    ADDS R2,R2,R3
    LDR  R3,[R7,#ID]
-   SVC  #ST7735_Message
+//   SVC  #ST7735_Message
    B    loop2
 loop2:
    MOVS R0,#100
@@ -57,7 +57,7 @@ loop2:
 j: LDR  R3,str2offb
    ADDS R2,R2,R3
    LDR  R3,[R7,#Count]
-   SVC  #ST7735_Message
+//   SVC  #ST7735_Message
    B    loop2
 stop2:
    SVC  #OS_Kill

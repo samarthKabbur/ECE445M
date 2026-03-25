@@ -175,48 +175,33 @@ BX LR                 /* Exception return will restore remaining context */
         .global    ST7735_Message
 .type SVC_Handler, %function
 SVC_Handler:
-    /* PUSH    {R4-R5,LR} */
+    PUSH {R4-R5,LR}
 
-        /* 1. Get the return address off the stack */
-        /* 
-        Current state of the stack after an exception save and context save:
-        R4      <- SP + 0
-        R5      <- SP + 4
-        LR
-        R0
-        R1
-        R2
-        R3
-        R7
-        LR
-        PC      <- SP + 36
-        xPSR
-        */
-        LDR R4, [SP, #24]       /* R4 = PC */ 
+    MOV  R5, SP
+    LDR  R4,[R5,#36]            // Return PC is 9 items down 
+    LDR  R5,=-2
+    LDRH R4,[R4, R5]            // SVC is 2 bytes earlier
+    LDR R5,=0x00FF
+    LDR R0,[SP,#12]             // Set function parameters 
+    LDR R1,[SP,#16]
+    LDR R2,[SP,#20]
+    LDR R3,[SP,#24]
 
-        /* 2. Extract the SVC immediate value */
-        SUBS R4, R4, #2 /* SVC instruction was encoded here at PC - 2*/
-        LDRB R4, [R4]
-        MOVS R5, #0xFF
-        ANDS R4, R4, R5 /* extract the low byte which containts the SVC imm value */
+    // branch now
+    ANDS    R4, R4, R5          // get the ID of the SVC
+    LSLS    R4, R4, #2          // get the correct offset
+    LDR     R5, =SVCJumpTable
+    LDRH    R4, [R5, R4]
+    BLX     R4
+    STR     R0,[SP,#12]   // Store return value
+    POP {R4-R5,PC}    // Return from exception
 
-        /* 3. Index into the jump table */
-        MOVS R5, #4
-        MULS R4, R4, R5
-
-        LDR R5, =SVCJumpTable
-        ADDS R4, R4, R5
-
-        LDRH R4, [R4]
-        BX R4
-
- /* POP     {R4-R5,PC} */
 SVCJumpTable:
     .long       OS_Id
     .long       OS_Kill
     .long       OS_Sleep
     .long       OS_Time
-    .long       OS_AddThread    
+    .long       OS_AddThread
     .long       ST7735_Message
 
 
