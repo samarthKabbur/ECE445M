@@ -137,6 +137,9 @@ void DAS(void){
       if(jitter > MaxJitter3){
         MaxJitter3 = jitter; // in 12.5 ns
       }       // jitter should be 0    
+      if(jitter >= JITTERSIZE3){
+        jitter = JITTERSIZE3 -1;
+      }
       JitterHistogram3[jitter]++; 
     }
     ChecksWork = Checks;
@@ -395,11 +398,11 @@ void DFT(void){ int i;  int32_t real,imag,mag;
 void ProcessLoadBlinky(void){
   UART_OutString("\n\rECE445M Lab 5 Load Blinky\n\r");
   OS_bWait(&LCDFree);
-  if(eFile_Init())              diskError("eFile_Init",0); 
-  if(eFile_Mount())             diskError("eFile_Mount",0);
+  // if(eFile_Init())              diskError("eFile_Init",0); 
+  // if(eFile_Mount())             diskError("eFile_Mount",0);
   OS_bSignal(&LCDFree);
   NumProcessCreated += OS_LoadProgram("Blinky",2);
-  NumProcessCreated += OS_LoadProgram("Prog2",1);
+ // NumProcessCreated += OS_LoadProgram("Prog2",1);
 
   UART_OutString("\n\rOS_LoadProgram Blinky ok\n\r>");
   OS_Kill();
@@ -438,9 +441,9 @@ int realmain(void){     // realmain
   TFLuna2_SaveSettings();  // save format and rate
   TFLuna2_System_Reset();  // start measurements
 
- // if(eFile_Init())              diskError("eFile_Init",0); 
- // if(eFile_Format())            diskError("eFile_Format",0); 
- // if(eFile_Mount())             diskError("eFile_Mount",0);
+ if(eFile_Init())              diskError("eFile_Init",0); 
+//  if(eFile_Format())            diskError("eFile_Format",0); 
+ if(eFile_Mount())             diskError("eFile_Mount",0);
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
@@ -967,8 +970,8 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  // realmain();
-  Testmain6();
+  realmain();
+  //Testmain2();
 }
 
 

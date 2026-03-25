@@ -685,6 +685,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
   int32_t* stack = AllocateAndSetInitialStack(stackSize, i, CurrentPID);
   if (stack == 0) {
     OSCRITICAL_EXIT(sr);
+    UART
     return 1; // failed allocation
   }
 
@@ -1256,7 +1257,9 @@ void OS_Kill(void){
   OSCRITICAL_ENTER(sr);
 
   RunPt->Status = Free;
+   pcbs[RunPt->pid-1].status = PROC_FREE;
   NumThreads--;
+ 
   RemoveFromActive(RunPt);
 
   Deallocate_Thread();
