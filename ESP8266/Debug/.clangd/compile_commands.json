@@ -1,0 +1,57 @@
+[
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/Clock.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\"",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/CriticalSection.s"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/ESP8266main.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/FIFO.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/I2C.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/LaunchPad.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/SSD1306.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/UART.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/UARTints.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/esp8266.c"
+   },
+   {
+      "directory" : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug",
+      "command"   : "clang++ -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source/third_party/CMSIS/Core/Include\" -I\"C:/ti/mspm0_sdk_2_09_00_01/source\" -D__MSPM0G3507__ -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -I\"F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/Debug/syscfg\" -xc",
+      "file"      : "F:/Dropbox/EE345M Class/EE445M/Lab6Update/ESP8266/ticlang/startup_mspm0g3507_ticlang.c"
+   }
+]

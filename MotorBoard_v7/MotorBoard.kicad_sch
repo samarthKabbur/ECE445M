@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "ECE445M Motor Board")
-		(date "2025-12-23")
-		(rev "v7")
+		(date "2026-01-24")
+		(rev "v7.1")
 		(company "The University of Texas at Austin")
 		(comment 1 "Jonathan Valvano")
 	)
@@ -173,6 +173,31 @@
 		)
 		(uuid 207858b1-feea-40fc-b965-ab5805bd61a4)
 	)
+	(bezier
+		(pts
+			(xy 202.565 78.74) (xy 202.565 78.74) (xy 199.39 78.74) (xy 199.39 78.74)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(uuid 22e2f35c-e6d7-403e-a739-5e1863d46684)
+	)
+	(rectangle
+		(start 214.63 129.54)
+		(end 224.155 132.715)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(uuid 29826e0e-c3f3-4c9b-b6b1-bca9fc8be49e)
+	)
 	(rectangle
 		(start 165.1 108.585)
 		(end 231.14 133.985)
@@ -237,6 +262,19 @@
 			(color 255 229 191 1)
 		)
 		(uuid 5355942b-cbec-4ede-9ec7-38d48e1c9759)
+	)
+	(rectangle
+		(start 203.2 123.19)
+		(end 213.995 129.54)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type color)
+			(color 194 194 194 1)
+		)
+		(uuid 5838a44e-4fb1-4f34-861a-af95c5735ed2)
 	)
 	(bezier
 		(pts
@@ -314,6 +352,19 @@
 			(type none)
 		)
 		(uuid 6a0810e7-0998-4084-8b47-650cda95c7ca)
+	)
+	(bezier
+		(pts
+			(xy 202.565 125.73) (xy 202.565 125.73) (xy 199.39 125.73) (xy 199.39 125.73)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(uuid 6ec70596-cf7a-42c6-a312-02b081b7041b)
 	)
 	(rectangle
 		(start 77.47 60.96)
@@ -404,18 +455,6 @@
 			(type none)
 		)
 		(uuid 8017ff60-525a-4ae1-9c53-7bba0d54778e)
-	)
-	(rectangle
-		(start 179.07 126.365)
-		(end 188.595 129.54)
-		(stroke
-			(width 0)
-			(type solid)
-		)
-		(fill
-			(type none)
-		)
-		(uuid 8b5338a1-954b-4e02-a3f9-68fbf2196b12)
 	)
 	(rectangle
 		(start 205.74 117.475)
@@ -598,8 +637,8 @@
 		(uuid de40805f-9c18-41b7-9162-6a22afa715b8)
 	)
 	(rectangle
-		(start 242.57 83.185)
-		(end 252.095 86.36)
+		(start 214.63 82.55)
+		(end 224.155 85.725)
 		(stroke
 			(width 0)
 			(type solid)
@@ -635,16 +674,17 @@
 		(uuid e3c40634-7b79-4ab4-a7be-ce851346cdfb)
 	)
 	(rectangle
-		(start 179.07 79.375)
-		(end 188.595 82.55)
+		(start 203.2 76.2)
+		(end 213.995 82.55)
 		(stroke
 			(width 0)
 			(type solid)
 		)
 		(fill
-			(type none)
+			(type color)
+			(color 194 194 194 1)
 		)
-		(uuid e80dadc7-3ede-4674-8529-3ba724a30e7d)
+		(uuid f0cb5c14-8bc3-4700-9df3-bfe79a53d99c)
 	)
 	(bezier
 		(pts
@@ -748,9 +788,9 @@
 		)
 		(uuid "0021dd3c-0562-4e99-a8d0-a795238a4701")
 	)
-	(text "LM2937 can supply 400mA of 3.3V"
+	(text "Each LM2937 can supply 400mA of 3.3V"
 		(exclude_from_sim no)
-		(at 168.275 89.535 0)
+		(at 141.605 88.9 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -825,6 +865,18 @@
 			)
 		)
 		(uuid "0f69909b-d941-4f52-89cf-82f85a2fdc3d")
+	)
+	(text "3.3V_ESP"
+		(exclude_from_sim no)
+		(at 219.71 77.47 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+				(bold yes)
+			)
+		)
+		(uuid "107160fe-ed65-4560-8190-d49d42fa7bcd")
 	)
 	(text "J3"
 		(exclude_from_sim no)
@@ -914,9 +966,9 @@
 		)
 		(uuid "2b42520e-5e8e-4e93-8809-491927838a8c")
 	)
-	(text "Motor Board: \n  3.3V SSD1306 ESP\n  VOUT 5.0V Servo\n  11.1 DC motors"
+	(text "Motor Board: \n  3.3V_ESP ESP\n  3.3V SSD1306\n  VOUT 5.0V Servo\n  11.1 DC motors"
 		(exclude_from_sim no)
-		(at 195.58 127 0)
+		(at 170.815 128.905 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1030,6 +1082,30 @@
 		)
 		(uuid "4bd1fd51-043a-4a5d-b0e6-ffabe0e53c01")
 	)
+	(text "ESP8266"
+		(exclude_from_sim no)
+		(at 219.075 131.445 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+				(bold yes)
+			)
+		)
+		(uuid "4f180a6d-1137-4a5a-8046-0bcae24aea51")
+	)
+	(text "LM2937"
+		(exclude_from_sim no)
+		(at 207.645 78.74 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+				(bold yes)
+			)
+		)
+		(uuid "5583d102-db1b-4324-9a3c-59aded3d5058")
+	)
 	(text "5V"
 		(exclude_from_sim no)
 		(at 111.76 67.31 0)
@@ -1109,6 +1185,18 @@
 		)
 		(uuid "65fffec2-3946-4fd9-ab7a-0c4344d4cf73")
 	)
+	(text "LM2937"
+		(exclude_from_sim no)
+		(at 207.645 125.73 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+				(bold yes)
+			)
+		)
+		(uuid "6611d491-7746-4867-a4f0-265f39f18192")
+	)
 	(text "5V"
 		(exclude_from_sim no)
 		(at 123.19 114.3 0)
@@ -1130,6 +1218,18 @@
 			)
 		)
 		(uuid "69c74005-89b2-4ced-8722-31f65bca1cbb")
+	)
+	(text "3.3V_ESP"
+		(exclude_from_sim no)
+		(at 219.075 124.46 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+				(bold yes)
+			)
+		)
+		(uuid "75050d53-296c-4fbf-9131-a562b8f27286")
 	)
 	(text "11.1V"
 		(exclude_from_sim no)
@@ -1429,9 +1529,9 @@
 		)
 		(uuid "ce0c3198-6af9-4ef5-927c-c7f999dcfd50")
 	)
-	(text "LM2937 can supply 400mA of 3.3V"
+	(text "Each LM2937 can supply 400mA of 3.3V"
 		(exclude_from_sim no)
-		(at 168.275 136.525 0)
+		(at 144.78 136.525 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1596,9 +1696,9 @@
 		)
 		(uuid "efbf9661-34f8-41f1-8949-199d6ad253bc")
 	)
-	(text "Motor Board: \n  3.3V SSD1306 ESP\n  VOUT 5.0V Servo (not powered)\n  11.1 DC motors (not powered)"
+	(text "Motor Board: \n  3.3V_ESP ESP\n  3.3V SSD1306 \n  VOUT 5.0V Servo (not powered)\n  11.1 DC motors (not powered)"
 		(exclude_from_sim no)
-		(at 197.485 81.28 0)
+		(at 170.18 81.915 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1618,30 +1718,6 @@
 		)
 		(uuid "f2a9a806-2eb5-4255-8fee-1872266bd074")
 	)
-	(text "ESP8266"
-		(exclude_from_sim no)
-		(at 183.515 81.28 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(thickness 0.254)
-				(bold yes)
-			)
-		)
-		(uuid "f418b65f-d644-48ae-bbaf-8cea97c7d260")
-	)
-	(text "ESP8266"
-		(exclude_from_sim no)
-		(at 183.515 128.27 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(thickness 0.254)
-				(bold yes)
-			)
-		)
-		(uuid "f71136b4-8f47-4e7d-8a0e-33db8ee945e3")
-	)
 	(text "11.1V"
 		(exclude_from_sim no)
 		(at 227.965 65.405 0)
@@ -1654,7 +1730,7 @@
 	)
 	(text "ESP8266"
 		(exclude_from_sim no)
-		(at 247.015 85.09 0)
+		(at 219.075 84.455 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1684,16 +1760,6 @@
 			(type solid)
 		)
 		(uuid "0bbb50c7-73b7-4ef3-86af-b57ec29d065a")
-	)
-	(polyline
-		(pts
-			(xy 199.39 63.5) (xy 199.39 67.945)
-		)
-		(stroke
-			(width 0.254)
-			(type solid)
-		)
-		(uuid "0d4f63ce-7873-45da-a84e-e1472e9f60ae")
 	)
 	(polyline
 		(pts
@@ -1729,6 +1795,16 @@
 	)
 	(polyline
 		(pts
+			(xy 173.99 62.865) (xy 173.99 67.945)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(uuid "281feb59-01a6-4203-a695-cbdd0f9d4df5")
+	)
+	(polyline
+		(pts
 			(xy 106.045 82.55) (xy 167.64 82.55)
 		)
 		(stroke
@@ -1737,6 +1813,16 @@
 			(color 132 0 132 1)
 		)
 		(uuid "30a1a608-5a54-432a-bd37-30fc13395459")
+	)
+	(polyline
+		(pts
+			(xy 199.39 62.865) (xy 199.39 67.31)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(uuid "3bd77bf2-eade-4b3e-9c1a-8ee2aba50dcd")
 	)
 	(polyline
 		(pts
@@ -1761,6 +1847,17 @@
 	)
 	(polyline
 		(pts
+			(xy 213.995 78.74) (xy 218.44 78.74)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+			(color 132 0 132 1)
+		)
+		(uuid "487d7f6c-1ae0-4f84-b07e-540220a68a87")
+	)
+	(polyline
+		(pts
 			(xy 228.6 67.31) (xy 228.6 71.755)
 		)
 		(stroke
@@ -1772,17 +1869,6 @@
 	)
 	(polyline
 		(pts
-			(xy 184.15 75.565) (xy 184.15 79.375)
-		)
-		(stroke
-			(width 1.016)
-			(type solid)
-			(color 132 0 132 1)
-		)
-		(uuid "51d33df8-7a02-4bf7-b665-a65d7820896a")
-	)
-	(polyline
-		(pts
 			(xy 168.275 122.555) (xy 168.275 129.54)
 		)
 		(stroke
@@ -1791,6 +1877,17 @@
 			(color 132 0 132 1)
 		)
 		(uuid "542cc946-32a1-43a1-9373-fe2bae751c66")
+	)
+	(polyline
+		(pts
+			(xy 218.44 125.73) (xy 218.44 129.54)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+			(color 132 0 132 1)
+		)
+		(uuid "55ec3a33-7351-450d-9f55-11142ba1ca0a")
 	)
 	(polyline
 		(pts
@@ -1843,6 +1940,16 @@
 			(type solid)
 		)
 		(uuid "61158b00-3245-4fea-a135-34513f31267f")
+	)
+	(polyline
+		(pts
+			(xy 199.39 67.945) (xy 199.39 78.74)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(uuid "629d22e1-c91f-4d51-bd9a-cfb4562bcee7")
 	)
 	(polyline
 		(pts
@@ -1899,17 +2006,6 @@
 	)
 	(polyline
 		(pts
-			(xy 184.15 122.555) (xy 184.15 126.365)
-		)
-		(stroke
-			(width 1.016)
-			(type solid)
-			(color 132 0 132 1)
-		)
-		(uuid "7c698439-812a-420c-802b-776dec5a652a")
-	)
-	(polyline
-		(pts
 			(xy 173.99 110.49) (xy 173.99 115.57)
 		)
 		(stroke
@@ -1917,16 +2013,6 @@
 			(type solid)
 		)
 		(uuid "7e7ff151-4b6f-4f9a-a7f6-c1c6cf9a6542")
-	)
-	(polyline
-		(pts
-			(xy 173.99 63.5) (xy 199.39 63.5)
-		)
-		(stroke
-			(width 0.254)
-			(type solid)
-		)
-		(uuid "8165bb30-27cb-4f32-99d4-bfefcb76474b")
 	)
 	(polyline
 		(pts
@@ -2006,6 +2092,16 @@
 	)
 	(polyline
 		(pts
+			(xy 173.99 62.865) (xy 199.39 62.865)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(uuid "bc110b46-a943-4695-91d1-2159430af879")
+	)
+	(polyline
+		(pts
 			(xy 205.105 114.935) (xy 214.63 114.935)
 		)
 		(stroke
@@ -2046,6 +2142,17 @@
 			(color 0 0 0 1)
 		)
 		(uuid "c5a4fba5-a8d6-499a-8622-5a90ccd56c57")
+	)
+	(polyline
+		(pts
+			(xy 213.995 125.73) (xy 218.44 125.73)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+			(color 132 0 132 1)
+		)
+		(uuid "d55155be-6055-46bf-a140-9e977b8c9a07")
 	)
 	(polyline
 		(pts
@@ -2111,7 +2218,7 @@
 	)
 	(polyline
 		(pts
-			(xy 247.65 79.375) (xy 247.65 83.185)
+			(xy 218.44 78.74) (xy 218.44 82.55)
 		)
 		(stroke
 			(width 1.016)
@@ -2119,6 +2226,16 @@
 			(color 132 0 132 1)
 		)
 		(uuid "f60d0bdc-6b78-4cfd-a5a9-9d19682b64d7")
+	)
+	(polyline
+		(pts
+			(xy 199.39 114.935) (xy 199.39 125.73)
+		)
+		(stroke
+			(width 1.016)
+			(type solid)
+		)
+		(uuid "f6ad7f99-c9b1-439c-8b15-aa161c3ffc14")
 	)
 	(polyline
 		(pts
@@ -2130,16 +2247,6 @@
 			(color 132 0 132 1)
 		)
 		(uuid "f733cc62-4a52-4ea0-a85b-21c1b91ffaed")
-	)
-	(polyline
-		(pts
-			(xy 173.99 63.5) (xy 173.99 67.945)
-		)
-		(stroke
-			(width 0.254)
-			(type solid)
-		)
-		(uuid "f759091f-5f72-4fcf-8e95-22dcdd3b7fd5")
 	)
 	(polyline
 		(pts

@@ -2,8 +2,6 @@
 // Dung Nguyen
 // Wally Guzman
 
-// Launchpad or TM4C123
-#define LAUNCHPAD 		1
  
 // Baudrate for UART connection to ESP8266
 //#define BAUDRATE			74880    // The ESP first boots with 74880 baud and then switches
@@ -22,11 +20,11 @@ enum Menu_Status {RX=0, TX, CONNECTED};
 #define SOFTAP        0
 
 // Access Point Parameters
-// #define SSID_NAME  "YourAP"
-// #define PASSKEY    "YourPassword"
+#define SSID_NAME  "YourAP"
+#define PASSKEY    "YourPassword"
 
-#define SSID_NAME  "utexas-iot"
-#define PASSKEY    ""
+//#define SSID_NAME  "utexas-iot"
+//#define PASSKEY    ""
 
 /* To get the password for the "utexas-iot" network:
 

@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "ECE445M Motor Board")
-		(date "2025-12-23")
-		(rev "v7")
+		(date "2026-01-24")
+		(rev "v7.1")
 		(company "The University of Texas at Austin")
 		(comment 1 "Jonathan Valvano")
 	)

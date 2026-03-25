@@ -318,6 +318,23 @@ void SSD1306_DrawChar(int16_t x, int16_t y, char letter, uint16_t color);
 void SSD1306_DrawString(int16_t x, int16_t y, char *pt, uint16_t color);
 
 /*!
+    @brief  Draw a 3 digit integer
+    @param  x
+            Column of display -- 0 at left to (screen width - 1) at right.
+    @param  y
+            Row of display -- 0 at top to (screen height - 1) at bottom.
+    @param  n
+            unsigned number 0 to 999.
+    @param  color
+            Pixel color, one of: SSD1306_BLACK, SSD1306_WHITE or SSD1306_INVERSE.
+    @return None (void).
+    @note   Changes buffer contents only, no immediate effect on display.
+            Follow up with a call to SSD1306_DisplayBuffer(), or with other
+            graphics commands as needed by one's own application.      
+*/
+void SSD1306_DrawUDec(int16_t x, int16_t y, uint16_t n, uint16_t color);
+
+/*!
     @brief  Clear contents of display buffer (set all pixels to off).
     @return None (void).
     @note   Changes buffer contents only, no immediate effect on display.

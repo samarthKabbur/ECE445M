@@ -7,6 +7,8 @@
 //*********************************************************
 /* Modified by Jonathan Valvano, Sept 19, 2015
    Modified by Andreas Gerstlauer, Apr 13, 2020 
+   Converted to MSPM0 by Jonathan Valvano, Jan 19, 2026
+   Added MSPM0G3507 UART2 by Jonathan Valvano, Jan 26, 2026
  */
 
 #ifndef ESP8266_H
@@ -202,4 +204,8 @@ int ESP8266_WaitForConnection(void);
 // Output: 1 if success, 0 if fail 
 int ESP8266_DisableServer(void);
 
+// if rxecho is active, receive data is also streamed to ReceiveBuffer
+void ESP8266_StartReceiveSearch(char *search);
+
+char * ESP8266_GetReceiveBuffer(void);
 #endif

@@ -544,7 +544,7 @@
       "idf": "",
       "netlist": "",
       "plot": "plots/",
-      "pos_files": "",
+      "pos_files": "./",
       "specctra_dsn": "",
       "step": "v1.0.0/model.step",
       "svg": "",

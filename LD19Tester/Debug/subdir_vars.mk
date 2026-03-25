@@ -2,19 +2,21 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
+SHELL = cmd.exe
+
 # Add inputs and outputs from these tool invocations to the build variables 
 CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LD19.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LaunchPad.c \
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/Clock.c \
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/LD19.c \
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/LaunchPad.c \
 ../RTOS_LD19.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/SPI.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/ST7735_SDC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/fixed.c 
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/SPI.c \
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/ST7735_SDC.c \
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/Timer.c \
+F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/fixed.c 
 
 C_DEPS += \
 ./Clock.d \
@@ -57,13 +59,13 @@ C_DEPS__QUOTED += \
 "fixed.d" 
 
 C_SRCS__QUOTED += \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LD19.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LaunchPad.c" \
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/Clock.c" \
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/LD19.c" \
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/LaunchPad.c" \
 "../RTOS_LD19.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/SPI.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/ST7735_SDC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/fixed.c" 
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/SPI.c" \
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/ST7735_SDC.c" \
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/Timer.c" \
+"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/fixed.c" 
 
 
