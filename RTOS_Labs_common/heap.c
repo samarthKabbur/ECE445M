@@ -11,8 +11,8 @@ void EndCritical(long);
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
 /* HEAP DEFINITION */
-#define MAX_PROCESSES 6
-#define HEAP_SIZE_IN_WORDS 180
+#define MAX_PROCESSES 3
+#define HEAP_SIZE_IN_WORDS 1900
 static int32_t heap[MAX_PROCESSES][HEAP_SIZE_IN_WORDS];
   // Each process has its own section of heap to prevent overflow, so 32 virtual heaps.
   // Each virtual heap has 64, 32-bit words of space.
