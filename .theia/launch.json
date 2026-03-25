@@ -71,6 +71,15 @@
                 "name": "RTOS_Lab3_RTOSpriority",
                 "resourceId": "/RTOS_Lab3_RTOSpriority"
             }
+        },
+        {
+            "name": "RTOS_Lab5_ProcessLoader",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "RTOS_Lab5_ProcessLoader",
+                "resourceId": "/RTOS_Lab5_ProcessLoader"
+            }
         }
     ]
 }

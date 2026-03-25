@@ -22,7 +22,6 @@ typedef struct heap_stats {
   uint32_t free;   // number of bytes available to allocate
 } heap_stats_t;
 
-
 /**
  * @details Initialize the Heap
  * @param  none
@@ -41,6 +40,7 @@ int32_t Heap_Init(void);
  * @brief  Allocate memory
  */
 void* Heap_Malloc(int32_t desiredBytes);
+void* Heap_Malloc_Logic(int32_t desiredBytes, uint8_t pid);
 
 
 /**
@@ -73,6 +73,7 @@ void* Heap_Realloc(void* oldBlock, int32_t desiredBytes);
  * @brief  Free memory
  */
 int32_t Heap_Free(void* pointer);
+int32_t Heap_Free_Logic(void* pointer, uint8_t pid);
 
 
 /**
@@ -82,6 +83,7 @@ int32_t Heap_Free(void* pointer);
  * @brief  Get heap usage
  */
 int32_t Heap_Stats(heap_stats_t *stats);
+int32_t Heap_Stats_Logic(heap_stats_t *stats, uint8_t pid);
 
 
 #endif //#ifndef HEAP_H

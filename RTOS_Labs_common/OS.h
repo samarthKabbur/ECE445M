@@ -49,15 +49,24 @@ enum state {Free, // free means unallocated or killed
 - Scheduled by Systick and Scheduler
 - Context switched by PendSV
 */
+
+typedef struct malloc {
+  int *sp;  // start of stack
+  int *code;  // for programs
+  int *data;  // for programs
+} malloc_t;
+
 typedef struct tcb {
   int *sp;  // pointer to stack, valid for threads not running
   struct tcb *next; // linked-list pointer
   struct tcb *prev; // linked-list pointer, useful when many threads exist and for thread deletion
-  int id;
+  int id;  // thread ID (unique per thread)
+  int pid; // process ID (same for all threads in a process)
   int sleep_st; // 0 means not sleeping, anything else means sleeping
   int priority;
   Sema4_t *blocked_ptr; // 0 means unblocked, otherwise is blocked and points to the semaphore that is blocking it
   enum state Status; // active or free or blocked
+  malloc_t malloc;
 } tcb_t;
 
 /**
@@ -130,11 +139,15 @@ void OS_bSignal(Sema4_t *semaPt);
 int OS_AddThread(void(*task)(void), 
    uint32_t stackSize, uint32_t priority);
 
+void SetInitialStack(int i, uint32_t stackSize);
+int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i, uint8_t pid);
+
 //******** OS_Id *************** 
 // returns the thread ID for the currently running thread
 // Inputs: none
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void);
+uint32_t OS_PId(void);
 
 //******** OS_AddPeriodicThread *************** 
 // Add a background periodic thread
@@ -220,6 +233,8 @@ void OS_Sleep(uint32_t sleepTime);
 // input:  none
 // output: none
 void OS_Kill(void); 
+
+void Deallocate_Thread(void);
 
 // ******** OS_Suspend ************
 // suspend execution of currently running thread

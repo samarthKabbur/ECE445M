@@ -175,15 +175,33 @@ BX LR                 /* Exception return will restore remaining context */
         .global    ST7735_Message
 .type SVC_Handler, %function
 SVC_Handler:
-    PUSH    {R4-R5,LR}
+    PUSH {R4-R5,LR}
 
-    POP     {R4-R5,PC}
+    MOV  R5, SP
+    LDR  R4,[R5,#36]            // Return PC is 9 items down 
+    LDR  R5,=-2
+    LDRH R4,[R4, R5]            // SVC is 2 bytes earlier
+    LDR R5,=0x00FF
+    LDR R0,[SP,#12]             // Set function parameters 
+    LDR R1,[SP,#16]
+    LDR R2,[SP,#20]
+    LDR R3,[SP,#24]
+
+    // branch now
+    ANDS    R4, R4, R5          // get the ID of the SVC
+    LSLS    R4, R4, #2          // get the correct offset
+    LDR     R5, =SVCJumpTable
+    LDRH    R4, [R5, R4]
+    BLX     R4
+    STR     R0,[SP,#12]   // Store return value
+    POP {R4-R5,PC}    // Return from exception
+
 SVCJumpTable:
     .long       OS_Id
     .long       OS_Kill
     .long       OS_Sleep
     .long       OS_Time
-    .long       OS_AddThread    
+    .long       OS_AddThread
     .long       ST7735_Message
 
 

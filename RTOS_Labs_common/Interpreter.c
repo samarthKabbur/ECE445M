@@ -20,10 +20,14 @@
 extern void Lab1_Results(uint32_t d);
 extern void Lab2(void);
 extern void Lab3(void);
+extern void Lab4(void);
 extern void DFT(void);
 extern void Jitter(void);
 extern void Lab4(void);
 extern void Robot(void);
+extern void Lab5(void);
+extern void diskError(char *errtype, int32_t code);
+extern void PrintCode(char *name);
 extern uint32_t Running;           // true while robot is running
 extern uint32_t NumCreated;   // number of foreground threads created
 
@@ -45,7 +49,9 @@ void Cmd_Robot(char* args, int l);
 void Cmd_Format(char* args, int l);
 void Cmd_Dir(char* args, int l);
 void Cmd_Delete(char* args, int l);
+void Cmd_LoadProgram(char* args, int l);
 void Cmd_PrintFile(char* args, int l);
+void Cmd_PrintCode(char* args, int l);
 void Cmd_DFT(char* args, int l);
 void Cmd_Jitter(char* args, int l);
 void Cmd_Help(char* args, int l);
@@ -62,6 +68,8 @@ Command commands[] = {
   {"dir", Cmd_Dir},
   {"delete", Cmd_Delete},
   {"type", Cmd_PrintFile},
+  {"code", Cmd_PrintCode},
+  {"load", Cmd_LoadProgram},
   {"format", Cmd_Format},
   {"jitter", Cmd_Jitter},
   {"dft", Cmd_DFT},
@@ -107,7 +115,7 @@ void Cmd_Lab3_Results(char* args, int l){
 }
 
 void Cmd_Lab4_Results(char* args, int l){
- Lab4();
+  // Lab4();
   UART_OutString("\n");
 }
 
@@ -219,6 +227,22 @@ void Cmd_PrintFile(char* args, int l){
   UART_OutString("\n");
 }
 
+void Cmd_PrintCode(char* args, int l){
+  PrintCode(args);
+
+
+}
+
+void Cmd_LoadProgram(char* args, int l){
+  UART_OutString("Loaded Program: ");
+  UART_OutString(args);
+   UART_OutString("\n");
+ if( OS_LoadProgram(args, 3) == 0){
+  UART_OutString("Failed :(");
+ }
+ 
+}
+
 
   
 
@@ -233,6 +257,8 @@ void Cmd_Help(char* args, int l){
   UART_OutString("\r\ndir                   list files");
   UART_OutString("\r\ndelete *filename*     delete file");
   UART_OutString("\r\ntype *filename*       print file contents");
+  UART_OutString("\r\ncode *program name*   print code contents");
+  UART_OutString("\r\nload *program name*   loads  program");
   UART_OutString("\r\nformat                formats files");
   UART_OutString("\r\nrobot                 runs robot from lab 4");
   UART_OutString("\r\ndft                   prints lab 3 dft results onto screen");

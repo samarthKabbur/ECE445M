@@ -137,6 +137,9 @@ void DAS(void){
       if(jitter > MaxJitter3){
         MaxJitter3 = jitter; // in 12.5 ns
       }       // jitter should be 0    
+      if(jitter >= JITTERSIZE3){
+        jitter = JITTERSIZE3 -1;
+      }
       JitterHistogram3[jitter]++; 
     }
     ChecksWork = Checks;
@@ -395,11 +398,11 @@ void DFT(void){ int i;  int32_t real,imag,mag;
 void ProcessLoadBlinky(void){
   UART_OutString("\n\rECE445M Lab 5 Load Blinky\n\r");
   OS_bWait(&LCDFree);
-  if(eFile_Init())              diskError("eFile_Init",0); 
-  if(eFile_Mount())             diskError("eFile_Mount",0);
+  // if(eFile_Init())              diskError("eFile_Init",0); 
+  // if(eFile_Mount())             diskError("eFile_Mount",0);
   OS_bSignal(&LCDFree);
   NumProcessCreated += OS_LoadProgram("Blinky",2);
-  NumProcessCreated += OS_LoadProgram("Prog2",1);
+ // NumProcessCreated += OS_LoadProgram("Prog2",1);
 
   UART_OutString("\n\rOS_LoadProgram Blinky ok\n\r>");
   OS_Kill();
@@ -438,9 +441,9 @@ int realmain(void){     // realmain
   TFLuna2_SaveSettings();  // save format and rate
   TFLuna2_System_Reset();  // start measurements
 
- // if(eFile_Init())              diskError("eFile_Init",0); 
- // if(eFile_Format())            diskError("eFile_Format",0); 
- // if(eFile_Mount())             diskError("eFile_Mount",0);
+ if(eFile_Init())              diskError("eFile_Init",0); 
+//  if(eFile_Format())            diskError("eFile_Format",0); 
+ if(eFile_Mount())             diskError("eFile_Mount",0);
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
@@ -566,17 +569,26 @@ void PrintObjectCode(char *name){int i; char data; int status;
   if(eFileReadNextWord(&codesize))  diskError("eFileReadNextWord",0); 
   if(eFileReadNextWord(&stacksize)) diskError("eFileReadNextWord",0); 
   if(eFileReadNextWord(&datasize) ) diskError("eFileReadNextWord",0); 
+  if((startoffset > codesize) || (codesize == 0) || (codesize > 4096)){
+    UART_OutString("\n\rBad object header = ");UART_OutString(name);
+    UART_OutString("\n\r");
+    if(eFile_RClose())  diskError("eFile_RClose",0);
+    return;
+  }
 
   UART_OutString("\n\rFilename = "); 
   i=16; int endofName=1;
   while(i<startoffset){
     status = eFile_ReadNext(&data);
-    if(status == 0) {
-      if(data){
-        if(endofName) UART_OutChar(data);
-      }
-      else endofName=0;
+    if(status){
+      UART_OutString("\n\rUnexpected EOF in name field\n\r");
+      if(eFile_RClose())  diskError("eFile_RClose",0);
+      return;
     }
+    if(data){
+      if(endofName) UART_OutChar(data);
+    }
+    else endofName=0;
     i++;
   }
   UART_OutString("\n\r StartOffset= "); UART_OutUDec(startoffset); 
@@ -917,8 +929,18 @@ void ProcessLoadTest6(void){
   UART_OutString("\n\rOS_LoadProgram Blinky ok\n\r");
   OS_Kill();
 }
+
 void ProcessLoadProg2(void){
-  NumProcessCreated += OS_LoadProgram("Prog2",1);
+  static uint8_t fails = 0;
+  uint8_t process_created = 0;
+  process_created += OS_LoadProgram("Prog2",1);
+  NumProcessCreated +=  process_created;
+  if (process_created == 0) {
+    fails++;
+    ST7735_Message(1, 1, "Fail proc= ", fails);
+  } else {
+    ST7735_Message(1, 2, "Success proc= ", NumProcessCreated);
+  }
 }
 
 int Testmain6(void){   // Testmain6 
@@ -935,8 +957,8 @@ int Testmain6(void){   // Testmain6
   // create initial foreground threads
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&ProcessLoadTest6,128,1);  
-  NumCreated += OS_AddThread(&Chaos3,128,1);  
-  NumCreated += OS_AddThread(&VirusDetector,128,3); 
+  // NumCreated += OS_AddThread(&Chaos3,128,1);  
+  // NumCreated += OS_AddThread(&VirusDetector,128,3); 
   NumProcessCreated = 0;
 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
@@ -949,6 +971,7 @@ int main(void) { 			// main
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   realmain();
+  //Testmain2();
 }
 
 
