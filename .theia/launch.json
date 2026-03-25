@@ -71,6 +71,15 @@
                 "name": "RTOS_Lab3_RTOSpriority",
                 "resourceId": "/RTOS_Lab3_RTOSpriority"
             }
+        },
+        {
+            "name": "GP2Y0A",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "GP2Y0A",
+                "resourceId": "/GP2Y0A"
+            }
         }
     ]
 }
