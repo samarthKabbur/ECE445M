@@ -63,17 +63,15 @@ volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
-#define MAX_PROCESSES 16 // should match whats in heap.c
-#define MAXTHREADS 16  // maximum number of threads
+#define MAXTHREADS 32  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
-// (STACKSIZE * NUMTHREADS bytes per stack)
+                      // (STACKSIZE * NUMTHREADS bytes per stack)
 
-tcb_t tcbs[MAXTHREADS];
+tcb_t tcbs [MAXTHREADS];
 int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
-// int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
-// Stacks will now be stored on the Heap
+int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
 
 /* BACKGROUND PERIODIC THREADS 
 - scheduled by TimerG8
@@ -87,7 +85,7 @@ typedef struct periodic_task {
   int priority;
 } periodic_task_t;
 
-#define MAX_PERIODIC_THREADS 8
+#define MAX_PERIODIC_THREADS 64
 int NumPeriodic; //for allocated periodic threads
 
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
@@ -101,7 +99,7 @@ typedef struct button_task {
   int priority; 
 } button_task_t;
 
-#define MAX_BUTTON_THREADS 8  // arbritrary value, TODO change if needed
+#define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
@@ -116,43 +114,6 @@ typedef struct mailbox {
 } mailbox_t;
 
 mailbox_t mailbox;
-
-fifo_t fifo;
-
-//Process Control Block(PCB)
-
-typedef enum {
-  PROC_FREE = 0,
-  PROC_ACTIVE = 1
-} proc_status_t;
-
-typedef struct process_control_block {
-  uint8_t pid;              // Process ID
-
-  proc_status_t status;     // FREE or ACTIVE
-
-  // Memory layout
-  uint32_t StartOffset;     // pointer to code (text)
-  uint32_t CodeSize;
-  uint32_t DataSize;
-  uint32_t StackSize;
-
-  void *data;               // pointer to data segment (optional)
-
-  char Name[8];             // process name
-
-  // Thread tracking (simple version)
-  uint8_t numThreads;       
-} pcb_t;
-
-
-pcb_t pcbs[MAX_PROCESSES];
-uint8_t CurrentPID; // set to RunPt->pid; somewhere, most likely in scheduler 
-
-extern Sema4_t LCDFree;
-fifo_t tfluna1_fifo;
-fifo_t tfluna2_fifo;
-fifo_t tfluna3_fifo;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -193,7 +154,7 @@ void StartOS(void); // implemented in osasm.s
 // used for preemptive foreground thread switch
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
-   // TogglePB4();
+   //TogglePB4();
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
 } // end SysTick_Handler
@@ -205,6 +166,81 @@ void SysTick_Handler(void) {
 int isThreadAvailable(tcb_t *RunPt) {
   return ((RunPt->sleep_st == 0) && (RunPt->blocked_ptr == 0) && (RunPt->Status == Active));
 }
+
+// void Scheduler(void) {
+//   //want to run bestPt
+//   int max = 255;
+//   tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
+//   tcb_t *pt = RunPt->next;
+//   tcb_t *bestPt =0;
+//   do{
+//     if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
+//       if(pt->priority < max|| bestPt ==0){
+//         max = pt->priority; //changes highest priorty to current priority 
+//         bestPt = pt;
+//       }
+//     }
+//     pt = pt->next; //skips at least one
+//   }while(pt != start);
+//   //hopefully at least one runnable thread
+
+
+
+//       // round robin within same priority
+//       pt = bestPt->next;
+//       while(pt != bestPt){
+//         if(isThreadAvailable(pt) && pt->priority == max){
+//             bestPt = pt;
+//             break;
+//         }
+//         pt = pt->next;
+//     }
+
+
+//       RunPt  = bestPt;
+
+
+
+// }
+//probably want to add to blocked before remover from active 
+
+// void Scheduler(void) {
+
+//   tcb_t *currentPt = RunPt;
+
+//   // if the thread is to be blocked move it to the blocked LL
+//   // otherwise remove it if it needs to be killed
+//   if (currentPt->blocked_st != 0) {
+//     Sema4_t *semaPt = (Sema4_t *)currentPt->blocked_st;
+//     RemoveFromActive(currentPt);
+//     AddToBlocked(semaPt, currentPt);
+//   } else if (currentPt->Status == Free) {
+//     RemoveFromActive(currentPt);
+//   }
+
+//   // priority scheduling from mains thread pool
+//   int max = 255;
+//   tcb_t *start = RunPt->next; 
+//   tcb_t *pt = RunPt->next;
+//   tcb_t *bestPt = 0;
+
+//   do {
+//     if (isThreadAvailable(pt)) { 
+//       if (pt->priority < max || bestPt == 0) {
+//         max = pt->priority; 
+//         bestPt = pt;
+//       }
+//     }
+//     pt = pt->next; 
+//   } while(pt != start);
+
+//   if (bestPt) {
+//       RunPt = bestPt;
+//   }
+
+
+
+// }
 
 // TODO: probably want to add to blocked before remover from active 
 void Scheduler(void) {
@@ -276,7 +312,6 @@ void OS_Init(void){
   NumThreads = 0;
   NumPeriodic = 0;
   NumButtonThreads = 0;
-  CurrentPID = 0;
   // mark all foreground threads as free
   for (int i = 0; i < MAXTHREADS; i++) {
     tcbs[i].Status = Free;
@@ -307,8 +342,6 @@ void OS_Init(void){
   // ST7735_FillScreen(ST7735_BLACK);
    ST7735_SetCursor(0, 0);
   //Enable Interrupts occurs at OS_Launch
-
-  Heap_Init();
 }
 
 /* LINKED LIST HELPER FUNCTIONs */
@@ -575,10 +608,13 @@ void OS_bSignal(Sema4_t *semaPt) {
 // In Lab 3, you can ignore the stackSize fields
 // In Lab 4, the stackSize can be 128, 256, or 512 bytes
 
-//same as addthread pretty much just with known pid
 int OS_AddProcessThread(void(*task)(void), 
-   void *data, uint32_t stackSize, uint32_t priority, uint32_t pid){
-	   long sr;
+   uint32_t stackSize, uint32_t priority, uint32_t pid){
+	   return 0;
+   }
+
+int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
+  long sr;
    OSCRITICAL_ENTER(sr);
   // find a thread that is free
   int i;
@@ -594,28 +630,16 @@ int OS_AddProcessThread(void(*task)(void),
 
  //OSCRITICAL_ENTER(sr);
   // init tcb fields
-  tcbs[i].id = i;
-  tcbs[i].pid = pid; 
+  tcbs[i].id = i; 
   tcbs[i].priority = priority;
   tcbs[i].blocked_ptr = 0;
   tcbs[i].sleep_st = 0;
   tcbs[i].Status = Active;
   NumThreads++;
 
-  // Allocate and init stack
-  int32_t* stack = AllocateAndSetInitialStack(stackSize, i, pid);
-  if (stack == 0) {
-    OSCRITICAL_EXIT(sr);
-    return 1; // failed allocation
-  }
-
-  tcbs[i].malloc.sp = stack;
-  tcbs[i].malloc.code = (int*)task;
-  tcbs[i].malloc.data = data;
-
-  //change R7 to datasegment
-  stack[stackSize-9] = (int32_t)(data);  // R7
-  stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
+  // init stack
+  SetInitialStack(i, stackSize);  // this func was copied from the book
+  Stacks[i][stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
 
  //OSCRITICAL_ENTER(sr);
   // insert into  priority sorted circular doubly-linked list
@@ -651,99 +675,21 @@ if (RunPt == (void*)0) {
 
   OSCRITICAL_EXIT(sr);
   return 1;
-
-  
 }
 
-int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
-  long sr;
-   OSCRITICAL_ENTER(sr);
-  // find a thread that is free
-  int i;
-  for (i = 0; i < MAXTHREADS; i++) {
-    if (tcbs[i].Status == Free) {
-      break;
-    }
-  }
-
-  if (i == MAXTHREADS) {
-    return 0; // fail upon: no thread space available
-  }
-
-    //  Allocate and init stack
-  int32_t* stack = AllocateAndSetInitialStack(stackSize, i, CurrentPID);
-  if (stack == 0) {
-    OSCRITICAL_EXIT(sr);
-    return 1; // failed allocation
-  }
-
-  // init tcb fields
-  tcbs[i].id = i; 
-  tcbs[i].pid = CurrentPID; //cant be i cause then changes for each thread in process ; this may cause and issue with
-  //background threads since they dont "belong" to a process ie should be 0 but they still call os_addthread
-  //was thinking to call os_addthread with os_addprocessthread with pid = 0 but doesnt work for forground
-  //threads, so this just sets pid for background threads to current pid for process it interrupts which
-  //idk if thats accurate 
-  tcbs[i].priority = priority;
-  tcbs[i].blocked_ptr = 0;
-  tcbs[i].sleep_st = 0;
-  tcbs[i].Status = Active;
-  NumThreads++;
-
-  stack[stackSize - 2] = (int32_t)(task); // sets the PC field on the stack to the starting address of the task
-
-  // insert into  priority sorted circular doubly-linked list
-  if (RunPt == (void*)0) {  
-    // first thread in system
-    tcbs[i].next = &tcbs[i];
-    tcbs[i].prev = &tcbs[i];
-    RunPt = &tcbs[i];
-  } else {
-
-  tcb_t *pt = RunPt;
-
-  // find first node with lower priority ( higher value)
-  do {
-    if (priority < pt->priority) {
-      break;   
-    }
-    pt = pt->next;
-  } while (pt != RunPt);
-
-  // insert before pt and after previous node
-  tcb_t *prevNode = pt->prev; 
-
-  tcbs[i].next = pt;
-  tcbs[i].prev = prevNode;
-
-  prevNode->next = &tcbs[i];
-  pt->prev = &tcbs[i];
-
-  // prevNode <---- newNode ----> pt
-  }
-
-  OSCRITICAL_EXIT(sr);
-  return 1;
-}
-
-int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i, uint8_t pid) {
-  int32_t* stack = (int32_t*)Heap_Malloc_Logic(stackSize * 4, pid); // mul by 4 to convert from words to bytes
-  if (stack == 0) return 0; // failed allocation
-
-  tcbs[i].sp = &stack[stackSize - 12];  // <-tcb[i].sp;
-  stack[stackSize-1] = 0x01000000;  // thumb bit
-  stack[stackSize-3] = 0x14141414;  // R14
-  stack[stackSize-4] = 0x12121212;  // R12
-  stack[stackSize-5] = 0x03030303;  // R3
-  stack[stackSize-6] = 0x02020202;  // R2
-  stack[stackSize-7] = 0x01010101;  // R1
-  stack[stackSize-8] = 0x00000000; // R0
-  stack[stackSize-9] = 0x07070707;  // R7
-  stack[stackSize-10] = 0x06060606; // R6
-  stack[stackSize-11] = 0x05050505; // R5
-  stack[stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
-
-  return stack;
+void SetInitialStack(int i, uint32_t stackSize) {
+  tcbs[i].sp = &Stacks[i][stackSize - 12];  // <-tcb[i].sp;
+  Stacks[i][stackSize-1] = 0x01000000;  // thumb bit
+  Stacks[i][stackSize-3] = 0x14141414;  // R14
+  Stacks[i][stackSize-4] = 0x12121212;  // R12
+  Stacks[i][stackSize-5] = 0x03030303;  // R3
+  Stacks[i][stackSize-6] = 0x02020202;  // R2
+  Stacks[i][stackSize-7] = 0x01010101;  // R1
+  Stacks[i][stackSize-8] = 0x00000000; // R0
+  Stacks[i][stackSize-9] = 0x07070707;  // R7
+  Stacks[i][stackSize-10] = 0x06060606; // R6
+  Stacks[i][stackSize-11] = 0x05050505; // R5
+  Stacks[i][stackSize-12] = 0x04040404; // R4 <- thread sp (tcbs[i].sp) starts by pointing here
 }
 
 // ******** OS_AddProcess *************** 
@@ -756,142 +702,14 @@ int32_t* AllocateAndSetInitialStack(uint32_t stackSize, int i, uint8_t pid) {
 // This function will be needed for Lab 5
 // In Labs 2-4, this function can be ignored
 int OS_AddProcess(void *text, void *data, uint32_t stackSize, uint32_t priority){ 
-  // should set all threads in the process to have the same pid
-  long sr;
-  OSCRITICAL_ENTER(sr);
-
-  // Find free PCB slot
-  int i;
-  for(i = 0; i < MAX_PROCESSES; i++){
-    if(pcbs[i].status == PROC_FREE){
-      break;
-    }
-  }
-
-  if(i == MAX_PROCESSES){
-    OSCRITICAL_EXIT(sr);
-    return 0; // no process slots available
-  }
-
-  // Assign PID (simple: index+1), none should be 0, 0 is reserved for initial threads
-  uint8_t pid = i + 1;
-
- 
-
- // Add main thread with correct PID, i dont know if we actually need to do this
-    if(OS_AddProcessThread(text, data, stackSize, priority, pid) == 0){
-        OSCRITICAL_EXIT(sr);
-        return 0;
-    }
-
-    // Initialize PCB
-    pcbs[i].pid = pid;
-    pcbs[i].status = PROC_ACTIVE;
-    pcbs[i].StartOffset = (uint32_t)text;
-    pcbs[i].StackSize = stackSize;
-    pcbs[i].numThreads = 1;
-
-    OSCRITICAL_EXIT(sr);
-    return 1;
+  
+  return 0;
 }
 
-// Load program from disk and launch process
-//  open file for reading
-//  read StartOffset,CodeSize,StackSize,DataSize,Name
-//  Allocate spaces in RAM for data, stack, and code segments 
-//  Reads the object code from file into the code segment
-//  Closes the file
-//  Add program as a process, create a thread for it, and execute
-//    SP => stack segment
-//    R7 => data segment
-//    PC => code segment (entry point at first location)
-// Inputs: name is the name of the file on SDC
-//         priority is the thread priority
-// Output: 1 success, 0 failure
 
-
-//may be called in init
 int OS_LoadProgram(char *name, uint32_t priority){
-  OS_bWait(&LCDFree);
- long sr;
-    OSCRITICAL_ENTER(sr);
-
-    //  Open the program file
-    if(eFile_ROpen(name)){
-        OSCRITICAL_EXIT(sr);
-        return 0; // fail if file can't open
-    }
-
-    //  Read program header, this could be wrong basing off of slides example
-    //     .text
-    //    .thumb
-    //    .align 2
-    //    .global ProgramBlock
-    // ProgramBlock:
-    //    .long Start-ProgramBlock      // offset to start
-    //    .long EndProcess-ProgramBlock // size of code segment
-    //    .long 128                     // size of stack segment
-    //    .long DataSize                // size of data segment
-    //    .string "Fuzzy"               // program name
-    //    .align 2     
-    // Start:
-
-    // EndProcess:
-    Program_t prog;
-    if(eFileReadNextWord(&prog.StartOffset)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
-    if(eFileReadNextWord(&prog.CodeSize)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
-    if(eFileReadNextWord(&prog.StackSize)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
-    if(eFileReadNextWord(&prog.DataSize)) { eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
-
-    
-    for(int i = 0; i < 8; i++){
-        char letter;
-        if(eFile_ReadNext(&letter)){ eFile_RClose(); OSCRITICAL_EXIT(sr); return 0; }
-        prog.Name[i] = letter;
-    }
-    
-    //  Allocate code and data segments on heap, stack separate 
-    uint8_t *codeSegment = (uint8_t*)Heap_Malloc(prog.CodeSize); // dont think pid would be assigned correctly
-    uint8_t *dataSegment = (uint8_t*)Heap_Malloc(prog.DataSize); //would need to search for pid first and not in addprocess?
-    if(!codeSegment || !dataSegment){
-        eFile_RClose();
-        OSCRITICAL_EXIT(sr);
-        return 0;
-    }
-    
-    void *entryPoint = (void *)(codeSegment); // + prog.StartOffset);
-
-    // Read object code into code segment
-    for(uint32_t i = 0; i < prog.CodeSize - prog.StartOffset; i++){
-        char byte;
-        if(eFile_ReadNext(&byte)){  // fail if EOF or read error
-            eFile_RClose();
-            OSCRITICAL_EXIT(sr);
-            return 0;
-        }
-        codeSegment[i] = (uint8_t)byte;
-    }
-
-    // im unsure if we read data into data segment 
-    
-    
-    // void *entryPoint = codeSegment + prog.StartOffset;
-
-    // Close the file
-    if(eFile_RClose())  {
-      OSCRITICAL_EXIT(sr);
-      return 0;
-    }
-    
-    // Add process with main thread
-    if(OS_AddProcess(entryPoint, dataSegment, prog.StackSize, priority) == 0){
-        OSCRITICAL_EXIT(sr);
-        return 0; // failed to create process
-    }
-
-    OS_bSignal(&LCDFree);
-    OSCRITICAL_EXIT(sr);
-    return 1; 
+  
+  return 0;
 }
 
 
@@ -903,10 +721,6 @@ int OS_LoadProgram(char *name, uint32_t priority){
 uint32_t OS_Id(void){
   // put Lab 2 (and beyond) solution here
   return RunPt->id;
-}
-
-uint32_t OS_PId(void) {
-  return RunPt->pid;
 }
 
 uint32_t lcm2(uint32_t n1,uint32_t n2){
@@ -1245,28 +1059,14 @@ void OS_Kill(void){
   OSCRITICAL_ENTER(sr);
 
   RunPt->Status = Free;
-   pcbs[RunPt->pid-1].status = PROC_FREE;
   NumThreads--;
- 
   RemoveFromActive(RunPt);
 
-  Deallocate_Thread();
-  
   OSCRITICAL_EXIT(sr);
 
   OS_Suspend();
 
-  if ((__get_IPSR() & 0X1FF) != 0) {
-    return; // return if called from SVC
-  }
-
   while(1){};
-}
-
-void Deallocate_Thread(void) {
-  int sp_free = Heap_Free(RunPt->malloc.sp);
-  int code_free = Heap_Free(RunPt->malloc.code);
-  int data_free = Heap_Free(RunPt->malloc.data);
 }
 
 
@@ -1417,6 +1217,7 @@ int32_t OS_Fifo_Size(void){
 int32_t OS_Fifo_Size_Specific(fifo_t* fifo){
   return fifo->PutI - fifo->GetI;
 }
+
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
 // Inputs:  none

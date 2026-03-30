@@ -305,88 +305,6 @@ void Producer3(uint32_t data){
   } 
 }
 
-uint32_t DataLost;        // data sent by Producer, but not received by Consumer
-uint32_t Distance1;       // mm
-uint32_t Count1;
-uint32_t Index1;
-#define BUFSIZE1 100
-uint32_t DataBuf1[BUFSIZE1]; // distance in mm
-int32_t TheSignal1,TheNoise1,SNR1,sum1,sumsq1;
-int32_t x1[16],ReX1[16],ImX1[16];           // input and output arrays for FFT
-
-//******** Producer1 *************** 
-// The Producer in this lab will be called from the UART2 ISR
-// The TFLuna1 samples distance at about 100 Hz
-// sends data to the consumer, runs periodically at 100Hz
-void Producer1(uint32_t data){ 
-  if(Running){           // finite time run
-    TogglePA16();        // toggle PA16
-    Distance1 = Median5((int32_t) data);
-    Count1++;
-    DataBuf1[Index1] = Distance1;
-    sum1 = sum1+Distance1;
-    Index1++;        // calculation finished
-    if(Index1 >= BUFSIZE1){
-      Index1 = 0;
-      TheSignal1 = sum1/BUFSIZE1;       // units 1
-      sumsq1 = 0;
-      for(int i=0; i<BUFSIZE1; i++){int32_t v;
-        v = 100*(DataBuf1[i]-TheSignal1);
-        sumsq1 = sumsq1+v*v;
-      }
-      TheNoise1 = sqrt2(sumsq1/BUFSIZE1);   // units 0.01
-      SNR1 = (100*TheSignal1)/TheNoise1;  // units 1
-      sum1 = 0;   
-    }
-    TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put(Distance1) == 0){ // send to consumer
-      DataLost++;
-    } 
-    TogglePA16();        // toggle PA16
-  } 
-}
-
-uint32_t DataLost;        // data sent by Producer, but not received by Consumer
-uint32_t Distance3;       // mm
-uint32_t Count3;
-uint32_t Index3;
-#define BUFSIZE3 100
-uint32_t DataBuf3[BUFSIZE3]; // distance in mm
-int32_t TheSignal3,TheNoise3,SNR3,sum3,sumsq3;
-int32_t x3[16],ReX3[16],ImX3[16];           // input and output arrays for FFT
-
-//******** Producer 3*************** 
-// The Producer in this lab will be called from the UART2 ISR
-// The TFLuna3 samples distance at about 100 Hz
-// sends data to the consumer, runs periodically at 100Hz
-void Producer3(uint32_t data){ 
-  if(Running){           // finite time run
-    TogglePA16();        // toggle PA16
-    Distance3 = Median5((int32_t) data);
-    Count3++;
-    DataBuf3[Index3] = Distance3;
-    sum3 = sum3+Distance3;
-    Index3++;        // calculation finished
-    if(Index3 >= BUFSIZE3){
-      Index3 = 0;
-      TheSignal3 = sum3/BUFSIZE3;       // units 1
-      sumsq3 = 0;
-      for(int i=0; i<BUFSIZE3; i++){int32_t v;
-        v = 100*(DataBuf3[i]-TheSignal3);
-        sumsq3 = sumsq3+v*v;
-      }
-      TheNoise3 = sqrt2(sumsq3/BUFSIZE3);   // units 0.01
-      SNR3 = (100*TheSignal3)/TheNoise3;  // units 1
-      sum3 = 0;   
-    }
-    TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put(Distance3) == 0){ // send to consumer
-      DataLost++;
-    } 
-    TogglePA16();        // toggle PA16
-  } 
-}
-
 void Display(void); 
 
 // Describe the error with text on the LCD and then stall. 
@@ -621,14 +539,14 @@ int realmain(void){     // realmain
 
   // hardware init
   ADC0_Init(3,ADCVREF_VDDA);  // PA24 Center ADC0_3, sampling in DAS() 
-	OS_InitSemaphore(&LCDFree, 1);
+  OS_InitSemaphore(&LCDFree, 1);
   // attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
   OS_AddPeriodicThread(&DAS,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
   OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
   
-	// create initial foreground threads
+  // create initial foreground threads
   NumCreated = 0;
   NumCreated += OS_AddThread(&Interpreter,128,1); 
   NumCreated += OS_AddThread(&VirusDetector,128,2);
@@ -939,7 +857,7 @@ int Testmain3(void){   // Testmain3
   OS_Init();           // initialize, disable interrupts
   Logic_Init();
   Running = 1; 
-	OS_InitSemaphore(&LCDFree, 1);
+  OS_InitSemaphore(&LCDFree, 1);
 
   // attach background tasks
   OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
@@ -964,7 +882,7 @@ int Testmain3(void){   // Testmain3
 
 
 //*******************Trampoline for selecting which main to execute**********
-int main(void) { 			// main 
+int main(void) {      // main 
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
