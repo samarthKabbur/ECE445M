@@ -89,6 +89,15 @@
                 "name": "RTOS_SensorBoard",
                 "resourceId": "/RTOS_SensorBoard"
             }
+        },
+        {
+            "name": "RTOS_SensorBoard",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "RTOS_SensorBoard",
+                "resourceId": "/RTOS_SensorBoard"
+            }
         }
     ]
 }
