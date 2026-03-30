@@ -5,8 +5,9 @@
 *.d
 *.idx
 *.o
+*.mk
 
 # Optional: Ignore common build directories where these often live
 bin/
 obj/
-dist/
+dist/Makefile
