@@ -1,4 +1,4 @@
-/* RTOS_Lab4.c
+/* RTOS_MotorBoard.c
  * Jonathan Valvano
  * December 30, 2025
  * Remove 3.3V J101 jumper to run RTOS sensor board or motor board
@@ -19,6 +19,10 @@
 #include "../RTOS_Labs_common/OS.h"
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
+#include "../RTOS_Labs_common/esp8266.h"
+#include "../RTOS_Labs_common/WifiSettings.h"
+
+
 #include <stdio.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
@@ -396,6 +400,99 @@ void DFT(void){ int i;  int32_t real,imag,mag;
 
 //--------------end of Task 5-----------------------------
 
+//--------------For Wifi-----------------------------
+
+// 1) Robot name (up to 10 chars)
+char Name[11] = "Robot17";
+
+// 2) Bump sensors: "00", "01", "10", or "11"
+char Bump[3] = "00";
+
+// 3) Steering pulse width (2000–4000)
+char Steering[6] = "3000";
+
+// 4) Right motor pulse width (4–9996)
+char Right[6] = "1500";
+
+// 5) Left motor pulse width (4–9996)
+char Left[6] = "1500";
+
+// 6) SysTickElapsed (ASCII)
+char SysTickStr[16] = "0";
+
+// 7) AddThreadElapsed (ASCII)
+char AddThreadStr[16] = "0";
+
+// 8) MaxJitter (ASCII)
+char JitterStr[16] = "0";
+
+// Buffer for the full GET request
+char LOGDATA[256] =
+  "GET /php/json/write.php?"
+  "name=Robot17&bump=00&steering=3000&right=1500&left=1500&"
+  "systick=0&addthread=0&jitter=0 "
+  "HTTP/1.0\r\nHOST: embedded.ece.utexas.edu\r\n\r\n";
+
+  extern uint32_t SysTickElapsed;
+  extern uint32_t AddThreadElapsed;
+
+
+
+
+void WiFiThread(void){
+  if(!ESP8266_Connect(true)){
+    while(1);   // cannot connect to AP
+  }
+  
+  for(;;){
+      snprintf(SysTickStr, sizeof(SysTickStr), "%lu", SysTickElapsed);
+      snprintf(AddThreadStr, sizeof(AddThreadStr), "%lu", AddThreadElapsed);
+
+    // Build GET request directly from global ASCII strings
+    snprintf(LOGDATA, sizeof(LOGDATA),
+      "GET /php/json/write.php?"
+      "name=%s&bump=%s&steering=%s&right=%s&left=%s&"
+      "systick=%s&addthread=%s&jitter=%s "
+      "HTTP/1.0\r\nHOST: embedded.ece.utexas.edu\r\n\r\n",
+      Name, Bump, Steering, Right, Left,
+      SysTickStr, AddThreadStr, JitterStr);
+
+    // Send to server
+    if(ESP8266_MakeTCPConnection("embedded.ece.utexas.edu", 80, 0, false)){
+      ESP8266_Send(LOGDATA);
+      ESP8266_CloseTCPConnection();
+    }
+
+    OS_Sleep(100);   // log every 100 ms
+  }
+}
+
+int mainWifi(void){
+// 1. Initialize OS and hardware
+  OS_Init();
+  Logic_Init();
+
+  // 2. Initialize ESP8266
+  if(!ESP8266_Init(true, false)){
+    while(1);   // no WiFi adapter
+  }
+
+
+  // 3. Add WiFi thread (globals-only version)
+  NumCreated += OS_AddThread(&WiFiThread, 512, 2);
+  NumCreated += OS_AddThread(&VirusDetector,128,2);
+
+
+  // 5. Launch OS
+  OS_Launch(TIME_2MS);
+
+  return 0;
+}
+
+
+
+
+
 
 //*******************final user main DEMONTRATE THIS TO TA**********
 int realmain(void){     // realmain
@@ -412,7 +509,7 @@ int realmain(void){     // realmain
   // hardware init
   ADC0_Init(3,ADCVREF_VDDA);  // PA24 Center ADC0_3, sampling in DAS() 
 	OS_InitSemaphore(&LCDFree, 1);
-  // attach background tasks
+  //attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
   OS_AddPeriodicThread(&DAS,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
@@ -746,7 +843,7 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  realmain();
+  mainWifi();
 }
 
 
