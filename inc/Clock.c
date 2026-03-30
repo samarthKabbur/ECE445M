@@ -274,7 +274,7 @@ void SysTick_Wait10ms(uint32_t t){
 
 // initialize G8 for continuous counting
 // Program 4.2.1
-// simply read TIMG8->CTR for 16 bit time
+// simply read TIMG8->COUNTERREGS.CTR for 16 bit time
 // divider must be 1 to 8
 // prescale must be 1 to 256
 // resolution is timerperiod*divider*prescale

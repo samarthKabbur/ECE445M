@@ -6,7 +6,8 @@
 // Modified version by Dung Nguyen, Wally Guzman
 // Modified by Jonathan Valvano, March 28, 2017
 // Consolidated by Andreas Gerstlauer, April 6, 2020 
-
+// Converted to MSPM0G3507 UART1 by Jonathan Valvano, Jan 19, 2026
+// Added MSPM0G3507 UART2 by Jonathan Valvano, Jan 26, 2026
 /* 
   THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHETHER EXPRESS, IMPLIED
   OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF
@@ -15,13 +16,7 @@
   OR CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
 */
 
-// NOTE: ESP8266 resources below:
-// General info and AT commands: http://nurdspace.nl/ESP8266
-// General info and AT commands: http://www.electrodragon.com/w/Wi07c
-// Community forum: http://www.esp8266.com/
-// Offical forum: http://bbs.espressif.com/
-// Example: http://zeflo.com/2014/esp8266-weather-display/
-// Flashing: http://www.xess.com/blog/esp8266-reflash/
+// NOTE: see ESP8266 files in datasheets folder
 
 /* Hardware connections
  Vcc is a separate regulated 3.3V supply with at least 215mA
@@ -31,17 +26,28 @@
  | enna       processor   3   6 |
  |                        4   5 |
  \------------------------------/ 
- Connects (#define below) TM4C123 on either UART1 (PB) or UART2 (PD)
- Reset (#define below) on either PB5 or PB1
- 
- ESP8266    TM4C123 
-  1 URxD    PB1/PD7   UART out of TM4C123, 115200 baud
+ Connects MSPM0 
+    UART1 on (PA17/PA18) or UART2 on (PB17/PB18)
+    Reset on PA25
+    Ok to not access PB19 because of the internal pullup in ESP8266
+ ESP8266    MSPM0     Motor board version 7
+  1 URxD    PA17      UART1 out of MSPM0, into ESP8266 115200 baud
   2 GPIO0             +3.3V for normal operation (ground to flash)
-  3 GPIO2             +3.3V
+  3 GPIO2   PB19      GPIO, high/float on startup, has internal pullup, can be used for I/O
   4 GND     Gnd       GND (70mA)
-  5 UTxD    PB0/PD6   UART out of ESP8266, 115200 baud
+  5 UTxD    PA18      UART out of ESP8266, UART1 into MSPM0 115200 baud
   6 Ch_PD             chip select, 10k resistor to 3.3V
-  7 Reset   PB5/PB1   TM4C123 can issue output low to cause hardware reset
+  7 Reset   PA25      MSPM0 GPIO output, can issue output low to cause hardware reset
+  8 Vcc               regulated 3.3V supply with at least 70mA
+
+ ESP8266    MSPM0     Motor board version 7.1
+  1 URxD    PB17      UART2 out of MSPM0, into ESP8266 115200 baud
+  2 GPIO0             +3.3V for normal operation (ground to flash)
+  3 GPIO2   PB19      GPIO, high/float on startup, has internal pullup, can be used for I/O
+  4 GND     Gnd       GND (70mA)
+  5 UTxD    PB18      UART out of ESP8266, UART2 into MSPM0 115200 baud
+  6 Ch_PD             chip select, 10k resistor to 3.3V
+  7 Reset   PA25      MSPM0 GPIO output, can issue output low to cause hardware reset
   8 Vcc               regulated 3.3V supply with at least 70mA
  */
 
@@ -50,12 +56,13 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../inc/tm4c123gh6pm.h"
-#include "../inc/CortexM.h"
-#include "../RTOS_Labs_common/OS.h"
-#include "../RTOS_Labs_common/UART0int.h"
+#include <ti/devices/msp/msp.h>
+#include "../inc/UART.h"
+#include "../inc/Clock.h"
+#include "../inc/FIFO.h"
 #include "../RTOS_Labs_common/esp8266.h"
 #include "../RTOS_Labs_common/WifiSettings.h"  // access point parameters
+#include "../inc/LaunchPad.h"
 
 /*
 ===========================================================
@@ -63,17 +70,20 @@
 ===========================================================
 */
 
-// #define ESP8266_PB_RST   5  // PB5
-#define ESP8266_PB_RST   1  // PB1
+#define ESP8266_RST   (1<<25)  // PA25
 
-// #define ESP8266_UART     1   // UART1: PB1/PB0
-#define ESP8266_UART     2   // UART2: PD7/PB6
-
-// #define USE_UART_DRV  // Use external UART driver (only works with UART1)
-
-#define FIFOSIZE    1024      // size of the FIFOs (must be power of 2)
-#define FIFOSUCCESS 1         // return value on success
-#define FIFOFAIL    0         // return value on failure
+//#define ESP8266_UART     1   // Motor board v7,  UART1: U1Tx PA17, U1Rx PA18
+#define ESP8266_UART     2  // Motor board v7.1, UART2: U2Tx PB17, U2Rx PB18
+#if ESP8266_UART==1
+#define ESP8266_RX PA18INDEX
+#define ESP8266_TX PA17INDEX
+#else
+#define ESP8266_RX PB18INDEX
+#define ESP8266_TX PB17INDEX
+#endif
+// defined in CriticalSection.s
+long StartCritical(void);
+void EndCritical(long);
 
 #define MAXTRY 1              // number of attempts to send command
 
@@ -93,6 +103,29 @@ static const char ESP8266_SENDOK_RESPONSE[] = "\r\nSEND OK\r\n";
 // Globals for UART driver
 bool ESP8266_EchoResponse = false;
 bool ESP8266_EchoCommand = false;
+void UART_OutCharNonBlock(char data){
+  if((TxFifo_Size() >= (TXFIFOSIZE-1))) return;
+  UART_OutChar(data);
+}
+// UART receive control/data & transmit FIFOs (see FIFO.h)
+uint32_t LostData1;
+// prototypes for private functions
+void     ESP8266TxFifo_Init(void);
+uint32_t ESP8266TxFifo_Put(char data);
+uint32_t ESP8266TxFifo_Get(char *datapt);
+uint32_t ESP8266TxFifo_Size(void);
+void     ESP8266RxFifo_Init(void);
+uint32_t ESP8266RxFifo_Put(char data);
+uint32_t ESP8266RxFifo_Get(char *datapt);
+uint32_t ESP8266RxFifo_Size(void);
+void     ESP8266Rx0Fifo_Init(void);
+uint32_t ESP8266Rx0Fifo_Put(char data);
+uint32_t ESP8266Rx0Fifo_Get(char *datapt);
+uint32_t ESP8266Rx0Fifo_Size(void);
+
+#define FIFOSIZE    1024      // size of the FIFOs (must be power of 2)
+#define FIFOSUCCESS 1         // return value on success
+#define FIFOFAIL    0         // return value on failure
 
 // ESP8266 state
 uint16_t ESP8266_Server = 0;   // server port, if any   
@@ -105,143 +138,32 @@ uint16_t ESP8266_Segment = 0;  // last segment ID for buffered send
 =======================================================================
 */
 
-#ifndef USE_UART_DRV  
-// TX FIFO
-typedef char dataType;
-dataType volatile *ESP8266TxPutPt;  // put next
-dataType volatile *ESP8266TxGetPt;  // get next
-dataType ESP8266TxFifo[FIFOSIZE];
-Sema4Type ESP8266TxRoomLeft;   // Semaphore counting empty spaces in TxFifo
-void ESP8266TxFifo_Init(void){ // this is critical
-  // should make atomic
-  ESP8266TxPutPt = ESP8266TxGetPt = &ESP8266TxFifo[0]; // Empty
-  OS_InitSemaphore(&ESP8266TxRoomLeft, FIFOSIZE-1);  // Initially lots of spaces 
-  // end of critical section
-}
-
-void ESP8266TxFifo_Put(dataType data){
-  OS_Wait(&ESP8266TxRoomLeft);      // If the buffer is full, spin/block
-  *(ESP8266TxPutPt) = data;   // Put
-  ESP8266TxPutPt = ESP8266TxPutPt+1;
-  if(ESP8266TxPutPt ==&ESP8266TxFifo[FIFOSIZE]){
-    ESP8266TxPutPt = &ESP8266TxFifo[0];      // wrap
-  }
-}
-int ESP8266TxFifo_Get(dataType *datapt){
-  if(ESP8266TxPutPt == ESP8266TxGetPt ){
-    return(FIFOFAIL);// Empty if PutPt=GetPt
-  }
-  else{
-    *datapt = *(ESP8266TxGetPt++);
-    if(ESP8266TxGetPt==&ESP8266TxFifo[FIFOSIZE]){
-       ESP8266TxGetPt = &ESP8266TxFifo[0]; // wrap
-    }
-    OS_Signal(&ESP8266TxRoomLeft); // increment if data removed
-    return(FIFOSUCCESS);
-  }
-}
-unsigned int ESP8266TxFifo_Size(void){
-  return(((unsigned int)ESP8266TxPutPt - (unsigned int)ESP8266TxGetPt)& FIFOSIZE-1) ;
-}
-#endif
-
-// RX FIFO
-dataType volatile *ESP8266RxPutPt;  // put next
-dataType volatile *ESP8266RxGetPt;  // get next
-dataType static ESP8266RxFifo[FIFOSIZE];
-Sema4Type ESP8266RxFifoAvailable;   // Semaphore counting data in RxFifo
-void ESP8266RxFifo_Init(void){ // this is critical
-  // should make atomic
-  ESP8266RxPutPt = ESP8266RxGetPt = &ESP8266RxFifo[0]; // Empty
-  OS_InitSemaphore(&ESP8266RxFifoAvailable, 0);  // Initially empty 
-  // end of critical section
-}
-int ESP8266RxFifo_Put(dataType data){
-  dataType volatile *nextPutPt;
-  nextPutPt = ESP8266RxPutPt+1;
-  if(nextPutPt ==&ESP8266RxFifo[FIFOSIZE]){
-    nextPutPt = &ESP8266RxFifo[0];      // wrap
-  }
-  if(nextPutPt == ESP8266RxGetPt){
-    return(FIFOFAIL);  // Failed, fifo full
-  }
-  else{
-    *(ESP8266RxPutPt) = data;   // Put
-    ESP8266RxPutPt = nextPutPt; // Success, update
-    OS_Signal(&ESP8266RxFifoAvailable); // increment only if data actually stored
-    return(FIFOSUCCESS);
-  }
-}
-dataType ESP8266RxFifo_Get(void){ dataType data;
-  OS_Wait(&ESP8266RxFifoAvailable);
-  data = *(ESP8266RxGetPt++);
-  if(ESP8266RxGetPt==&ESP8266RxFifo[FIFOSIZE]){
-     ESP8266RxGetPt = &ESP8266RxFifo[0]; // wrap
-  }
-  return data;
-} 
-unsigned int ESP8266RxFifo_Size(void){
-  return(((unsigned int)ESP8266RxPutPt - (unsigned int)ESP8266RxGetPt)& FIFOSIZE-1);
-}
-
-// RX0 FIFO
-dataType volatile *ESP8266Rx0PutPt;  // put next
-dataType volatile *ESP8266Rx0GetPt;  // get next
-dataType static ESP8266Rx0Fifo[FIFOSIZE];
-Sema4Type ESP8266Rx0FifoAvailable;   // Semaphore counting data in RxFifo
-void ESP8266Rx0Fifo_Init(void){ // this is critical
-  // should make atomic
-  ESP8266Rx0PutPt = ESP8266Rx0GetPt = &ESP8266Rx0Fifo[0]; // Empty
-  OS_InitSemaphore(&ESP8266Rx0FifoAvailable, 0);  // Initially empty 
-  // end of critical section
-}
-int ESP8266Rx0Fifo_Put(dataType data){
-  dataType volatile *nextPutPt;
-  nextPutPt = ESP8266Rx0PutPt+1;
-  if(nextPutPt ==&ESP8266Rx0Fifo[FIFOSIZE]){
-    nextPutPt = &ESP8266Rx0Fifo[0];      // wrap
-  }
-  if(nextPutPt == ESP8266Rx0GetPt){
-    return(FIFOFAIL);  // Failed, fifo full
-  }
-  else{
-    *(ESP8266Rx0PutPt) = data;   // Put
-    ESP8266Rx0PutPt = nextPutPt; // Success, update
-    OS_Signal(&ESP8266Rx0FifoAvailable); // increment only if data actually stored
-    return(FIFOSUCCESS);
-  }
-}
-dataType ESP8266Rx0Fifo_Get(void){ dataType data;
-  OS_Wait(&ESP8266Rx0FifoAvailable);
-  data = *(ESP8266Rx0GetPt++);
-  if(ESP8266Rx0GetPt==&ESP8266Rx0Fifo[FIFOSIZE]){
-     ESP8266Rx0GetPt = &ESP8266Rx0Fifo[0]; // wrap
-  }
-  return data;
-} 
-unsigned int ESP8266Rx0Fifo_Size(void){
-  return(((unsigned int)ESP8266Rx0PutPt - (unsigned int)ESP8266Rx0GetPt)& FIFOSIZE-1);
-}
-
 // make letter lower-case
 char lc(char letter){
   if((letter>='A')&&(letter<='Z')) letter |= 0x20;
   return letter;
 }
-
-//---------DelayMs-----
-// Busy wait n milliseconds
-// Input: time to wait in msec
-// Outputs: none
-void DelayMs(uint32_t n){
-  volatile uint32_t time;
-  while(n){
-    time = 6665;  // 1msec, tuned at 80 MHz
-    while(time){
-      time--;
-    }
-    n--;
+// ***** Receive buffer ***
+#define RECBUFMAX 16
+char ReceiveSearch[16];
+uint32_t ReceiveIndex=0;
+uint32_t ReceiveSize;
+uint32_t ReceiveMode;
+void ESP8266_StartReceiveSearch(char *search){
+  ReceiveIndex = 0;
+  int i=0;
+  while(search[i]){
+    ReceiveSearch[i] = search[i];
+    i++;
   }
+  ReceiveSize = i;
+  ReceiveMode = 1; // searching
+}
+char * ESP8266_GetReceiveBuffer(void){
+  if(ReceiveMode==3){
+    return ReceiveSearch;
+  }
+  return 0;
 }
 
 const char ReceiveDataSearchString[]="+IPD,";
@@ -331,127 +253,181 @@ bool ReceiveDataFilter(char letter){
 
 #define UART_ESP8266(identifier) UART_NAME(ESP8266_UART,identifier)
 
-#ifdef USE_UART_DRV
 
-#if ESP8266_UART==1
-#include "../inc/UART1.h"
-#elif ESP8266_UART==2
-#include "../inc/UART2.h"
-#endif
-
-//--------ESP8266_InitUart--------
-// Intializes uart needed to communicate with esp8266
-// Configure UART for 115200bps operation
-// Inputs: none
-// Outputs: none
-void ESP8266_InitUART(int rx_echo, int tx_echo){ 
-  ESP8266RxFifo_Init();
-  ESP8266Rx0Fifo_Init();  
-  ESP8266_EchoResponse = rx_echo;
-  ESP8266_EchoCommand = tx_echo;
-  UART_ESP8266(_Init)(BAUDRATE);
-}
-
-//--------ESP8266_OutChar--------
-// Prints a character to the esp8226 via uart
-// Inputs: character to transmit
-// Outputs: none
-void ESP8266_OutChar(char data){
-    UART_ESP8266(_OutChar)(data);
-    if(ESP8266_EchoCommand) UART_OutChar(data); // echo debugging
-}
-
-//--------ESP8266_EnableInterrupt--------
-// Enables uart interrupt
-// Inputs: none
-// Outputs: none
-void ESP8266_EnableInterrupt(void){
-  UART_ESP8266(_EnableRXInterrupt)();
-}
-
-//--------ESP8266_DisableInterrupt--------
-// Disables uart interrupt
-// Inputs: none
-// Outputs: none
-void ESP8266_DisableInterrupt(void){
-  UART_ESP8266(_DisableRXInterrupt)();
-}
-
-//----------ESP8266RxToBuffer----------
-// Copies uart fifo to RX buffer (software defined FIFO)
-// Inputs: none
-// Outputs:none
-void static ESP8266RxToBuffer(void){
-  char letter;
-  while(((UART_ESP8266(_FR_R)&UART_FR_RXFE) == 0) && (ESP8266RxFifo_Size() < (FIFOSIZE - 1))){
-    letter = UART_ESP8266(_DR_R);
-    if(ESP8266_EchoResponse){
-      UART_OutCharNonBlock(letter); // echo
-    }
-    if(!ReceiveDataFilter(letter)) {
-      ESP8266RxFifo_Put(letter);
-    }
-  }
-}
-
-//----------UART_Handler----------
-// At least one of three things has happened:
-// hardware RX FIFO goes from 1 to 2 or more items
-// UART receiver has timed out
-void UART_ESP8266(_Handler)(void){
-  if(UART_ESP8266(_RIS_R)&UART_RIS_RXRIS){       // hardware RX FIFO >= 2 items
-    UART_ESP8266(_ICR_R) = UART_ICR_RXIC;        // acknowledge RX FIFO
-    ESP8266RxToBuffer();
-  }
-  if(UART_ESP8266(_RIS_R)&UART_RIS_RTRIS){       // receiver timed out
-    UART_ESP8266(_ICR_R) = UART_ICR_RTIC;        // acknowledge receiver time out
-    ESP8266RxToBuffer();
-  }
-}
-
-#else
+// power Domain PD0
+// for 80MHz bus clock, UART1/UART2 clocks are ULPCLK 40MHz
 
 //------------------- ESP8266InitUART-------------------
 // Intializes uart needed to communicate with esp8266
 // Configure UART for 115200bps operation
 // Inputs: RX and/or TX echo for debugging
 // Outputs: none
-void ESP8266_InitUART(int rx_echo, int tx_echo){ volatile int delay;
+void ESP8266_InitUART(int rx_echo, int tx_echo){ 
   ESP8266TxFifo_Init();
   ESP8266RxFifo_Init();
   ESP8266Rx0Fifo_Init();  
   ESP8266_EchoResponse = rx_echo;
   ESP8266_EchoCommand = tx_echo;
 #if ESP8266_UART==1
-  SYSCTL_RCGCUART_R |= 0x02; // Enable UART1
-  while((SYSCTL_PRUART_R&0x02)==0){};
-  SYSCTL_RCGCGPIO_R |= 0x02; // Enable PORT B clock gating
-  while((SYSCTL_PRGPIO_R&0x02)==0){};
-  GPIO_PORTB_AFSEL_R |= 0x03;
-  GPIO_PORTB_PCTL_R =(GPIO_PORTB_PCTL_R&0xFF0FFF00)|0x00000011;
-  GPIO_PORTB_DEN_R   |= 0x23; //23
-  GPIO_PORTB_DATA_R |= 0x20; // reset high
+    // do not reset or activate PortA, already done in LaunchPad_Init
+    // RSTCLR to GPIOA and UART1 peripherals
+    //   bits 31-24 unlock key 0xB1
+    //   bit 1 is Clear reset sticky bit
+    //   bit 0 is reset gpio port
+ // GPIOA->GPRCM.RSTCTL = (uint32_t)0xB1000003; // called previously
+  UART1->GPRCM.RSTCTL = 0xB1000003;
+    // Enable power to GPIOA and UART1 peripherals
+    // PWREN
+    //   bits 31-24 unlock key 0x26
+    //   bit 0 is Enable Power
+ // GPIOA->GPRCM.PWREN = (uint32_t)0x26000001; // called previously
+  UART1->GPRCM.PWREN = 0x26000001;
+  Clock_Delay(24); // time for uart to power up
+
+ // the following code selects which pins to use
+  IOMUX->SECCFG.PINCM[ESP8266_RX]  = 0x00040082;
+  //bit 18 INENA input enable
+  //bit 7  PC connected
+  //bits 5-0=2 for UART1_Rx
+
+  // configure  alternate UART1 transmit function
+  IOMUX->SECCFG.PINCM[ESP8266_TX]  = 0x00000082;
+  //bit 7  PC connected
+  //bits 5-0=2 for UART1_Tx
+  
+  UART1->CLKSEL = 0x08; // bus clock
+  UART1->CLKDIV = 0x00; // no divide
+  UART1->CTL0 &= ~0x01; // disable UART1
+  UART1->CTL0 = 0x00020018;
+   // bit  17    FEN=1    enable FIFO
+   // bits 16-15 HSE=00   16x oversampling
+   // bit  14    CTSEN=0  no CTS hardware
+   // bit  13    RTSEN=0  no RTS hardware
+   // bit  12    RTS=0    not RTS
+   // bits 10-8  MODE=000 normal
+   // bits 6-4   TXE=001  enable TxD
+   // bit  3     RXE=1    enable TxD
+   // bit  2     LBE=0    no loop back
+   // bit  0     ENABLE   0 is disable, 1 to enable
+  if(Clock_Freq() == 40000000){
+      // 20000000/16 = 1,250,000 Hz
+     // Baud = 115200
+      //    1,250,000/115200 = 10.8506944444
+      //   divider = 10+54/64 = 10.84375
+    UART1->IBRD = 10;
+    UART1->FBRD = 54; // baud =1,250,000/10.84375 = 115,273.77
+  }else if (Clock_Freq() == 32000000){
+    // 32000000/16 = 2,000,000
+     // Baud = 115200
+      //    2,000,000/115200 = 17.3611111
+      //   divider = 21+23/64 = 17.359375
+    UART1->IBRD = 17;
+    UART1->FBRD = 23; // 115,211.52
+  }else if (Clock_Freq() == 80000000){
+     // 40000000/16 = 2,500,000 Hz
+     // Baud = 115200
+      //    2,500,000/115200 = 21.701388
+      //   divider = 21+45/64 = 21.703125
+    UART1->IBRD = 21;
+    UART1->FBRD = 45; // baud =2,500,000/21.703125 = 115,191
+  }else return;
+  UART1->LCRH = 0x00000030;
+   // bits 5-4 WLEN=11 8 bits
+   // bit  3   STP2=0  1 stop
+   // bit  2   EPS=0   parity select
+   // bit  1   PEN=0   no parity
+   // bit  0   BRK=0   no break
+  UART1->CPU_INT.IMASK = 0x0C01;
+  // bit 11 TXINT yes
+  // bit 10 RXINT yes
+  // bit 0  Receive timeout, yes
+  UART1->IFLS = 0x0422;
+  // bits 11-8 RXTOSEL receiver timeout select 4 (0xF highest)
+  // bits 6-4  RXIFLSEL 2 is greater than or equal to half
+  // bits 2-0  TXIFLSEL 2 is less than or equal to half
+
+  UART1->CTL0 |= 0x01; // enable UART1
 #else
-  SYSCTL_RCGCUART_R |= 0x04; // Enable UART2
-  while((SYSCTL_PRUART_R&0x04)==0){};
-  SYSCTL_RCGCGPIO_R |= 0x0A; // Enable PORT B,D clock gating
-  while((SYSCTL_PRGPIO_R&0x08)==0){}; 
-  GPIO_PORTD_LOCK_R = 0x4C4F434B;   // 2) unlock GPIO Port D
-  GPIO_PORTD_CR_R = 0xFF;           // allow changes to PD7
-  GPIO_PORTD_AFSEL_R |= 0xC0; // PD7,PD6 UART2
-  GPIO_PORTD_PCTL_R =(GPIO_PORTD_PCTL_R&0x00FFFFFF)|0x11000000;
-  GPIO_PORTD_DEN_R   |= 0xC0; //PD6,PD7 UART2 
+    // do not reset or activate PortB, already done in LaunchPad_Init
+    // RSTCLR to GPIOB and UART2 peripherals
+    //   bits 31-24 unlock key 0xB1
+    //   bit 1 is Clear reset sticky bit
+    //   bit 0 is reset gpio port
+ // GPIOB->GPRCM.RSTCTL = (uint32_t)0xB1000003; // called previously
+  UART2->GPRCM.RSTCTL = 0xB1000003;
+    // Enable power to GPIOB and UART2 peripherals
+    // PWREN
+    //   bits 31-24 unlock key 0x26
+    //   bit 0 is Enable Power
+ // GPIOB->GPRCM.PWREN = (uint32_t)0x26000001; // called previously
+  UART2->GPRCM.PWREN = 0x26000001;
+  Clock_Delay(24); // time for uart to power up
+
+ // the following code selects which pins to use
+  IOMUX->SECCFG.PINCM[ESP8266_RX]  = 0x00040082;
+  //bit 18 INENA input enable
+  //bit 7  PC connected
+  //bits 5-0=2 for UART2_Rx
+
+  // configure  alternate UART2 transmit function
+  IOMUX->SECCFG.PINCM[ESP8266_TX]  = 0x00000082;
+  //bit 7  PC connected
+  //bits 5-0=2 for UART2_Tx
+  
+  UART2->CLKSEL = 0x08; // bus clock
+  UART2->CLKDIV = 0x00; // no divide
+  UART2->CTL0 &= ~0x01; // disable UART2
+  UART2->CTL0 = 0x00020018;
+   // bit  17    FEN=1    enable FIFO
+   // bits 16-15 HSE=00   16x oversampling
+   // bit  14    CTSEN=0  no CTS hardware
+   // bit  13    RTSEN=0  no RTS hardware
+   // bit  12    RTS=0    not RTS
+   // bits 10-8  MODE=000 normal
+   // bits 6-4   TXE=001  enable TxD
+   // bit  3     RXE=1    enable TxD
+   // bit  2     LBE=0    no loop back
+   // bit  0     ENABLE   0 is disable, 1 to enable
+  if(Clock_Freq() == 40000000){
+      // 20000000/16 = 1,250,000 Hz
+     // Baud = 115200
+      //    1,250,000/115200 = 10.8506944444
+      //   divider = 10+54/64 = 10.84375
+    UART2->IBRD = 10;
+    UART2->FBRD = 54; // baud =1,250,000/10.84375 = 115,273.77
+  }else if (Clock_Freq() == 32000000){
+    // 32000000/16 = 2,000,000
+     // Baud = 115200
+      //    2,000,000/115200 = 17.3611111
+      //   divider = 21+23/64 = 17.359375
+    UART2->IBRD = 17;
+    UART2->FBRD = 23; // 115,211.52
+  }else if (Clock_Freq() == 80000000){
+     // 40000000/16 = 2,500,000 Hz
+     // Baud = 115200
+      //    2,500,000/115200 = 21.701388
+      //   divider = 21+45/64 = 21.703125
+    UART2->IBRD = 21;
+    UART2->FBRD = 45; // baud =2,500,000/21.703125 = 115,191
+  }else return;
+  UART2->LCRH = 0x00000030;
+   // bits 5-4 WLEN=11 8 bits
+   // bit  3   STP2=0  1 stop
+   // bit  2   EPS=0   parity select
+   // bit  1   PEN=0   no parity
+   // bit  0   BRK=0   no break
+  UART2->CPU_INT.IMASK = 0x0C01;
+  // bit 11 TXINT yes
+  // bit 10 RXINT yes
+  // bit 0  Receive timeout, yes
+  UART2->IFLS = 0x0422;
+  // bits 11-8 RXTOSEL receiver timeout select 4 (0xF highest)
+  // bits 6-4  RXIFLSEL 2 is greater than or equal to half
+  // bits 2-0  TXIFLSEL 2 is less than or equal to half
+
+  UART2->CTL0 |= 0x01; // enable UART2
 #endif  
-  UART_ESP8266(_CTL_R) &= ~UART_CTL_UARTEN;                  // Clear UART enable bit during config
-  UART_ESP8266(_IBRD_R) = (80000000/16)/BAUDRATE;   
-  UART_ESP8266(_FBRD_R) = ((64*((80000000/16)%BAUDRATE))+BAUDRATE/2)/BAUDRATE;      
-// UART_ESP8266(_IBRD_R) = 43;   // IBRD = int(80,000,000 / (16 * 115,200)) = int(43.403)
-// UART_ESP8266(_FBRD_R) = 26;   // FBRD = round(0.4028 * 64 ) = 26
-  UART_ESP8266(_LCRH_R) = (UART_LCRH_WLEN_8|UART_LCRH_FEN);  // 8 bit word length, 1 stop, no parity, FIFOs enabled
-  UART_ESP8266(_IFLS_R) &= ~0x3F;                            // Clear TX and RX interrupt FIFO level fields
-  UART_ESP8266(_IFLS_R) += (UART_IFLS_TX1_8|UART_IFLS_RX1_8);// RX and TX FIFO interrupt threshold >= 1/8th full
-  UART_ESP8266(_IM_R)  |= (UART_IM_RXIM|UART_IM_TXIM|UART_IM_RTIM); // Enable interupt on TX, RX and RX transmission end
-  UART_ESP8266(_CTL_R) |= (UART_CTL_UARTEN|UART_CTL_RXE|UART_CTL_TXE); // Set UART enable bit 
+
 }
 
 //--------ESP8266_EnableInterrupt--------
@@ -460,11 +436,13 @@ void ESP8266_InitUART(int rx_echo, int tx_echo){ volatile int delay;
 // Outputs: none
 void ESP8266_EnableInterrupt(void){
 #if ESP8266_UART==1
-  NVIC_PRI1_R = (NVIC_PRI1_R&0xFF00FFFF)|0x00400000; // bits 21-23
-  NVIC_EN0_R = 1<<6;           // enable interrupt 6 in NVIC
+  NVIC->ICPR[0] = 1<<13; // UART1 is IRQ 13
+  NVIC->ISER[0] = 1<<13;
+  NVIC->IP[3] = (NVIC->IP[3]&(~0x0000FF00))|(1<<14);    // set priority (bits 15,14) IRQ 13
 #else
-  NVIC_PRI8_R = (NVIC_PRI1_R&0xFFFF00FF)|0x00004000; // bits 15-13
-  NVIC_EN1_R = 1<<1;           // enable interrupt 33 in NVIC
+  NVIC->ICPR[0] = 1<<14; // UART2 is IRQ 14
+  NVIC->ISER[0] = 1<<14;
+  NVIC->IP[3] = (NVIC->IP[3]&(~0x00FF0000))|(1<<22);    // set priority (bits 23,22) IRQ 14
 #endif    
 }
 
@@ -474,9 +452,9 @@ void ESP8266_EnableInterrupt(void){
 // Outputs: none
 void ESP8266_DisableInterrupt(void){
 #if ESP8266_UART==1
-  NVIC_DIS0_R = 1<<6;           // disable interrupt 6 in NVIC
+  NVIC->ICER[0] = 1<<13; // UART1 is IRQ 13
 #else
-  NVIC_DIS1_R = 1<<1;           // disable interrupt 33 in NVIC
+  NVIC->ICER[0] = 1<<14; // UART2 is IRQ 14
 #endif    
 }
 
@@ -486,14 +464,25 @@ void ESP8266_DisableInterrupt(void){
 // Outputs:none
 void static ESP8266BufferToTx(void){
   char letter;
-  while(((UART_ESP8266(_FR_R)&UART_FR_TXFF) == 0) && (ESP8266TxFifo_Size() > 0)){
+#if ESP8266_UART==1
+  while(((UART1->STAT&0x80) == 0) && (ESP8266TxFifo_Size() > 0)){
     ESP8266TxFifo_Get(&letter);
     if(ESP8266_EchoCommand){
       UART_OutCharNonBlock(letter); // echo
     }
-    UART_ESP8266(_DR_R) = letter;
+    UART1->TXDATA = letter;
   }
+#else
+  while(((UART2->STAT&0x80) == 0) && (ESP8266TxFifo_Size() > 0)){
+    ESP8266TxFifo_Get(&letter);
+    if(ESP8266_EchoCommand){
+      UART_OutCharNonBlock(letter); // echo
+    }
+    UART2->TXDATA = letter;
+  }
+#endif    
 }
+
 
 //----------ESP8266RxToBuffer----------
 // Copies uart fifo to RX buffer (software defined FIFO)
@@ -501,15 +490,52 @@ void static ESP8266BufferToTx(void){
 // Outputs:none
 void static ESP8266RxToBuffer(void){
   char letter;
-  while(((UART_ESP8266(_FR_R)&UART_FR_RXFE) == 0) && (ESP8266RxFifo_Size() < (FIFOSIZE - 1))){
-    letter = UART_ESP8266(_DR_R);
+#if ESP8266_UART==1
+  while(((UART1->STAT&0x04) == 0)&&((ESP8266RxFifo_Size() < (FIFOSIZE - 1)))){
+    letter = UART1->RXDATA;
     if(ESP8266_EchoResponse){
       UART_OutCharNonBlock(letter); // echo
+      if(ReceiveBufferIndex<RECBUFMAX){
+        ReceiveBuffer[ReceiveBufferIndex] = letter;
+        ReceiveBufferIndex++;
+        ReceiveBuffer[ReceiveBufferIndex] = 0;
+      }
     }
     if(!ReceiveDataFilter(letter)) {
       ESP8266RxFifo_Put(letter);
     }
   }
+#else
+  while(((UART2->STAT&0x04) == 0)&&((ESP8266RxFifo_Size() < (FIFOSIZE - 1)))){
+    letter = UART2->RXDATA;
+    if(ESP8266_EchoResponse){
+      UART_OutCharNonBlock(letter); // echo
+      if(ReceiveMode==1){// searching
+        if(ReceiveSearch[ReceiveIndex] == letter){
+          ReceiveIndex++;
+          if(ReceiveIndex == ReceiveSize){
+            ReceiveMode=2;
+          }
+        }else{
+          ReceiveIndex = 0; // no match
+        }    
+      }else{
+        if(ReceiveMode==2){ // found
+          if(letter>='A'){
+            ReceiveSearch[ReceiveIndex] = letter;
+            ReceiveIndex++;
+          }else{
+            ReceiveMode = 3; // done
+            ReceiveSearch[ReceiveIndex] = 0;
+          }
+        }
+      }
+    }
+    if(!ReceiveDataFilter(letter)) {
+      ESP8266RxFifo_Put(letter);
+    }
+  }
+#endif
 }
 
 //----------UART_Handler----------
@@ -517,43 +543,61 @@ void static ESP8266RxToBuffer(void){
 // hardware TX FIFO goes from 3 to 2 or less items
 // hardware RX FIFO goes from 1 to 2 or more items
 // UART receiver has timed out
-void UART_ESP8266(_Handler)(void){
-  if(UART_ESP8266(_RIS_R)&UART_RIS_TXRIS){       // hardware TX FIFO <= 2 items
-    UART_ESP8266(_ICR_R) = UART_ICR_TXIC;        // acknowledge TX FIFO
+#if ESP8266_UART==1
+void UART1_IRQHandler(void){ uint32_t status;
+  status = UART1->CPU_INT.IIDX; // reading clears bit in RIS
+  if(status == 0x01){   // 0x01 receive timeout
+    ESP8266RxToBuffer();
+  }else if(status == 0x0B){ // 0x0B receive
+    ESP8266RxToBuffer();
+  }else if(status == 0x0C){ // 0x0C transmit
     ESP8266BufferToTx();
-    if(ESP8266TxFifo_Size() == 0){               // software TX FIFO is empty
-      UART_ESP8266(_IM_R) &= ~UART_IM_TXIM;      // disable TX FIFO interrupt
+    if(ESP8266TxFifo_Size() == 0){             // software TX FIFO is empty
+      UART1->CPU_INT.IMASK &= ~0x0800;    // disable TX FIFO interrupt
     }
   }
-  if(UART_ESP8266(_RIS_R)&UART_RIS_RXRIS){       // hardware RX FIFO >= 2 items
-    UART_ESP8266(_ICR_R) = UART_ICR_RXIC;        // acknowledge RX FIFO
+}
+#else
+void UART2_IRQHandler(void){ uint32_t status;
+  status = UART2->CPU_INT.IIDX; // reading clears bit in RIS
+  if(status == 0x01){   // 0x01 receive timeout
     ESP8266RxToBuffer();
-  }
-  if(UART_ESP8266(_RIS_R)&UART_RIS_RTRIS){       // receiver timed out
-    UART_ESP8266(_ICR_R) = UART_ICR_RTIC;        // acknowledge receiver time out
+  }else if(status == 0x0B){ // 0x0B receive
     ESP8266RxToBuffer();
+  }else if(status == 0x0C){ // 0x0C transmit
+    ESP8266BufferToTx();
+    if(ESP8266TxFifo_Size() == 0){             // software TX FIFO is empty
+      UART2->CPU_INT.IMASK &= ~0x0800;    // disable TX FIFO interrupt
+    }
   }
 }
+#endif
+
 
 //--------ESP8266_OutChar--------
 // Prints a character to the esp8226 via uart
 // Inputs: character to transmit
 // Outputs: none
 void ESP8266_OutChar(char data){
-  ESP8266TxFifo_Put(data);
-  UART_ESP8266(_IM_R) &= ~UART_IM_TXIM;          // disable TX FIFO interrupt
+  while(ESP8266TxFifo_Put(data) == FIFOFAIL){};
+#if ESP8266_UART==1
+  UART1->CPU_INT.IMASK &= ~0x0800;   // disarm TX FIFO interrupt
   ESP8266BufferToTx();
-  UART_ESP8266(_IM_R) |= UART_IM_TXIM;           // enable TX FIFO interrupt
-}
-
+  UART1->CPU_INT.IMASK |= 0x0800;    // rearm TX FIFO interrupt
+#else
+  UART2->CPU_INT.IMASK &= ~0x0800;   // disarm TX FIFO interrupt
+  ESP8266BufferToTx();
+  UART2->CPU_INT.IMASK |= 0x0800;    // rearm TX FIFO interrupt
 #endif
+}
 
 //--------ESP8266_InChar--------
 // Read a character from the esp8226 via uart
 // Inputs: none
 // Outputs: character received
-char ESP8266_InChar(void){
-  return ESP8266RxFifo_Get();
+char ESP8266_InChar(void){ char letter;
+  while(ESP8266RxFifo_Get(&letter) == FIFOFAIL){};
+  return(letter);
 }
 
 //---------ESP8266_SendCommand-----
@@ -607,28 +651,33 @@ int ESP8266_WaitForResponse(const char *success, const char* failure) {
 int ESP8266_Init(int rx_echo, int tx_echo){ char c; const char* s; uint32_t timer = 1;
   // Disable interrupt during initialization
   ESP8266_DisableInterrupt();
-  
+
   // Initialize UART to communicate with ESP
   ESP8266_InitUART(rx_echo, tx_echo);
   
-  // Initialize reset port
-  GPIO_PORTB_DIR_R |= (0x01 << ESP8266_PB_RST); // PB output to reset
-  GPIO_PORTB_PCTL_R =GPIO_PORTB_PCTL_R & ~(0x0F << (ESP8266_PB_RST*4));
-  GPIO_PORTB_DEN_R |= (0x01 << ESP8266_PB_RST); //PB output 
+  // Initialize reset port on PA25
+  IOMUX->SECCFG.PINCM[PA25INDEX]  = (uint32_t) 0x00000081;
+  GPIOA->DOE31_0 |= (1<<25);
 
-  // Hard reset
-  GPIO_PORTB_DATA_R &= ~(0x01 << ESP8266_PB_RST); // reset low
-  DelayMs(10);
-  GPIO_PORTB_DATA_R |= (0x01 << ESP8266_PB_RST); // reset high
+  // Hardware reset
+  GPIOA->DOUTCLR31_0 = (1<<25); // reset low
+  Clock_Delay1ms(10);
+  GPIOA->DOUTSET31_0 = (1<<25); // reset high
   
   // Wait for ready status with timeout
   // Use low-level UART communication, interrupts disabled
   s = ESP8266_READY_RESPONSE;
   timer = 5000000;  // around a 1-2s total timeout
   while(*s) {
-    while(timer && ((UART_ESP8266(_FR_R)&UART_FR_RXFE) != 0)) { timer--; }
+#if ESP8266_UART==1
+    while(timer && ((UART1->STAT&0x04) == 0x04)) { timer--; }
     if(!timer) break;  
-    c = (char)(UART_ESP8266(_DR_R)&0xFF);
+    c = (char)UART1->RXDATA;
+#else
+    while(timer && ((UART2->STAT&0x04) == 0x04)) { timer--; }
+    if(!timer) break;  
+    c = (char)UART2->RXDATA;
+#endif
     if(rx_echo) UART_OutCharNonBlock(c); // echo, requires UART0 to be operational, will print garbage
     if(c == *s) {
       s++;
@@ -662,14 +711,14 @@ int ESP8266_Connect(int verbose){
   if(ESP8266_SetWifiMode(ESP8266_WIFI_MODE_CLIENT)==FAILURE) return FAILURE; 
 
   if(verbose)  // debug output: see APs in area
-    ESP8266_ListAccessPoints();
-
+    ESP8266_ListAccessPoints(); 
+  
   if(ESP8266_JoinAccessPoint(SSID_NAME,PASSKEY)==FAILURE) return FAILURE; 
 #endif
 
   if(verbose)  // debug output: our IP address
     ESP8266_GetIPAddress();
-
+  
   return SUCCESS;
 }
 
@@ -731,7 +780,7 @@ int ESP8266_GetVersionNumber(void){ int try=MAXTRY;
     if(ESP8266_WaitForResponse(ESP8266_OK_RESPONSE,0)) return SUCCESS;
     try--;
   }
-  return 0; // fail
+  return FAILURE; // fail
 }
 
 //---------ESP8266_GetMACAddress----------
@@ -744,7 +793,7 @@ int ESP8266_GetMACAddress(void){ int try=MAXTRY;
     if(ESP8266_WaitForResponse(ESP8266_OK_RESPONSE,0)) return SUCCESS;
     try--;
   }
-  return 0; // fail
+  return FAILURE; // fail
 }
 
 //---------ESP8266_SetWifiMode----------
@@ -767,10 +816,15 @@ int ESP8266_SetWifiMode(uint8_t mode){ int try=MAXTRY;
 // Input: 0 (single) or 1 (multiple)
 // Output: 1 if success, 0 if fail 
 int ESP8266_SetConnectionMux(uint8_t enabled){ int try=MAXTRY;
-  char TXBuffer[32];
+  //char TXBuffer[32];
   while(try){
-    sprintf(TXBuffer, "AT+CIPMUX=%d\r\n", enabled);
-    ESP8266_SendCommand(TXBuffer);
+    if(enabled){
+    //sprintf(TXBuffer, "AT+CIPMUX=%d\r\n", enabled);
+    ESP8266_SendCommand("AT+CIPMUX=1\r\n");
+    }else{
+    ESP8266_SendCommand("AT+CIPMUX=0\r\n");
+
+    }
     if(ESP8266_WaitForResponse(ESP8266_OK_RESPONSE,0)) {
       ESP8266_ConnectionMux = enabled;
       return SUCCESS;
@@ -979,7 +1033,7 @@ int ESP8266_Receive(char* fetch, uint32_t max){ long sr; const char* s;
   char letter;
   while(max > 1) {
     if(ESP8266Rx0Fifo_Size() || ESP8266_DataAvailable) { // data (about to be) available?
-      letter = ESP8266Rx0Fifo_Get();
+      while(ESP8266Rx0Fifo_Get(&letter) == FIFOFAIL){};
       // ESP8266_DisableInterrupt();  // critical section
       sr = StartCritical();  
       if(ESP8266_DataAvailable) ESP8266_DataAvailable--;
@@ -1118,3 +1172,151 @@ int ESP8266_DisableServer(void){ int try=MAXTRY;
   }
   return FAILURE;
 }
+
+// Declare state variables for FiFo
+//        size, buffer, put and get indexes
+int32_t static ESP8266TxPutI; // Index to put new
+int32_t static ESP8266TxGetI; // Index of oldest
+char static ESP8266TxFifo[FIFOSIZE];
+
+// *********** ESP8266TxFifo_Init**********
+// Initializes a software ESP8266TxFIFO of a
+// fixed size and sets up indexes for
+// put and get operations
+void ESP8266TxFifo_Init(void){
+  ESP8266TxPutI = ESP8266TxGetI = 0;
+}
+
+// *********** ESP8266TxFifo_Put**********
+// Adds an element to the ESP8266TxFIFO
+// Input: data is character to be inserted
+// Output: 1 for success, data properly saved
+//         0 for failure, TxFIFO is full
+uint32_t ESP8266TxFifo_Put(char data){
+  if(((ESP8266TxPutI+1)&(FIFOSIZE-1)) == ESP8266TxGetI){
+    return FAILURE;
+  }
+  ESP8266TxFifo[ESP8266TxPutI] = data;
+  ESP8266TxPutI = (ESP8266TxPutI+1)&(FIFOSIZE-1);
+  return SUCCESS; // success
+}
+
+// *********** ESP8266TxFifo_Get**********
+// Gets an element from the ESP8266TxFIFO
+// Input: pointer to empty 8-bit variable
+// Output: If the ESP8266TxFIFO is empty return 0
+//         If the ESP8266TxFIFO has data, remove it, and put in  *datapt, return 1
+uint32_t ESP8266TxFifo_Get(char *datapt){
+  if(ESP8266TxGetI == ESP8266TxPutI){
+    return FAILURE;
+  }
+  *datapt = ESP8266TxFifo[ESP8266TxGetI];
+  ESP8266TxGetI = (ESP8266TxGetI+1)&(FIFOSIZE-1);
+  return SUCCESS; // success
+}
+
+//------------ESP8266TxFifo_Size------------
+// Returns how much data available for reading from Tx1 FIFO
+// Input: none
+// Output: number of elements in receive FIFO
+uint32_t ESP8266TxFifo_Size(void){  
+ return ((ESP8266TxPutI - ESP8266TxGetI)&(FIFOSIZE-1));  
+}
+
+
+int32_t static ESP8266RxPutI; // Index to put new
+int32_t static ESP8266RxGetI; // Index of oldest
+char static ESP8266RxFifo[FIFOSIZE];
+
+// *********** ESP8266RxFifo_Init**********
+// Initializes a software RxFIFO of a
+// fixed size and sets up indexes for
+// put and get operations
+void ESP8266RxFifo_Init(void){
+  ESP8266RxPutI = ESP8266RxGetI = 0;
+}
+
+// *********** ESP8266RxFifo_Put**********
+// Adds an element to the ESP8266RxFIFO
+// Input: data is character to be inserted
+// Output: 1 for success, data properly saved
+//         0 for failure, RxFIFO is full
+uint32_t ESP8266RxFifo_Put(char data){
+  if(((ESP8266RxPutI+1)&(FIFOSIZE-1)) == ESP8266RxGetI){
+    return FAILURE;
+  }
+  ESP8266RxFifo[ESP8266RxPutI] = data;
+  ESP8266RxPutI = (ESP8266RxPutI+1)&(FIFOSIZE-1);
+  return SUCCESS;
+}
+
+// *********** ESP8266RxFifo_Get**********
+// Gets an element from the ESP8266RxFIFO
+// Input: pointer to empty 8-bit variable
+// Output: If the ESP8266RxFIFO is empty return 0
+//         If the ESP8266RxFIFO has data, remove it, and  put in  *datapt, return 1
+uint32_t  ESP8266RxFifo_Get(char *datapt){
+  if(ESP8266RxGetI == ESP8266RxPutI){
+    return FAILURE;
+  }
+  *datapt = ESP8266RxFifo[ESP8266RxGetI];
+  ESP8266RxGetI = (ESP8266RxGetI+1)&(FIFOSIZE-1);
+  return SUCCESS;
+}
+//------------ESP8266RxFifo_Size------------
+// Returns how much data available for reading from Rx FIFO
+// Input: none
+// Output: number of elements in receive FIFO
+uint32_t ESP8266RxFifo_Size(void){  
+ return ((ESP8266RxPutI - ESP8266RxGetI)&(FIFOSIZE-1));  
+}
+
+
+int32_t static ESP8266Rx0PutI; // Index to put new
+int32_t static ESP8266Rx0GetI; // Index of oldest
+char static ESP8266Rx0Fifo[FIFOSIZE];
+
+// *********** ESP8266Rx0Fifo_Init**********
+// Initializes a software RxFIFO of a
+// fixed size and sets up indexes for
+// put and get operations
+void ESP8266Rx0Fifo_Init(void){
+  ESP8266Rx0PutI = ESP8266Rx0GetI = 0;
+}
+
+// *********** ESP8266Rx0Fifo_Put**********
+// Adds an element to the ESP8266Rx0FIFO
+// Input: data is character to be inserted
+// Output: 1 for success, data properly saved
+//         0 for failure, RxFIFO is full
+uint32_t ESP8266Rx0Fifo_Put(char data){
+  if(((ESP8266Rx0PutI+1)&(FIFOSIZE-1)) == ESP8266Rx0GetI){
+    return FAILURE;
+  }
+  ESP8266Rx0Fifo[ESP8266Rx0PutI] = data;
+  ESP8266Rx0PutI = (ESP8266Rx0PutI+1)&(FIFOSIZE-1);
+  return SUCCESS;
+}
+
+// *********** ESP8266Rx0Fifo_Get**********
+// Gets an element from the ESP8266Rx0FIFO
+// Input: pointer to empty 8-bit variable
+// Output: If the ESP8266Rx0FIFO is empty return 0
+//         If the ESP8266Rx0FIFO has data, remove it, and  put in  *datapt, return 1
+uint32_t  ESP8266Rx0Fifo_Get(char *datapt){
+  if(ESP8266Rx0GetI == ESP8266Rx0PutI){
+    return FAILURE;
+  }
+  *datapt = ESP8266Rx0Fifo[ESP8266Rx0GetI];
+  ESP8266Rx0GetI = (ESP8266Rx0GetI+1)&(FIFOSIZE-1);
+  return SUCCESS;
+}
+//------------ESP8266Rx0Fifo_Size------------
+// Returns how much data available for reading from Rx0 FIFO
+// Input: none
+// Output: number of elements in receive FIFO
+uint32_t ESP8266Rx0Fifo_Size(void){  
+ return ((ESP8266Rx0PutI - ESP8266Rx0GetI)&(FIFOSIZE-1));  
+}
+
+

@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "ECE445M Robot Board")
-		(date "2025-12-23")
-		(rev "v7")
+		(date "2026-01-24")
+		(rev "v7.1")
 		(company "The University of Texas at Austin")
 		(comment 1 "Jonathan Valvano")
 	)
@@ -1249,6 +1249,16 @@
 			(justify left)
 		)
 		(uuid "6cd233b9-5875-4f86-86d9-5edeccaef1da")
+	)
+	(text "These usages need editing"
+		(exclude_from_sim no)
+		(at 43.18 36.195 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "9727dce2-2cfe-4142-8730-351799f8c469")
 	)
 	(junction
 		(at 78.74 80.01)

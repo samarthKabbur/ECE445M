@@ -31,7 +31,7 @@
 // PB21 is S3 negative logic switch,  index 48 in IOMUX PINCM table
 uint32_t Right,Left,Center;
 uint16_t volt; // voltage in mV
-int main1(void){
+int main(void){
   Clock_Init80MHz(0);
   LaunchPad_Init();
   ADC0_Init(3,ADCVREF_VDDA); // center (analog)
@@ -54,7 +54,7 @@ int main2(void){
   }
 }
 
-int main(void){ // main3, test three sensors
+int main3(void){ // main3, test three sensors
   Clock_Init80MHz(0);
   LaunchPad_Init();
   ADC_InitTriple(ADC0,1,3,7,ADCVREF_VDDA); //Right Center, and Left

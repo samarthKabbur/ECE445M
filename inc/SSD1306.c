@@ -1441,6 +1441,36 @@ void SSD1306_OutUFix1(uint16_t n){
   message[4] = 0;
   SSD1306_OutString(message);
 }
+
+//********SSD1306_DrawUDec*****************
+// Output a 16-bit number in unsigned 3-digit integer
+// numbers 0 to 999 printed as " 0" to "999"
+// Inputs: x is horizontal position in pixels
+//         y is vertical position in pixels
+//         n  16-bit unsigned number 0 to 999
+//         color is black or white
+// Outputs: none
+void SSD1306_DrawUDec(int16_t x, int16_t y, uint16_t n, uint16_t color){
+  char message[4];
+  if(n>999)n=999;
+  if(n>=100){  // 100 to 999
+    message[0] = (n/100+'0'); /* hundreds digit */
+    n = n%100; //the rest
+    message[1] = (n/10+'0'); /* tens digit */
+    n = n%10; //the rest
+  }else { // 0 to 99
+    message[0] = ' '; /* n is between 0.0 and 9.9 */
+    if(n>=10){ // 10 to 99
+      message[1] = (n/10+'0'); /* tens digit */
+    }else{
+      message[1] = ' '; /* n is between 0 and 9 */
+    }
+  }
+  n = n%10; //the rest
+  message[2] = (n+'0'); /* tenths digit */
+  message[3] = 0;
+  SSD1306_DrawString(x,y,message,color); 
+}
 //********SSD1306_OutSFix1*****************
 // Output a 16-bit number in signed 4-digit fixed point, 0.1 resolution
 // numbers -9999 to 9999 printed as "-999.0" to " 999.9"

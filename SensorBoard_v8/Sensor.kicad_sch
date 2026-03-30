@@ -3203,6 +3203,18 @@
 		)
 		(uuid "acc8e24f-47d4-4f58-b98a-f403f4efe0b3")
 	)
+	(text "Warning: ESP8266 only runs on debugger, \nthe MSPM0G3507 will not start if power on reset without debugger.\nThe ESP8266 needs its own regulator."
+		(exclude_from_sim no)
+		(at 197.485 17.78 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(italic yes)
+			)
+			(justify left)
+		)
+		(uuid "b249aa86-149b-4730-8445-daa3c0d0388f")
+	)
 	(text "PB13/UART3_RX"
 		(exclude_from_sim no)
 		(at 152.4 93.98 0)

@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "ECE445M Motor Board")
-		(date "2025-12-23")
-		(rev "v7")
+		(date "2026-01-24")
+		(rev "v7.1")
 		(company "The University of Texas at Austin")
 		(comment 1 "Jonathan Valvano")
 	)
@@ -3257,6 +3257,288 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "ECE445L:SSD1306"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U?"
+				(at -15.24 16.002 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left bottom)
+				)
+			)
+			(property "Value" "SSD1306"
+				(at -9.525 -6.985 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left bottom)
+				)
+			)
+			(property "Footprint" "ECE445L:SSD1306"
+				(at -5.08 22.86 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "https://www.seeedstudio.com/Grove-OLED-Display-0-66-SSD1306-v1-0-p-5096.html"
+				(at -1.27 19.05 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Distributor" "Amazib"
+				(at 0 21.59 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer" "https://www.amazon.com/s?k=SSD1306"
+				(at -15.24 21.59 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "P/N" "713-104020248"
+				(at -1.27 16.51 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC Part #" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Cost" "5.50"
+				(at 11.43 22.86 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "SSD1306_0_0"
+				(rectangle
+					(start -15.24 15.24)
+					(end 15.24 -8.89)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "SSD1306_1_0"
+				(pin power_in line
+					(at -20.32 12.065 0)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -20.32 9.525 0)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -20.32 6.985 0)
+					(length 5.08)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -20.32 4.445 0)
+					(length 5.08)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -20.32 1.905 0)
+					(length 5.08)
+					(name "SCL"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -20.32 -0.635 0)
+					(length 5.08)
+					(name "SCL"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -20.32 -3.175 0)
+					(length 5.08)
+					(name "SDA"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -20.32 -5.715 0)
+					(length 5.08)
+					(name "SDA"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+			)
+			(symbol "SSD1306_1_1"
+				(rectangle
+					(start -10.16 10.795)
+					(end 11.43 -3.175)
+					(stroke
+						(width 0)
+						(type default)
+						(color 0 0 0 1)
+					)
+					(fill
+						(type color)
+						(color 132 0 0 1)
+					)
+				)
+				(text "64 tall, 128 wide"
+					(at 1.27 12.7 0)
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "ECE445L:Testpoint"
 			(pin_names
 				(offset 0)
@@ -3508,288 +3790,6 @@
 							(font
 								(size 1.27 1.27)
 							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
-		(symbol "RSLK2:SSD1306"
-			(pin_names
-				(offset 1.016)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "U?"
-				(at -15.24 16.002 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left bottom)
-				)
-			)
-			(property "Value" "SSD1306"
-				(at -9.525 -6.985 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left bottom)
-				)
-			)
-			(property "Footprint" "RSLK2:SSD1306"
-				(at -5.08 22.86 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" "https://www.seeedstudio.com/Grove-OLED-Display-0-66-SSD1306-v1-0-p-5096.html"
-				(at -1.27 19.05 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Distributor" "Amazib"
-				(at 0 21.59 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Manufacturer" "https://www.amazon.com/s?k=SSD1306"
-				(at -15.24 21.59 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "P/N" "713-104020248"
-				(at -1.27 16.51 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "LCSC Part #" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Cost" "5.50"
-				(at 11.43 22.86 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "SSD1306_0_0"
-				(rectangle
-					(start -15.24 15.24)
-					(end 15.24 -8.89)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type background)
-					)
-				)
-			)
-			(symbol "SSD1306_1_0"
-				(pin power_in line
-					(at -20.32 12.065 0)
-					(length 5.08)
-					(name "GND"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at -20.32 9.525 0)
-					(length 5.08)
-					(name "GND"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "6"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at -20.32 6.985 0)
-					(length 5.08)
-					(name "VCC"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at -20.32 4.445 0)
-					(length 5.08)
-					(name "VCC"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "5"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -20.32 1.905 0)
-					(length 5.08)
-					(name "SCL"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -20.32 -0.635 0)
-					(length 5.08)
-					(name "SCL"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "7"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -20.32 -3.175 0)
-					(length 5.08)
-					(name "SDA"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -20.32 -5.715 0)
-					(length 5.08)
-					(name "SDA"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "8"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-			)
-			(symbol "SSD1306_1_1"
-				(rectangle
-					(start -10.16 10.795)
-					(end 11.43 -3.175)
-					(stroke
-						(width 0)
-						(type default)
-						(color 0 0 0 1)
-					)
-					(fill
-						(type color)
-						(color 132 0 0 1)
-					)
-				)
-				(text "64 tall, 128 wide"
-					(at 1.27 12.7 0)
-					(effects
-						(font
-							(size 1.27 1.27)
 						)
 					)
 				)
@@ -4178,7 +4178,7 @@
 		)
 		(uuid "0d1f8f18-fec1-495e-8a08-56c62c2f5653")
 	)
-	(text "(5V-1.8V)/2mA = 1.6kohms"
+	(text "(5V-1.8V)/1mA = 3.3kohms"
 		(exclude_from_sim no)
 		(at 130.81 140.335 0)
 		(effects
@@ -4189,7 +4189,7 @@
 		)
 		(uuid "0fc92fd6-0aba-4644-b2c1-a080f1f9cee6")
 	)
-	(text "(3.3V-1.8V)/2mA = 750ohms"
+	(text "(3.3V-1.8V)/1mA = 1500ohms"
 		(exclude_from_sim no)
 		(at 246.38 143.51 0)
 		(effects
@@ -4372,6 +4372,16 @@
 			)
 		)
 		(uuid "9f1453a0-37d0-4bca-9b26-fca275375bb2")
+	)
+	(text "UART2_TX"
+		(exclude_from_sim no)
+		(at 146.05 75.565 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "a2fc0a34-f3d3-40c6-8dd3-628eeb2e8102")
 	)
 	(text "UART0_TX"
 		(exclude_from_sim no)
@@ -4595,12 +4605,6 @@
 		(uuid "633873a9-4a00-45b4-802c-b8d8bcafc303")
 	)
 	(junction
-		(at 52.07 139.7)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "667999ba-0d72-4f01-ba47-7fb6844a68f7")
-	)
-	(junction
 		(at 250.825 40.64)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -4611,6 +4615,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "772608fe-e1ec-40b9-81a3-cb373a4c048a")
+	)
+	(junction
+		(at 51.435 134.62)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "7775d6b5-78ce-4ef1-9dd1-a3e1bc5ee898")
 	)
 	(junction
 		(at 252.095 40.64)
@@ -4679,6 +4689,12 @@
 		(uuid "c2426b93-95a5-4f09-ae65-21a157491811")
 	)
 	(junction
+		(at 52.705 139.7)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "c3982db6-ae63-4382-98a6-1ed978386ab1")
+	)
+	(junction
 		(at 52.705 149.86)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -4713,12 +4729,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "e583ca95-35dd-43c6-b70c-c8625f373cf4")
-	)
-	(junction
-		(at 51.435 134.62)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "ea34b3a7-be4d-4212-8198-562ea2a33081")
 	)
 	(junction
 		(at 200.025 52.07)
@@ -4826,6 +4836,16 @@
 	)
 	(wire
 		(pts
+			(xy 53.975 137.16) (xy 51.435 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "08ad37f5-4921-4d12-874f-92c29f30d6ab")
+	)
+	(wire
+		(pts
 			(xy 130.175 29.845) (xy 135.255 29.845)
 		)
 		(stroke
@@ -4923,6 +4943,26 @@
 			(type default)
 		)
 		(uuid "114db5b1-12c1-4b8d-a7f2-4758ecbaf778")
+	)
+	(wire
+		(pts
+			(xy 51.435 134.62) (xy 53.975 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "122248ee-51c2-4161-8727-23735ac4e115")
+	)
+	(wire
+		(pts
+			(xy 41.275 134.62) (xy 51.435 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "12975293-78ce-40c4-8313-7d6d967e7401")
 	)
 	(wire
 		(pts
@@ -5336,26 +5376,6 @@
 	)
 	(wire
 		(pts
-			(xy 52.07 139.7) (xy 53.975 139.7)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "455090b2-dfbd-4403-856d-763caa4351f5")
-	)
-	(wire
-		(pts
-			(xy 53.975 137.16) (xy 51.435 137.16)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "498bce11-f248-4c14-b5f6-6884edd7f969")
-	)
-	(wire
-		(pts
 			(xy 240.03 20.955) (xy 240.03 40.64)
 		)
 		(stroke
@@ -5596,16 +5616,6 @@
 	)
 	(wire
 		(pts
-			(xy 53.975 142.24) (xy 52.07 142.24)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "712b3dee-005b-4129-9ae9-24a5ee58ba07")
-	)
-	(wire
-		(pts
 			(xy 194.945 20.955) (xy 203.835 20.955)
 		)
 		(stroke
@@ -5776,7 +5786,7 @@
 	)
 	(wire
 		(pts
-			(xy 37.465 139.7) (xy 52.07 139.7)
+			(xy 37.465 139.7) (xy 52.705 139.7)
 		)
 		(stroke
 			(width 0)
@@ -5793,16 +5803,6 @@
 			(type default)
 		)
 		(uuid "8e2a06e7-4583-4ba9-a7bd-6b2ccc9ebf43")
-	)
-	(wire
-		(pts
-			(xy 51.435 134.62) (xy 53.975 134.62)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8ea42ac9-eede-49ae-a769-f95f64a6c404")
 	)
 	(wire
 		(pts
@@ -5843,6 +5843,16 @@
 			(type default)
 		)
 		(uuid "9a668885-4e96-4eaf-9abe-8bcd23d5ab81")
+	)
+	(wire
+		(pts
+			(xy 53.975 142.24) (xy 52.705 142.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9a956f00-bee3-4b23-a0f7-fb2a5e996d0b")
 	)
 	(wire
 		(pts
@@ -5896,6 +5906,16 @@
 	)
 	(wire
 		(pts
+			(xy 52.705 139.7) (xy 53.975 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a10c3b7b-ca2f-4157-807d-ffe80b9278ce")
+	)
+	(wire
+		(pts
 			(xy 136.525 62.23) (xy 136.525 64.135)
 		)
 		(stroke
@@ -5913,26 +5933,6 @@
 			(type default)
 		)
 		(uuid "a69dfdcc-0a97-48fd-82b9-b3be14794a99")
-	)
-	(wire
-		(pts
-			(xy 52.07 142.24) (xy 52.07 139.7)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a6bfdfe6-3e7d-4e47-a2c9-df85633f53d2")
-	)
-	(wire
-		(pts
-			(xy 51.435 137.16) (xy 51.435 134.62)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a71f08e8-5c9b-438f-afa8-30e9accbf3ac")
 	)
 	(wire
 		(pts
@@ -5963,6 +5963,26 @@
 			(type default)
 		)
 		(uuid "abf4fdce-79fe-4d5c-a421-8a68b0a4f7ec")
+	)
+	(wire
+		(pts
+			(xy 51.435 137.16) (xy 51.435 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "acbdb28d-93e8-4dca-bf35-0b84a505c151")
+	)
+	(wire
+		(pts
+			(xy 52.705 142.24) (xy 52.705 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b36c63a8-b9be-435b-9b9e-53bca05e7a3c")
 	)
 	(wire
 		(pts
@@ -6103,16 +6123,6 @@
 			(type default)
 		)
 		(uuid "d03090f8-a807-44cf-afec-520a4e33ad1e")
-	)
-	(wire
-		(pts
-			(xy 41.275 134.62) (xy 51.435 134.62)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d0d9f960-59a7-48fc-b3dc-27956943d982")
 	)
 	(wire
 		(pts
@@ -7641,7 +7651,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "1.6k"
+		(property "Value" "3.3k"
 			(at 137.16 137.1599 0)
 			(effects
 				(font
@@ -7843,7 +7853,7 @@
 		)
 	)
 	(symbol
-		(lib_id "RSLK2:SSD1306")
+		(lib_id "ECE445L:SSD1306")
 		(at 74.295 146.685 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -7869,7 +7879,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "RSLK2:SSD1306"
+		(property "Footprint" "ECE445L:SSD1306"
 			(at 69.215 123.825 0)
 			(effects
 				(font
@@ -10300,7 +10310,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "750"
+		(property "Value" "1.5k"
 			(at 213.36 136.5249 0)
 			(effects
 				(font
