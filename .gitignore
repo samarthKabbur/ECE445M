@@ -5,7 +5,7 @@
 *.d
 *.idx
 *.o
-
+**/Debug/
 # Optional: Ignore common build directories where these often live
 bin/
 obj/
