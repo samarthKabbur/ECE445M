@@ -115,21 +115,10 @@ typedef struct mailbox {
 
 mailbox_t mailbox;
 
-/* GLOBAL FIFO */
-#define FIFOSIZE 256 // can be any size
-
-typedef struct fifo {
-  uint32_t volatile PutI; // put index
-  uint32_t volatile GetI; // get index
-  uint32_t data[FIFOSIZE];
-  Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
-  Sema4_t mutex; // 1 means available, 0 means busy
-  Sema4_t room_left;
-  uint32_t size;
-  uint32_t lost_data;
-} fifo_t;
-
 fifo_t fifo;
+fifo_t tfluna1_fifo;
+fifo_t tfluna2_fifo;
+fifo_t tfluna3_fifo;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -1121,6 +1110,19 @@ void OS_Fifo_Init(uint32_t size){
   fifo.size = size;
 }
 
+void OS_Fifo_Init_Specific(uint32_t size, fifo_t* fifo){
+  fifo->GetI = 0; // empty
+  fifo->PutI = 0; // empty
+  fifo->lost_data = 0; // no data lost yet
+  if(size >FIFOSIZE){
+    return;
+  }
+  OS_InitSemaphore(&fifo->current_size, 0);
+  OS_InitSemaphore(&fifo->room_left, size);
+  OS_InitSemaphore(&fifo->mutex, 1);
+  fifo->size = size;
+}
+
 // ******** OS_Fifo_Put ************
 // Enter one data sample into the Fifo
 // Called from the background, so no waiting 
@@ -1129,25 +1131,6 @@ void OS_Fifo_Init(uint32_t size){
 //          false if data not saved, because it was full
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
-// int OS_Fifo_Put(uint32_t data){
-//   // put Lab 2 (and beyond) solution here
-//   if (fifo.current_size.Value == FIFOSIZE ) {
-//     fifo.lost_data++;
-//     return 0; // fail if fifo is full
-//   }
-//   // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
-//   //     return 0;
-//   //   }
-//   *(fifo.putPt) = data;
-//   fifo.putPt++;
-
-//   if (fifo.putPt == &fifo.data[FIFOSIZE]) {
-//     fifo.putPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.current_size);
-//   return 1;
-// }
 int OS_Fifo_Put(uint32_t data){
   long sr;
   OSCRITICAL_ENTER(sr);
@@ -1165,29 +1148,30 @@ int OS_Fifo_Put(uint32_t data){
   return 1; 
 }
 
+int OS_Fifo_Put_Specific(uint32_t data, fifo_t* fifo){
+    long sr;
+  OSCRITICAL_ENTER(sr);
+  uint32_t newPutI = (fifo->PutI+1)&(fifo->size-1);
+  if (newPutI == fifo->GetI){ // FIFO Full 
+    fifo->lost_data++;
+    return 0;
+    
+  } else {
+    fifo->data[(fifo->PutI & (fifo->size - 1))] = data; // put in FIFO
+    fifo->PutI = newPutI;
+  }
+ OSCRITICAL_EXIT(sr);
+ OS_Signal(&fifo->current_size);
+  return 1; 
+}
+
 // ******** OS_Fifo_Get ************
 // Remove one data sample from the Fifo
 // Called in foreground, will spin/block if empty
 // Inputs:  none
 // Outputs: data 
-// uint32_t OS_Fifo_Get(void){
-//   // put Lab 2 (and beyond) solution here
-//   //if (fifo.getPt == fifo.putPt){}
-//   OS_Wait(&fifo.current_size);  // block if empty
-  
-//   OS_Wait(&fifo.mutex); // block if busy
-
-//   uint32_t data = *(fifo.getPt);
-//   fifo.getPt++;
-
-//   if (fifo.getPt == &fifo.data[FIFOSIZE]) {
-//     fifo.getPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.mutex);
-//   return data;
-// }
-uint32_t OS_Fifo_Get(void){long sr;
+uint32_t OS_Fifo_Get(void){
+  long sr;
   
   OS_Wait(&fifo.current_size);// block if empty
   OS_Wait(&fifo.mutex); // block if busy
@@ -1205,6 +1189,25 @@ uint32_t OS_Fifo_Get(void){long sr;
   return data;
 }
 
+uint32_t OS_Fifo_Get_Specific(fifo_t* fifo){
+  long sr;
+  
+  OS_Wait(&fifo->current_size);// block if empty
+  OS_Wait(&fifo->mutex); // block if busy
+  OSCRITICAL_ENTER(sr);
+  uint32_t data;
+  if (fifo->PutI == fifo->GetI){ // FIFO is empty, this should never run cause we would block if empty
+    return 0;
+  } else {
+    data  = fifo->data[(fifo->GetI & (fifo->size - 1))];
+    fifo->GetI = (fifo->GetI+1) & (fifo->size - 1);
+  }
+  OSCRITICAL_EXIT(sr);
+  OS_Signal(&fifo->mutex);
+  OS_Signal(&fifo->room_left);
+  return data;
+}
+
 // ******** OS_Fifo_Size ************
 // Check the status of the Fifo
 // Inputs: none
@@ -1213,10 +1216,13 @@ uint32_t OS_Fifo_Get(void){long sr;
 //          zero or less than zero if the Fifo is empty 
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
-  // put Lab 2 (and beyond) solution here
- return fifo.PutI - fifo.GetI;// replace this line with solution
-  //return 0;
+ return fifo.PutI - fifo.GetI;
 }
+
+int32_t OS_Fifo_Size_Specific(fifo_t* fifo){
+  return fifo->PutI - fifo->GetI;
+}
+
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
 // Inputs:  none

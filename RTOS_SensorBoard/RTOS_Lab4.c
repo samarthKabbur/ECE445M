@@ -15,11 +15,14 @@
 #include "../RTOS_Labs_common/IRDistance.h"
 #include "../RTOS_Labs_common/LPF.h"
 #include "../RTOS_Labs_common/DFT16.h"
+#include "../RTOS_Labs_common/TFLuna1.h"
 #include "../RTOS_Labs_common/TFLuna2.h"
+#include "../RTOS_Labs_common/TFLuna3.h"
 #include "../RTOS_Labs_common/OS.h"
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include <stdio.h>
+#include <math.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J25: Connects PA10 to XDS_UART
@@ -49,6 +52,10 @@
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
 uint32_t Running;           // true while robot is running
 uint32_t NumCreated;   // number of foreground threads created
+
+extern fifo_t tfluna1_fifo;
+extern fifo_t tfluna2_fifo;
+extern fifo_t tfluna3_fifo;
 
 //---------------------User debugging-----------------------
 
@@ -89,7 +96,6 @@ uint32_t ChecksWork; // number of checks in 10 second
 #define RUNLENGTH (10000)     // display results and quit when FilterWork==RUNLENGTH
 uint32_t FilterOutput,Distance;
 Sema4_t LCDFree;  // SDC and LCD sharing
-
 uint32_t FilterWork;
 uint32_t MaxJitter3;  
 #define JITTERSIZE3 512
@@ -178,9 +184,14 @@ void PA28Push(void){ // real time task
 // Display thread updates LCD with measurement
 uint32_t DataLost;        // data sent by Producer, but not received by Consumer
 uint32_t Distance2;       // mm
+uint32_t Count2;
+uint32_t Index2;
+#define BUFSIZE2 50
+uint32_t DataBuf2[BUFSIZE2]; // distance in mm
+int32_t TheSignal2,TheNoise2,SNR2,sum2,sumsq2;
 int32_t x[16],ReX[16],ImX[16];           // input and output arrays for FFT
 
-//******** Producer *************** 
+//******** Producer2 *************** 
 // The Producer in this lab will be called from the UART2 ISR
 // The TFLuna2 samples distance at about 100 Hz
 // sends data to the consumer, runs periodically at 100Hz
@@ -188,8 +199,106 @@ void Producer(uint32_t data){
   if(Running){           // finite time run
     TogglePA16();        // toggle PA16
     Distance2 = Median5((int32_t) data);
+    Count2++;
+    DataBuf2[Index2] = Distance2;
+    sum2 = sum2+Distance2;
+    Index2++;        // calculation finished
+    if(Index2 >= BUFSIZE2){
+      Index2 = 0;
+      TheSignal2 = sum2/BUFSIZE2;       // units 1
+      sumsq2 = 0;
+      for(int i=0; i<BUFSIZE2; i++){int32_t v;
+        v = 100*(DataBuf2[i]-TheSignal2);
+        sumsq2 = sumsq2+v*v;
+      }
+      TheNoise2 = sqrt2(sumsq2/BUFSIZE2);   // units 0.01
+      SNR2 = (100*TheSignal2)/TheNoise2;  // units 1
+      sum2 = 0;   
+    }
     TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put(Distance2) == 0){ // send to consumer
+    if(OS_Fifo_Put_Specific(Distance2, &tfluna2_fifo) == 0){ // send to consumer
+      DataLost++;
+    } 
+    TogglePA16();        // toggle PA16
+  } 
+}
+
+uint32_t DataLost;        // data sent by Producer, but not received by Consumer
+uint32_t Distance1;       // mm
+uint32_t Count1;
+uint32_t Index1;
+#define BUFSIZE1 30
+uint32_t DataBuf1[BUFSIZE1]; // distance in mm
+int32_t TheSignal1,TheNoise1,SNR1,sum1,sumsq1;
+int32_t x1[16],ReX1[16],ImX1[16];           // input and output arrays for FFT
+
+//******** Producer1 *************** 
+// The Producer in this lab will be called from the UART2 ISR
+// The TFLuna1 samples distance at about 100 Hz
+// sends data to the consumer, runs periodically at 100Hz
+void Producer1(uint32_t data){ 
+  if(Running){           // finite time run
+    TogglePA16();        // toggle PA16
+    Distance1 = Median5((int32_t) data);
+    Count1++;
+    DataBuf1[Index1] = Distance1;
+    sum1 = sum1+Distance1;
+    Index1++;        // calculation finished
+    if(Index1 >= BUFSIZE1){
+      Index1 = 0;
+      TheSignal1 = sum1/BUFSIZE1;       // units 1
+      sumsq1 = 0;
+      for(int i=0; i<BUFSIZE1; i++){int32_t v;
+        v = 100*(DataBuf1[i]-TheSignal1);
+        sumsq1 = sumsq1+v*v;
+      }
+      TheNoise1 = sqrt2(sumsq1/BUFSIZE1);   // units 0.01
+      SNR1 = (100*TheSignal1)/TheNoise1;  // units 1
+      sum1 = 0;   
+    }
+    TogglePA16();        // toggle PA16
+    if(OS_Fifo_Put_Specific(Distance1, &tfluna1_fifo) == 0){ // send to consumer
+      DataLost++;
+    } 
+    TogglePA16();        // toggle PA16
+  } 
+}
+
+uint32_t DataLost;        // data sent by Producer, but not received by Consumer
+uint32_t Distance3;       // mm
+uint32_t Count3;
+uint32_t Index3;
+#define BUFSIZE3 50
+uint32_t DataBuf3[BUFSIZE3]; // distance in mm
+int32_t TheSignal3,TheNoise3,SNR3,sum3,sumsq3;
+int32_t x3[16],ReX3[16],ImX3[16];           // input and output arrays for FFT
+
+//******** Producer 3*************** 
+// The Producer in this lab will be called from the UART2 ISR
+// The TFLuna3 samples distance at about 100 Hz
+// sends data to the consumer, runs periodically at 100Hz
+void Producer3(uint32_t data){ 
+  if(Running){           // finite time run
+    TogglePA16();        // toggle PA16
+    Distance3 = Median5((int32_t) data);
+    Count3++;
+    DataBuf3[Index3] = Distance3;
+    sum3 = sum3+Distance3;
+    Index3++;        // calculation finished
+    if(Index3 >= BUFSIZE3){
+      Index3 = 0;
+      TheSignal3 = sum3/BUFSIZE3;       // units 1
+      sumsq3 = 0;
+      for(int i=0; i<BUFSIZE3; i++){int32_t v;
+        v = 100*(DataBuf3[i]-TheSignal3);
+        sumsq3 = sumsq3+v*v;
+      }
+      TheNoise3 = sqrt2(sumsq3/BUFSIZE3);   // units 0.01
+      SNR3 = (100*TheSignal3)/TheNoise3;  // units 1
+      sum3 = 0;   
+    }
+    TogglePA16();        // toggle PA16
+    if(OS_Fifo_Put_Specific(Distance3, &tfluna3_fifo) == 0){ // send to consumer
       DataLost++;
     } 
     TogglePA16();        // toggle PA16
@@ -252,14 +361,30 @@ void Robot(void){
   StartFileDump(FileName);
 
   while(FilterWork < RUNLENGTH) { 
-    uint32_t data;      // in mm, from TFLuna
-    uint32_t sum=0;
+    uint32_t data1;      // in mm, from TFLuna
+    uint32_t sum1=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-      data = OS_Fifo_Get();    // get from producer, mm
-      x[t] = data;
-      sum += data;             // average
+      data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
+      x[t] = data1;
+      sum1 += data1;             // average
     }
-    Distance2 = sum>>4;  // in mm
+    uint32_t data2;      // in mm, from TFLuna
+    uint32_t sum2=0;
+    for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+      data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
+      x[t] = data2;
+      sum2 += data2;             // average
+    }
+    uint32_t data3;      // in mm, from TFLuna
+    uint32_t sum3=0;
+    for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+      data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
+      x[t] = data3;
+      sum3 += data3;             // average
+    }
+
+
+    Distance2 = sum1>>4;  // in mm
     FileDump(Distance,Distance2);
     OS_MailBox_Send(Distance2); // called every 10ms*16 = 160ms
   }
@@ -299,6 +424,9 @@ void Display(void){
     ST7735_Message(0,3,"Time(ms) =",OS_MsTime());  
     ST7735_Message(0,4,"work  =",FilterWork);  
     ST7735_Message(0,5,"d(mm) =",distance);  
+    ST7735_Message(0, 6, "SNR =", SNR3);
+    int angle = (uint32_t)acos(500 / (distance)) * 60;
+    ST7735_Message(0, 6, "Angle =", angle);
     TogglePB1();        // toggle PB1
  } 
   OS_Kill();  // done
@@ -411,24 +539,36 @@ int realmain(void){     // realmain
 
   // hardware init
   ADC0_Init(3,ADCVREF_VDDA);  // PA24 Center ADC0_3, sampling in DAS() 
-	OS_InitSemaphore(&LCDFree, 1);
+  OS_InitSemaphore(&LCDFree, 1);
   // attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
   OS_AddPeriodicThread(&DAS,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
   OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
   
-	// create initial foreground threads
+  // create initial foreground threads
   NumCreated = 0;
   NumCreated += OS_AddThread(&Interpreter,128,1); 
   NumCreated += OS_AddThread(&VirusDetector,128,2);
  
   LPF_Init7(500,7);
+  TFLuna1_Init(&Producer1);
+  TFLuna1_Format_Standard_mm(); // format in mm
+  TFLuna1_Frame_Rate();         // 100 samples/sec
+  TFLuna1_SaveSettings();  // save format and rate
+  TFLuna1_System_Reset();  // start measurements
+  
   TFLuna2_Init(&Producer);
   TFLuna2_Format_Standard_mm(); // format in mm
   TFLuna2_Frame_Rate();         // 100 samples/sec
   TFLuna2_SaveSettings();  // save format and rate
   TFLuna2_System_Reset();  // start measurements
+
+  TFLuna3_Init(&Producer3);
+  TFLuna3_Format_Standard_mm(); // format in mm
+  TFLuna3_Frame_Rate();         // 100 samples/sec
+  TFLuna3_SaveSettings();  // save format and rate
+  TFLuna3_System_Reset();  // start measurements
 
   if(eFile_Init())              diskError("eFile_Init",0); 
   if(eFile_Format())            diskError("eFile_Format",0); 
@@ -717,7 +857,7 @@ int Testmain3(void){   // Testmain3
   OS_Init();           // initialize, disable interrupts
   Logic_Init();
   Running = 1; 
-	OS_InitSemaphore(&LCDFree, 1);
+  OS_InitSemaphore(&LCDFree, 1);
 
   // attach background tasks
   OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
@@ -742,11 +882,9 @@ int Testmain3(void){   // Testmain3
 
 
 //*******************Trampoline for selecting which main to execute**********
-int main(void) { 			// main 
+int main(void) {      // main 
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   realmain();
 }
-
-
