@@ -9,18 +9,18 @@ CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 S_SRCS += \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/CriticalSection.s 
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/CriticalSection.s 
 
 C_SRCS += \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/Clock.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
 ../ESP8266main.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/FIFO.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/I2C.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/LaunchPad.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/SSD1306.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/UART.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/UARTints.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/esp8266.c 
+C:/Users/admin/Documents/GitHub/ECE445M/inc/FIFO.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/UART.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/UARTints.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/esp8266.c 
 
 S_DEPS += \
 ./CriticalSection.d 
@@ -75,14 +75,14 @@ S_DEPS__QUOTED += \
 "CriticalSection.d" 
 
 C_SRCS__QUOTED += \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/Clock.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
 "../ESP8266main.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/FIFO.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/I2C.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/LaunchPad.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/SSD1306.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/UART.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/UARTints.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/esp8266.c" 
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/FIFO.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/UART.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/UARTints.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/esp8266.c" 
 
 

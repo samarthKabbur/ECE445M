@@ -2,28 +2,30 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
+SHELL = cmd.exe
+
 # Add inputs and outputs from these tool invocations to the build variables 
 CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/ADC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/DAC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/IRDistance.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/Interpreter.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LPF.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LaunchPad.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/OS.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/RTOS_FIFO.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/DAC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/IRDistance.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/Interpreter.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LPF.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LaunchPad.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/OS.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_FIFO.c \
 ../RTOS_Lab1.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/RTOS_UART.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/RTOS_UARTints.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/SPI.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/ST7735_SDC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/TFLuna2.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/TFLunaCommon.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c 
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UART.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UARTints.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLuna2.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLunaCommon.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c 
 
 C_DEPS += \
 ./ADC.d \
@@ -102,22 +104,22 @@ C_DEPS__QUOTED += \
 "Timer.d" 
 
 C_SRCS__QUOTED += \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/ADC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/DAC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/IRDistance.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/Interpreter.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LPF.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/LaunchPad.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/OS.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/RTOS_FIFO.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/DAC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/IRDistance.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/Interpreter.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LPF.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LaunchPad.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/OS.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_FIFO.c" \
 "../RTOS_Lab1.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/RTOS_UART.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/RTOS_UARTints.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/SPI.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/ST7735_SDC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/TFLuna2.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/TFLunaCommon.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c" 
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UART.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UARTints.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLuna2.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLunaCommon.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c" 
 
 

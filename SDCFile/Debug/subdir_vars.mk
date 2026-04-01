@@ -2,19 +2,21 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
+SHELL = cmd.exe
+
 # Add inputs and outputs from these tool invocations to the build variables 
 CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/DAC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/LaunchPad.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/DAC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c \
 ../SDCFile.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/SPI.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/ST7735_SDC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/TExaS.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/TExaS.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c \
 ../diskio.c \
 ../ff.c 
 
@@ -67,14 +69,14 @@ C_DEPS__QUOTED += \
 "ff.d" 
 
 C_SRCS__QUOTED += \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/DAC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/LaunchPad.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/DAC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c" \
 "../SDCFile.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/SPI.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Labs_common/ST7735_SDC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/TExaS.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/TExaS.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c" \
 "../diskio.c" \
 "../ff.c" 
 

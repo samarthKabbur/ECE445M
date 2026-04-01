@@ -4,20 +4,18 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS
+CG_TOOL_ROOT := C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
 "./Clock.o" \
-"./I2C.o" \
 "./LaunchPad.o" \
 "./MotorTestmain.o" \
 "./PWMA0.o" \
 "./PWMA1.o" \
 "./PWMG6.o" \
-"./SSD1306.o" \
 "./ticlang/startup_mspm0g3507_ticlang.o" \
 "../mspm0g3507.cmd" \
 $(GEN_CMDS__FLAG) \
@@ -139,15 +137,15 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 MotorTest.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang.exe" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"MotorTest.map" -Wl,--stack_size=512 -Wl,-i"F:/Dropbox/EE345M Class/EE445M/Lab6Update/MotorTest/Debug/syscfg" -Wl,-i"C:/ti/ccs2020/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="MotorTest_linkInfo.xml" -Wl,--rom_model -o "MotorTest.out" $(ORDERED_OBJS)
+	"C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang.exe" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"MotorTest.map" -Wl,--stack_size=512 -Wl,-i"C:/Users/admin/Documents/GitHub/ECE445M/MotorTest/Debug/syscfg" -Wl,-i"C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="MotorTest_linkInfo.xml" -Wl,--rom_model -o "MotorTest.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Clock.o" "I2C.o" "LaunchPad.o" "MotorTestmain.o" "PWMA0.o" "PWMA1.o" "PWMG6.o" "SSD1306.o" "ticlang\startup_mspm0g3507_ticlang.o" 
-	-$(RM) "Clock.d" "I2C.d" "LaunchPad.d" "MotorTestmain.d" "PWMA0.d" "PWMA1.d" "PWMG6.d" "SSD1306.d" "ticlang\startup_mspm0g3507_ticlang.d" 
+	-$(RM) "Clock.o" "LaunchPad.o" "MotorTestmain.o" "PWMA0.o" "PWMA1.o" "PWMG6.o" "ticlang\startup_mspm0g3507_ticlang.o" 
+	-$(RM) "Clock.d" "LaunchPad.d" "MotorTestmain.d" "PWMA0.d" "PWMA1.d" "PWMG6.d" "ticlang\startup_mspm0g3507_ticlang.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

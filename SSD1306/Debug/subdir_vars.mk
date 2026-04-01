@@ -2,6 +2,8 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
+SHELL = cmd.exe
+
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_SRCS += \
 ../BmpConvert.exe 
@@ -10,10 +12,10 @@ CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/I2C.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/LaunchPad.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/SSD1306.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c \
 ../SSD1306testmain.c 
 
 C_DEPS += \
@@ -48,10 +50,10 @@ EXE_SRCS__QUOTED += \
 "../BmpConvert.exe" 
 
 C_SRCS__QUOTED += \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/I2C.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/LaunchPad.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/SSD1306.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c" \
 "../SSD1306testmain.c" 
 
 

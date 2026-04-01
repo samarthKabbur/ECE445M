@@ -2,7 +2,9 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-CG_TOOL_ROOT := /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS
+SHELL = cmd.exe
+
+CG_TOOL_ROOT := C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
@@ -29,13 +31,13 @@ ORDERED_OBJS += \
 "./ticlang/startup_mspm0g3507_ticlang.o" \
 "../mspm0g3507.cmd" \
 $(GEN_CMDS__FLAG) \
--Wl,-l"/Applications/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a" \
+-Wl,-l"C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a" \
 -Wl,-llibc.a \
 
 -include ../makefile.init
 
-RM := rm -rf
-RMDIR := rm -rf
+RM := DEL /F
+RMDIR := RMDIR /S/Q
 
 # All of the sources participating in the build are defined here
 -include sources.mk
@@ -147,15 +149,15 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 RTOS_Lab3_RTOSpriority.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"/Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"RTOS_Lab3_RTOSpriority.map" -Wl,--heap_size=512 -Wl,--stack_size=512 -Wl,-i"/Users/samarthkabbur/Documents/MSPM0LabProjects/RTOS_Lab3_RTOSpriority/Debug/syscfg" -Wl,-i"/Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="RTOS_Lab3_RTOSpriority_linkInfo.xml" -Wl,--rom_model -o "RTOS_Lab3_RTOSpriority.out" $(ORDERED_OBJS)
+	"C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang.exe" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"RTOS_Lab3_RTOSpriority.map" -Wl,--heap_size=512 -Wl,--stack_size=512 -Wl,-i"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Lab3_RTOSpriority/Debug/syscfg" -Wl,-i"C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="RTOS_Lab3_RTOSpriority_linkInfo.xml" -Wl,--rom_model -o "RTOS_Lab3_RTOSpriority.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "ADC.o" "Clock.o" "DFT16.o" "IRDistance.o" "Interpreter.o" "LPF.o" "LaunchPad.o" "OS.o" "RTOS_FIFO.o" "RTOS_Lab3.o" "RTOS_UART.o" "RTOS_UARTints.o" "SPI.o" "ST7735_SDC.o" "TFLuna2.o" "TFLunaCommon.o" "Timer.o" "osasm.o" "ticlang/startup_mspm0g3507_ticlang.o" 
-	-$(RM) "ADC.d" "Clock.d" "DFT16.d" "IRDistance.d" "Interpreter.d" "LPF.d" "LaunchPad.d" "OS.d" "RTOS_FIFO.d" "RTOS_Lab3.d" "RTOS_UART.d" "RTOS_UARTints.d" "SPI.d" "ST7735_SDC.d" "TFLuna2.d" "TFLunaCommon.d" "Timer.d" "ticlang/startup_mspm0g3507_ticlang.d" 
+	-$(RM) "ADC.o" "Clock.o" "DFT16.o" "IRDistance.o" "Interpreter.o" "LPF.o" "LaunchPad.o" "OS.o" "RTOS_FIFO.o" "RTOS_Lab3.o" "RTOS_UART.o" "RTOS_UARTints.o" "SPI.o" "ST7735_SDC.o" "TFLuna2.o" "TFLunaCommon.o" "Timer.o" "osasm.o" "ticlang\startup_mspm0g3507_ticlang.o" 
+	-$(RM) "ADC.d" "Clock.d" "DFT16.d" "IRDistance.d" "Interpreter.d" "LPF.d" "LaunchPad.d" "OS.d" "RTOS_FIFO.d" "RTOS_Lab3.d" "RTOS_UART.d" "RTOS_UARTints.d" "SPI.d" "ST7735_SDC.d" "TFLuna2.d" "TFLunaCommon.d" "Timer.d" "ticlang\startup_mspm0g3507_ticlang.d" 
 	-$(RM) "osasm.d" 
 	-@echo 'Finished clean'
 	-@echo ' '

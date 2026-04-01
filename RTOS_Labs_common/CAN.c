@@ -32,6 +32,7 @@
 #include "../inc/Clock.h"
 //#include "../RTOS_Labs_common/CAN.h"
 #include "../RTOS_Labs_common/LaunchPad.h"
+#include "../RTOS_Labs_common/OS.h"
 uint32_t CAN_PID,CAN_CREL; // version
 
 __STATIC_INLINE uint32_t READ_REG32_RAW(uint32_t addr){
@@ -117,7 +118,6 @@ CANmsg_t CANFIFO[CANFIFOSIZE]; // must be a power of two
 uint32_t CANGetI = 0;
 uint32_t CANPutI = 0;
 volatile uint32_t CanInterruptLine1Status=0;
-
 
 // SYSPLLCLK1 80MHz
 // bit rate 1Mbps
@@ -524,7 +524,8 @@ uint32_t dlc;
       if(processFlag == true){
         GPIOA->DOUTTGL31_0  = 1;
 
-
+        // Signal to wake up any waiting threads
+        OS_Signal(&CAN_Available);
       }
       break;
     default:
@@ -565,3 +566,53 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data){
   CANGetI = (CANGetI+1)&(CANFIFOSIZE-1);
 }
 
+/***************Added Functionality**************/
+// CAN functions can be called from anywhere
+// These function will NOT block and wait
+
+#define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
+#define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
+
+// Gets value from receive FIFO
+// Returns 1 if successful
+// Returns 0 if failure
+uint32_t CAN_Get(uint32_t *data)
+{
+  OS_CRITICAL_ENTER(); 
+  if (CAN_ReceiveFifo.GetI == CAN_ReceiveFifo.PutI)
+  {
+    return 0;
+  }
+  else
+  {
+    uint32_t getI = CAN_ReceiveFifo.GetI;
+    *data = CAN_ReceiveFifo.GetI[getI];
+    CAN_ReceiveFifo.GetI = (getI+1) & (CANFIFOSIZE - 1);
+    OS_CRITICAL_EXIT();
+    
+    return 1;
+  }
+}
+
+// Puts a value into the send FIFO
+// Returns 1 if successful
+// Returns 0 if failed
+// Does not block, only 1 thread should ever be sending 
+uint32_t CAN_Send(uint32_t id, uint32_t data)
+{
+  /*long sr;
+  OS_CRITICAL_ENTER(); 
+  uint32_t newPutI = (CAN_SendFifo.PutI+1)&(fifo.size-1);
+  if (newPutI == CAN_SendFifo.GetI){ // FIFO Full 
+    OS_CRITICAL_EXIT(); 
+    return 0;
+  } 
+  else {
+    
+    CAN_SendFifo.data[CAN_SendFifo.PutI] = data; // put in FIFO
+    CAN_SendFifo.PutI = newPutI;
+    OS_CRITICAL_EXIT(); 
+    return 1;
+  }*/
+  CAN_Send(id, 4, (uint8_t*)(&data));
+}

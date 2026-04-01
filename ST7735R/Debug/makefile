@@ -2,7 +2,9 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-CG_TOOL_ROOT := /Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS
+SHELL = cmd.exe
+
+CG_TOOL_ROOT := C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
@@ -18,13 +20,13 @@ ORDERED_OBJS += \
 "./ticlang/startup_mspm0g3507_ticlang.o" \
 "../mspm0g3507.cmd" \
 $(GEN_CMDS__FLAG) \
--Wl,-l"/Applications/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a" \
+-Wl,-l"C:/ti/mspm0_sdk_2_09_00_01/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a" \
 -Wl,-llibc.a \
 
 -include ../makefile.init
 
-RM := rm -rf
-RMDIR := rm -rf
+RM := DEL /F
+RMDIR := RMDIR /S/Q
 
 # All of the sources participating in the build are defined here
 -include sources.mk
@@ -136,15 +138,15 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 ST7735R.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"/Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"ST7735R.map" -Wl,--heap_size=512 -Wl,--stack_size=512 -Wl,-i"/Users/samarthkabbur/Documents/MSPM0LabProjects/ST7735R/Debug/syscfg" -Wl,-i"/Applications/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="ST7735R_linkInfo.xml" -Wl,--rom_model -o "ST7735R.out" $(ORDERED_OBJS)
+	"C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang.exe" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"ST7735R.map" -Wl,--heap_size=512 -Wl,--stack_size=512 -Wl,-i"C:/Users/admin/Documents/GitHub/ECE445M/ST7735R/Debug/syscfg" -Wl,-i"C:/ti/ccs2040/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="ST7735R_linkInfo.xml" -Wl,--rom_model -o "ST7735R.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Arabic.o" "Clock.o" "LaunchPad.o" "SPI.o" "ST7735Rtestmain.o" "ST7735_SDC.o" "Timer.o" "ticlang/startup_mspm0g3507_ticlang.o" 
-	-$(RM) "Arabic.d" "Clock.d" "LaunchPad.d" "SPI.d" "ST7735Rtestmain.d" "ST7735_SDC.d" "Timer.d" "ticlang/startup_mspm0g3507_ticlang.d" 
+	-$(RM) "Arabic.o" "Clock.o" "LaunchPad.o" "SPI.o" "ST7735Rtestmain.o" "ST7735_SDC.o" "Timer.o" "ticlang\startup_mspm0g3507_ticlang.o" 
+	-$(RM) "Arabic.d" "Clock.d" "LaunchPad.d" "SPI.d" "ST7735Rtestmain.d" "ST7735_SDC.d" "Timer.d" "ticlang\startup_mspm0g3507_ticlang.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

@@ -2,22 +2,24 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
+SHELL = cmd.exe
+
 # Add inputs and outputs from these tool invocations to the build variables 
 CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/ADC.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Bump.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/I2C.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/InputCapture.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/LaunchPad.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Motor.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/PWM1.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Bump.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/InputCapture.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Motor.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/PWM1.c \
 ../RSLKmain.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/SSD1306.c \
-/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c 
+C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c 
 
 C_DEPS += \
 ./ADC.d \
@@ -72,16 +74,16 @@ C_DEPS__QUOTED += \
 "Timer.d" 
 
 C_SRCS__QUOTED += \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/ADC.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Bump.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Clock.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/I2C.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/InputCapture.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/LaunchPad.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Motor.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/PWM1.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Bump.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/InputCapture.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/LaunchPad.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Motor.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/PWM1.c" \
 "../RSLKmain.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/SSD1306.c" \
-"/Users/samarthkabbur/Documents/MSPM0LabProjects/inc/Timer.c" 
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c" 
 
 

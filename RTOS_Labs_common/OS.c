@@ -21,6 +21,7 @@
 #include "../RTOS_Labs_common/ST7735_SDC.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/heap.h"
+#include "../RTOS_Labs_common/CAN.h"
 
 // Hardware interrupt priorities
 //   Priority 0: Periodic threads 
@@ -1099,6 +1100,16 @@ void OS_Suspend(void){
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // trigger SysTick
 };
   
+// ******** OS_CAN_Init *************
+// Initialize CAN fifo
+void OS_CAN_Init(void)
+{
+  CAN_Init();
+  CAN_ReceiveFifo.PutI = 0;
+  CAN_ReceiveFifo.GetI = 0;
+  OS_InitSemaphore(&CAN_Available, 0);
+}
+
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
 // Inputs: size

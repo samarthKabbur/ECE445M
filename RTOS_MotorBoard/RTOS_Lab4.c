@@ -19,6 +19,7 @@
 #include "../RTOS_Labs_common/OS.h"
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
+#include "../RTOS_Labs_common/CAN.h"
 #include <stdio.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
@@ -740,6 +741,38 @@ int Testmain3(void){   // Testmain3
   return 0;            // this never executes
 }
 
+//*******************CAN TEST**********
+uint32_t CANData;
+uint32_t failures;
+void EchoCAN(void)
+{
+  while (true)
+  {
+    OS_Wait(&CAN_Available);
+    CANData = CAN_Get();
+    ST7735_Message(0, 0, "CAN Data=", CANData);
+    OS_Sleep(1000);
+    while (!CAN_Send(CANData + 1))
+    {
+      failures++;
+      ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
+    }
+  }
+}
+
+int TestmainCAN(void)
+{
+  OS_Init();  
+  Logic_Init();
+  OS_CAN_Init();
+  OS_InitSemaphore(&LCDFree, 1);
+
+  NumCreated = 0;
+  NumCreated += OS_AddThread(&EchoCAN, 128, 2);
+
+  OS_Launch(TIME_2MS);
+  return 0;
+}
 
 //*******************Trampoline for selecting which main to execute**********
 int main(void) { 			// main 

@@ -9,14 +9,14 @@ CMD_SRCS += \
 ../mspm0g3507.cmd 
 
 C_SRCS += \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/Clock.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/LD19.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/LaunchPad.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LD19.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LaunchPad.c \
 ../RTOS_LD19.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/SPI.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/ST7735_SDC.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/inc/Timer.c \
-F:/Dropbox/EE345M\ Class/EE445M/Lab6Update/RTOS_Labs_common/fixed.c 
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/fixed.c 
 
 C_DEPS += \
 ./Clock.d \
@@ -59,13 +59,13 @@ C_DEPS__QUOTED += \
 "fixed.d" 
 
 C_SRCS__QUOTED += \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/Clock.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/LD19.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/LaunchPad.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LD19.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LaunchPad.c" \
 "../RTOS_LD19.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/SPI.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/ST7735_SDC.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/inc/Timer.c" \
-"F:/Dropbox/EE345M Class/EE445M/Lab6Update/RTOS_Labs_common/fixed.c" 
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/Timer.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/fixed.c" 
 
 
