@@ -744,15 +744,16 @@ int Testmain3(void){   // Testmain3
 //*******************CAN TEST**********
 uint32_t CANData;
 uint32_t failures;
+uint32_t id = 2;
 void EchoCAN(void)
 {
   while (true)
   {
     OS_Wait(&CAN_Available);
-    CANData = CAN_Get();
+    while (!CAN_Get(&CANData)) { }
     ST7735_Message(0, 0, "CAN Data=", CANData);
     OS_Sleep(1000);
-    while (!CAN_Send(CANData + 1))
+    while (!CAN_Put(id, CANData + 1))
     {
       failures++;
       ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
@@ -762,7 +763,7 @@ void EchoCAN(void)
 
 void SendCAN(void)
 {
-  while (!CAN_Send(0))
+  while (!CAN_Put(id, 0))
   {
     failures++;
     ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
@@ -774,8 +775,8 @@ int TestmainCAN(void)
 {
   OS_Init();  
   Logic_Init();
-  OS_CAN_Init();
-  OS_InitSemaphore(&LCDFree, 1);
+  OS_CAN_Init(1);
+  OS_InitSemaphore(&CAN_Available, 0);
 
   NumCreated = 0;
   NumCreated += OS_AddThread(&SendCAN, 128, 2);
@@ -790,7 +791,7 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  realmain();
+  TestmainCAN();
 }
 
 

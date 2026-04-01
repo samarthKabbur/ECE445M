@@ -30,9 +30,13 @@
 #include <stdint.h>
 #include <ti/devices/msp/msp.h>
 #include "../inc/Clock.h"
-//#include "../RTOS_Labs_common/CAN.h"
+#include "../RTOS_Labs_common/CAN.h"
 #include "../RTOS_Labs_common/LaunchPad.h"
 #include "../RTOS_Labs_common/OS.h"
+
+long StartCritical(void);
+void EndCritical(long);
+
 uint32_t CAN_PID,CAN_CREL; // version
 
 __STATIC_INLINE uint32_t READ_REG32_RAW(uint32_t addr){
@@ -578,7 +582,8 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data){
 // Returns 0 if failure
 uint32_t CAN_Get(uint32_t *data)
 {
-  OS_CRITICAL_ENTER(); 
+  long sr;
+  OSCRITICAL_ENTER(sr); 
   if (CAN_ReceiveFifo.GetI == CAN_ReceiveFifo.PutI)
   {
     return 0;
@@ -586,9 +591,9 @@ uint32_t CAN_Get(uint32_t *data)
   else
   {
     uint32_t getI = CAN_ReceiveFifo.GetI;
-    *data = CAN_ReceiveFifo.GetI[getI];
+    *data = CAN_ReceiveFifo.data[getI];
     CAN_ReceiveFifo.GetI = (getI+1) & (CANFIFOSIZE - 1);
-    OS_CRITICAL_EXIT();
+    OSCRITICAL_EXIT(sr);
     
     return 1;
   }
@@ -598,7 +603,7 @@ uint32_t CAN_Get(uint32_t *data)
 // Returns 1 if successful
 // Returns 0 if failed
 // Does not block, only 1 thread should ever be sending 
-uint32_t CAN_Send(uint32_t id, uint32_t data)
+uint32_t CAN_Put(uint32_t id, uint32_t data)
 {
   /*long sr;
   OS_CRITICAL_ENTER(); 
@@ -614,5 +619,5 @@ uint32_t CAN_Send(uint32_t id, uint32_t data)
     OS_CRITICAL_EXIT(); 
     return 1;
   }*/
-  CAN_Send(id, 4, (uint8_t*)(&data));
+  return CAN_Send(id, 4, (uint8_t*)(&data));
 }

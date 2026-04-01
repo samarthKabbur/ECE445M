@@ -1102,9 +1102,10 @@ void OS_Suspend(void){
   
 // ******** OS_CAN_Init *************
 // Initialize CAN fifo
-void OS_CAN_Init(void)
+void OS_CAN_Init(uint32_t priority)
 {
-  CAN_Init();
+  CAN_Init(priority);
+  CAN_EnableInterrupts(priority);
   CAN_ReceiveFifo.PutI = 0;
   CAN_ReceiveFifo.GetI = 0;
   OS_InitSemaphore(&CAN_Available, 0);

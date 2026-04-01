@@ -13,6 +13,7 @@ C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/osasm.s
 
 C_SRCS += \
 C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c \
+C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/CAN.c \
 C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/DFT16.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/IRDistance.c \
@@ -37,6 +38,7 @@ S_DEPS += \
 
 C_DEPS += \
 ./ADC.d \
+./CAN.d \
 ./Clock.d \
 ./DFT16.d \
 ./IRDistance.d \
@@ -58,6 +60,7 @@ C_DEPS += \
 
 OBJS += \
 ./ADC.o \
+./CAN.o \
 ./Clock.o \
 ./DFT16.o \
 ./IRDistance.o \
@@ -80,6 +83,7 @@ OBJS += \
 
 OBJS__QUOTED += \
 "ADC.o" \
+"CAN.o" \
 "Clock.o" \
 "DFT16.o" \
 "IRDistance.o" \
@@ -102,6 +106,7 @@ OBJS__QUOTED += \
 
 C_DEPS__QUOTED += \
 "ADC.d" \
+"CAN.d" \
 "Clock.d" \
 "DFT16.d" \
 "IRDistance.d" \
@@ -126,6 +131,7 @@ S_DEPS__QUOTED += \
 
 C_SRCS__QUOTED += \
 "C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/CAN.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/DFT16.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/IRDistance.c" \

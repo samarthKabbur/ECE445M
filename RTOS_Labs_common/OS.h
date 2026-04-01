@@ -237,7 +237,7 @@ void OS_UnLockScheduler(uint32_t previous);
  
 // ******** OS_CAN_Init ************
 // Initializes CAN
-void OS_CAN_Init(void);
+void OS_CAN_Init(uint32_t priority);
 
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty

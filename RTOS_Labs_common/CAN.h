@@ -31,12 +31,14 @@
 
 #ifndef __CAN_H__
 #define __CAN_H__
+#include "../RTOS_Labs_common/OS.h"
 #include <stdint.h>
 
-void CAN_Init(void);
+void CAN_Init(uint32_t priority);
 
-/*void CAN_EnableInterrupts(uint32_t priority);
+void CAN_EnableInterrupts(uint32_t priority);
 
+/*
 // 0 if failure
 // 1 if ok
 int CAN_Send(uint32_t id, uint32_t dlc, uint8_t *data);
@@ -59,21 +61,23 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data);
 // These function will NOT block and wait
 
 // Gets value from receive FIFO
-uint32_t CAN_Get(void);
+// Returns 1 if successful
+// Returns 0 if failed
+uint32_t CAN_Get(uint32_t *data);
 
 // Puts a value into the send FIFO
 // Returns 1 if successful
 // Returns 0 if failed
-uint32_t CAN_Send(uint32_t data);
+uint32_t CAN_Put(uint32_t id, uint32_t data);
 
 // Should be power of 2
-#define CANFIFOSIZE 16
+#define CANFIFORECEIVESIZE 16
 
 /* CAN FIFO */
 typedef struct CAN_Fifo {
   uint32_t PutI;
   uint32_t GetI;
-  uint32_t data[CANFIFOSIZE];
+  uint32_t data[CANFIFORECEIVESIZE];
 } CAN_Fifo_t;
 
 CAN_Fifo_t CAN_SendFifo;
