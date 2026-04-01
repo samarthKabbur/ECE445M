@@ -749,14 +749,16 @@ void EchoCAN(void)
 {
   while (true)
   {
-    OS_Wait(&CAN_Available);
-    while (!CAN_Get(&CANData)) { }
-    ST7735_Message(0, 0, "CAN Data=", CANData);
-    OS_Sleep(1000);
+    //OS_Wait(&CAN_Available);
+    while (!CAN_Get(&CANData)) { 
+      OS_Sleep(1000);
+    }
+    //ST7735_Message(0, 0, "CAN Data=", CANData);
+    //OS_Sleep(1000);
     while (!CAN_Put(id, CANData + 1))
     {
       failures++;
-      ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
+      //ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
     }
   }
 }
@@ -769,7 +771,8 @@ int TestmainCAN(void)
   OS_InitSemaphore(&CAN_Available, 0);
 
   NumCreated = 0;
-  NumCreated += OS_AddThread(&EchoCAN, 128, 2);
+  NumCreated += OS_AddThread(&EchoCAN, 128, 1);
+  NumCreated += OS_AddThread(&VirusDetector, 128, 2);
 
   OS_Launch(TIME_2MS);
   return 0;

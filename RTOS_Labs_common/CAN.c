@@ -584,19 +584,20 @@ uint32_t CAN_Get(uint32_t *data)
 {
   long sr;
   OSCRITICAL_ENTER(sr); 
-  if (CAN_ReceiveFifo.GetI == CAN_ReceiveFifo.PutI)
-  {
-    return 0;
-  }
-  else
-  {
-    uint32_t getI = CAN_ReceiveFifo.GetI;
-    *data = CAN_ReceiveFifo.data[getI];
-    CAN_ReceiveFifo.GetI = (getI+1) & (CANFIFOSIZE - 1);
+  if(CANGetI != CANPutI){
+    *id  = CANFIFO[CANGetI].id;
+    *dlc = CANFIFO[CANGetI].dlc;
+    *data = 0;
+    for(int i=0; i<*dlc; i++){
+      *data += CANFIFO[CANGetI].data[i];
+      *data = *data << 8;
+    }
+    CANGetI = (CANGetI+1)&(CANFIFOSIZE-1);
     OSCRITICAL_EXIT(sr);
-    
     return 1;
   }
+  OSCRITICAL_EXIT(sr);
+  return 0;
 }
 
 // Puts a value into the send FIFO
