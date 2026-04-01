@@ -73,6 +73,12 @@ typedef struct fifo {
   uint32_t lost_data;
 } fifo_t;
 
+typedef struct tfluna_mail {
+  uint32_t Distance1;
+  uint32_t Distance2;
+  uint32_t Distance3;
+} tfluna_mail_t;
+
 /**
  * @details  Initialize operating system, disable interrupts until OS_Launch.
  * Initialize OS controlled I/O: serial, ADC, systick, LaunchPad I/O and timers.

@@ -348,6 +348,9 @@ void FileDump(uint32_t data, uint32_t data2){
 // outputs: none
 char FileName[8]="robot0";
 
+// Global buffer for mailbox communication (persistent, valid memory)
+static tfluna_mail_t tfluna_mail_buffer;
+
 void Robot(void){   
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
@@ -361,6 +364,7 @@ void Robot(void){
   StartFileDump(FileName);
 
   while(FilterWork < RUNLENGTH) { 
+
     uint32_t data1;      // in mm, from TFLuna
     uint32_t sum1=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
@@ -368,6 +372,7 @@ void Robot(void){
       x[t] = data1;
       sum1 += data1;             // average
     }
+    
     uint32_t data2;      // in mm, from TFLuna
     uint32_t sum2=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
@@ -375,6 +380,7 @@ void Robot(void){
       x[t] = data2;
       sum2 += data2;             // average
     }
+    
     uint32_t data3;      // in mm, from TFLuna
     uint32_t sum3=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
@@ -383,10 +389,14 @@ void Robot(void){
       sum3 += data3;             // average
     }
 
-
-    Distance2 = sum1>>4;  // in mm
-    FileDump(Distance,Distance2);
-    OS_MailBox_Send(Distance2); // called every 10ms*16 = 160ms
+    Distance1 = sum1>>4;  // in mm
+    Distance2 = sum2>>4;  // in mm
+    Distance3 = sum3>>4;  // in mm
+    tfluna_mail_buffer.Distance1 = Distance1;
+    tfluna_mail_buffer.Distance2 = Distance2;
+    tfluna_mail_buffer.Distance3 = Distance3;
+    // FileDump(Distance,Distance2);
+    OS_MailBox_Send(1); // called every 10ms*16 = 160ms
   }
   EndFileDump();
   UART_OutString("done.\n\r>");
@@ -412,21 +422,32 @@ void S2Push(void){
 // inputs:  none                            
 // outputs: none
 void Display(void){ 
-  uint32_t distance;
+  uint32_t Distance1;
+  uint32_t Distance2;
+  uint32_t Distance3;
   uint32_t myId = OS_Id();
   ST7735_Message(0,1,"myId = ",myId);   // top half used for Display
   ST7735_Message(0,2,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
   while(Running) { 
-    TogglePB1();        // toggle PB1
-    distance = OS_MailBox_Recv();
-// you will calibrate this in Lab 6
-    TogglePB1();        // toggle PB1
+    TogglePB1();
+    int val = OS_MailBox_Recv();  // will block if mail isn't available.
+    Distance1 = tfluna_mail_buffer.Distance1;
+    Distance2 = tfluna_mail_buffer.Distance2;
+    Distance3 = tfluna_mail_buffer.Distance3;
+    TogglePB1();
     ST7735_Message(0,3,"Time(ms) =",OS_MsTime());  
-    ST7735_Message(0,4,"work  =",FilterWork);  
-    ST7735_Message(0,5,"d(mm) =",distance);  
+    ST7735_Message(0,4,"work  =",FilterWork);
+    
+      
+    ST7735_Message(0,5,"D1(mm) =",Distance1);
+    ST7735_Message(0,5,"D2(mm) =",Distance2);
+    ST7735_Message(0,5,"D3(mm) =",Distance3);
+      
     ST7735_Message(0, 6, "SNR =", SNR3);
-    int angle = (uint32_t)acos(500 / (distance)) * 60;
-    ST7735_Message(0, 6, "Angle =", angle);
+
+    
+    // int angle = (uint32_t)acos(500 / (distance)) * 60;
+    // ST7735_Message(0, 6, "Angle =", angle);
     TogglePB1();        // toggle PB1
  } 
   OS_Kill();  // done

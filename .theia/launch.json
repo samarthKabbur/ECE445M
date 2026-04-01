@@ -80,6 +80,15 @@
                 "name": "GP2Y0A",
                 "resourceId": "/GP2Y0A"
             }
+        },
+        {
+            "name": "RTOS_SensorBoard",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "RTOS_SensorBoard",
+                "resourceId": "/RTOS_SensorBoard"
+            }
         }
     ]
 }
