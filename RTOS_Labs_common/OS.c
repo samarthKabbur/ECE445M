@@ -485,13 +485,10 @@ void OS_Wait(Sema4_t *semaPt){
     // 3a. set status of this thread to blocked. Scheduler will remove it from main TCB pool
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
-    
-    //OSCRITICAL_EXIT(sr);
+    // Re-enable interrupts before context switch to avoid deadlock.
+    OSCRITICAL_EXIT(sr);
     OS_Suspend();
-
-    // 4. restore i bit to its previous value
-   // OSCRITICAL_EXIT(sr);
-    //return;
+    return;
   }
   
   OSCRITICAL_EXIT(sr);
@@ -528,9 +525,9 @@ void OS_Signal(Sema4_t *semaPt) {
       // get ipsr = 0 means we're not inside an ISR
       // prevents suspending a background thread
       if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
-       // OSCRITICAL_EXIT(sr);
+        OSCRITICAL_EXIT(sr);
         OS_Suspend(); // preempt the current thread
-       // return;
+        return;
       }
     }
   }
@@ -559,11 +556,10 @@ void OS_bWait(Sema4_t *semaPt) {
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
 
-    
-   // OSCRITICAL_EXIT(sr);
+    // Re-enable interrupts before context switch to avoid deadlock.
+    OSCRITICAL_EXIT(sr);
     OS_Suspend();
-    
-   // OSCRITICAL_ENTER(sr); 
+    return;
   }
   else{
   semaPt->Value = 0;
@@ -591,7 +587,9 @@ void OS_bSignal(Sema4_t *semaPt) {
     wokenThread->Status = Active;
 
     if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+      OSCRITICAL_EXIT(sr);
       OS_Suspend();
+      return;
     }
   } else {
     semaPt->Value = 1;
@@ -1137,6 +1135,7 @@ int OS_Fifo_Put(uint32_t data){
   uint32_t newPutI = (fifo.PutI+1)&(fifo.size-1);
   if (newPutI == fifo.GetI){ // FIFO Full 
     fifo.lost_data++;
+    OSCRITICAL_EXIT(sr);
     return 0;
     
   } else {
@@ -1154,6 +1153,7 @@ int OS_Fifo_Put_Specific(uint32_t data, fifo_t* fifo){
   uint32_t newPutI = (fifo->PutI+1)&(fifo->size-1);
   if (newPutI == fifo->GetI){ // FIFO Full 
     fifo->lost_data++;
+    OSCRITICAL_EXIT(sr);
     return 0;
     
   } else {

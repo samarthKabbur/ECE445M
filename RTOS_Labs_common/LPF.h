@@ -37,6 +37,12 @@
  http://users.ece.utexas.edu/~valvano/
  */
 #include <stdint.h>
+
+typedef struct Median5_data {
+  int32_t mx7[7]; // last 7 inputs
+  int32_t f7[7]; // found flag
+} Median5_data_t;
+
 /**
  * Newton's method sqrt
  * @param s is an integer
@@ -199,6 +205,7 @@ int32_t Median(int32_t newdata);
  * @brief  Median filter
  */
 int32_t Median5(int32_t newdata);
+int32_t Median5_Specific(int32_t x, Median5_data_t* data);
 
 /**
  * 7-wide non recursive Median filter <br>

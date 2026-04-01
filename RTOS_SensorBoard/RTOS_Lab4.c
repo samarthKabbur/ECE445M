@@ -56,6 +56,9 @@ uint32_t NumCreated;   // number of foreground threads created
 extern fifo_t tfluna1_fifo;
 extern fifo_t tfluna2_fifo;
 extern fifo_t tfluna3_fifo;
+Median5_data_t tfluna1_median_data;
+Median5_data_t tfluna2_median_data;
+Median5_data_t tfluna3_median_data;
 
 //---------------------User debugging-----------------------
 
@@ -182,48 +185,8 @@ void PA28Push(void){ // real time task
 // every 64 samples, Consumer calculates FFT
 // every 2.5ms*64 = 160 ms (6.25 Hz), consumer sends data to Display via mailbox
 // Display thread updates LCD with measurement
-uint32_t DataLost;        // data sent by Producer, but not received by Consumer
-uint32_t Distance2;       // mm
-uint32_t Count2;
-uint32_t Index2;
-#define BUFSIZE2 50
-uint32_t DataBuf2[BUFSIZE2]; // distance in mm
-int32_t TheSignal2,TheNoise2,SNR2,sum2,sumsq2;
-int32_t x[16],ReX[16],ImX[16];           // input and output arrays for FFT
 
-//******** Producer2 *************** 
-// The Producer in this lab will be called from the UART2 ISR
-// The TFLuna2 samples distance at about 100 Hz
-// sends data to the consumer, runs periodically at 100Hz
-void Producer(uint32_t data){ 
-  if(Running){           // finite time run
-    TogglePA16();        // toggle PA16
-    Distance2 = Median5((int32_t) data);
-    Count2++;
-    DataBuf2[Index2] = Distance2;
-    sum2 = sum2+Distance2;
-    Index2++;        // calculation finished
-    if(Index2 >= BUFSIZE2){
-      Index2 = 0;
-      TheSignal2 = sum2/BUFSIZE2;       // units 1
-      sumsq2 = 0;
-      for(int i=0; i<BUFSIZE2; i++){int32_t v;
-        v = 100*(DataBuf2[i]-TheSignal2);
-        sumsq2 = sumsq2+v*v;
-      }
-      TheNoise2 = sqrt2(sumsq2/BUFSIZE2);   // units 0.01
-      SNR2 = (100*TheSignal2)/TheNoise2;  // units 1
-      sum2 = 0;   
-    }
-    TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put_Specific(Distance2, &tfluna2_fifo) == 0){ // send to consumer
-      DataLost++;
-    } 
-    TogglePA16();        // toggle PA16
-  } 
-}
-
-uint32_t DataLost;        // data sent by Producer, but not received by Consumer
+uint32_t DataLost1;        // data sent by Producer, but not received by Consumer
 uint32_t Distance1;       // mm
 uint32_t Count1;
 uint32_t Index1;
@@ -239,7 +202,8 @@ int32_t x1[16],ReX1[16],ImX1[16];           // input and output arrays for FFT
 void Producer1(uint32_t data){ 
   if(Running){           // finite time run
     TogglePA16();        // toggle PA16
-    Distance1 = Median5((int32_t) data);
+    // Distance1 = Median5_Specific((int32_t) data, &tfluna1_median_data);
+    Distance1 = data;
     Count1++;
     DataBuf1[Index1] = Distance1;
     sum1 = sum1+Distance1;
@@ -264,7 +228,50 @@ void Producer1(uint32_t data){
   } 
 }
 
-uint32_t DataLost;        // data sent by Producer, but not received by Consumer
+
+uint32_t DataLost2;        // data sent by Producer, but not received by Consumer
+uint32_t Distance2;       // mm
+uint32_t Count2;
+uint32_t Index2;
+#define BUFSIZE2 50
+uint32_t DataBuf2[BUFSIZE2]; // distance in mm
+int32_t TheSignal2,TheNoise2,SNR2,sum2,sumsq2;
+int32_t x2[16],ReX2[16],ImX2[16];           // input and output arrays for FFT
+
+//******** Producer2 *************** 
+// The Producer in this lab will be called from the UART2 ISR
+// The TFLuna2 samples distance at about 100 Hz
+// sends data to the consumer, runs periodically at 100Hz
+void Producer2(uint32_t data){ 
+  if(Running){           // finite time run
+    TogglePA16();        // toggle PA16
+    // Distance2 = Median5_Specific((int32_t) data, &tfluna2_median_data);
+    Distance2 = data;
+    Count2++;
+    DataBuf2[Index2] = Distance2;
+    sum2 = sum2+Distance2;
+    Index2++;        // calculation finished
+    if(Index2 >= BUFSIZE2){
+      Index2 = 0;
+      TheSignal2 = sum2/BUFSIZE2;       // units 1
+      sumsq2 = 0;
+      for(int i=0; i<BUFSIZE2; i++){int32_t v;
+        v = 100*(DataBuf2[i]-TheSignal2);
+        sumsq2 = sumsq2+v*v;
+      }
+      TheNoise2 = sqrt2(sumsq2/BUFSIZE2);   // units 0.01
+      SNR2 = (100*TheSignal2)/TheNoise2;  // units 1
+      sum2 = 0;   
+    }
+    TogglePA16();        // toggle PA16
+    if(OS_Fifo_Put_Specific(Distance2, &tfluna2_fifo) == 0){ // send to consumer
+      DataLost++;
+    } 
+    TogglePA16();        // toggle PA16
+  } 
+}
+
+uint32_t DataLost3;        // data sent by Producer, but not received by Consumer
 uint32_t Distance3;       // mm
 uint32_t Count3;
 uint32_t Index3;
@@ -280,7 +287,8 @@ int32_t x3[16],ReX3[16],ImX3[16];           // input and output arrays for FFT
 void Producer3(uint32_t data){ 
   if(Running){           // finite time run
     TogglePA16();        // toggle PA16
-    Distance3 = Median5((int32_t) data);
+    // Distance3 = Median5_Specific((int32_t) data, &tfluna3_median_data);
+    Distance3 = data;
     Count3++;
     DataBuf3[Index3] = Distance3;
     sum3 = sum3+Distance3;
@@ -359,33 +367,37 @@ void Robot(void){
 
   OS_ClearMsTime();    
   OS_Fifo_Init(256);
+  OS_Fifo_Init_Specific(64, &tfluna1_fifo);
+  OS_Fifo_Init_Specific(64, &tfluna2_fifo);
+  OS_Fifo_Init_Specific(64, &tfluna3_fifo);
   NumCreated += OS_AddThread(&Display,128,0); 
   UART_OutString("Robot running...");
   StartFileDump(FileName);
 
-  while(FilterWork < RUNLENGTH) { 
+  // while(FilterWork < RUNLENGTH) { 
+  while (true) {
 
     uint32_t data1;      // in mm, from TFLuna
     uint32_t sum1=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
-      x[t] = data1;
+      x1[t] = data1;
       sum1 += data1;             // average
     }
     
-    uint32_t data2;      // in mm, from TFLuna
-    uint32_t sum2=0;
-    for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-      data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
-      x[t] = data2;
-      sum2 += data2;             // average
-    }
+    // uint32_t data2;      // in mm, from TFLuna
+    // uint32_t sum2=0;
+    // for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+    //   data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
+    //   x2[t] = data2;
+    //   sum2 += data2;             // average
+    // }
     
     uint32_t data3;      // in mm, from TFLuna
     uint32_t sum3=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
-      x[t] = data3;
+      x3[t] = data3;
       sum3 += data3;             // average
     }
 
@@ -440,14 +452,14 @@ void Display(void){
     
       
     ST7735_Message(0,5,"D1(mm) =",Distance1);
-    ST7735_Message(0,5,"D2(mm) =",Distance2);
-    ST7735_Message(0,5,"D3(mm) =",Distance3);
+    ST7735_Message(0,6,"D2(mm) =",Distance2);
+    ST7735_Message(0,7,"D3(mm) =",Distance3);
       
-    ST7735_Message(0, 6, "SNR =", SNR3);
+    ST7735_Message(0, 8, "SNR =", SNR3);
 
     
-    // int angle = (uint32_t)acos(500 / (distance)) * 60;
-    // ST7735_Message(0, 6, "Angle =", angle);
+    int angle = (uint32_t)acos(Distance1 / (Distance2)) * 60;
+    ST7735_Message(0, 9, "Angle =", angle);
     TogglePB1();        // toggle PB1
  } 
   OS_Kill();  // done
@@ -535,10 +547,10 @@ void DFT(void){ int i;  int32_t real,imag,mag;
   UART_OutString("\r\nLab 2/3 DFT data");
   UART_OutString("\r\nInput,  Output Real, Output Imaginary, Magnitude");
   for(i=0; i<8; i++){
-    real = ReX[i];
-    imag = ImX[i];    
+    real = ReX1[i];
+    imag = ImX1[i];    
     mag = sqrt2(real*real+imag*imag);
-    UART_OutString("\r\n"); UART_OutUDec(x[i]); UART_OutChar(' '); UART_OutSDec(real); UART_OutChar(' '); UART_OutSDec(imag);
+    UART_OutString("\r\n"); UART_OutUDec(x1[i]); UART_OutChar(' '); UART_OutSDec(real); UART_OutChar(' '); UART_OutSDec(imag);
     UART_OutChar(' '); UART_OutSDec(mag);
   }
 }
@@ -579,7 +591,7 @@ int realmain(void){     // realmain
   TFLuna1_SaveSettings();  // save format and rate
   TFLuna1_System_Reset();  // start measurements
   
-  TFLuna2_Init(&Producer);
+  TFLuna2_Init(&Producer2);
   TFLuna2_Format_Standard_mm(); // format in mm
   TFLuna2_Frame_Rate();         // 100 samples/sec
   TFLuna2_SaveSettings();  // save format and rate

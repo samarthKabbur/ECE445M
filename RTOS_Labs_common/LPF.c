@@ -26,6 +26,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include "../RTOS_Labs_common/LPF.h"
 // Newton's method
 // s is an integer
@@ -395,10 +396,12 @@ static uint32_t n=3;   // 3, 4, or 5
   return y[n];
 } 
 
-int32_t mx7[7]; // last 7 inputs
-int32_t f7[7]; // found flag
+  int32_t mx7[7]; // last 7 inputs
+  int32_t f7[7];// found flag
 // 11 usec running at 80 MHz
-int32_t Median5(int32_t x){ int i,j; int32_t max;
+int32_t Median5(int32_t x){ 
+  int i,j; int32_t max;
+
   for(i=3; i>=0; i--){
     mx7[i+1] = mx7[i]; // push into MACQ
     f7[i]=1; // 1 means look at it
@@ -429,6 +432,46 @@ int32_t Median5(int32_t x){ int i,j; int32_t max;
   }
   return max; // median is third highest
 }
+
+// 11 usec running at 80 MHz
+int32_t Median5_Specific(int32_t x, Median5_data_t* data){ 
+  int i,j; int32_t max;
+  int32_t mx7[7];
+  int32_t f7[7];
+  memcpy(mx7, data->mx7, sizeof(mx7));
+  memcpy(f7, data->f7, sizeof(f7));
+  
+  for(i=3; i>=0; i--){
+    mx7[i+1] = mx7[i]; // push into MACQ
+    f7[i]=1; // 1 means look at it
+  }
+  f7[5] = 1;
+  mx7[0] = x;
+  max = mx7[0]; j=0;
+  for(i=1; i<7; i++){
+    if(mx7[i] > max){
+      max = mx7[i];
+      j = i;
+    }
+  }
+  f7[j] = 0; // 0 means ignore the max
+  max = INT32_MIN;
+  for(i=0; i<7; i++){
+    if((mx7[i] > max)&&f7[i]){
+      max = mx7[i];
+      j = i;
+    }
+  }
+  f7[j] = 0; // 0 means ignore the second highest
+  max = INT32_MIN;
+  for(i=0; i<7; i++){
+    if((mx7[i] > max)&&f7[i]){
+      max = mx7[i];
+    }
+  }
+  return max; // median is third highest
+}
+
 // 16 usec running at 80 MHz
 int32_t Median7(int32_t x){ int i,j; int32_t max;
   for(i=5; i>=0; i--){
