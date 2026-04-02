@@ -10,3 +10,19 @@
 bin/
 obj/
 dist/
+
+# CCS / Embedded build junk
+Debug/
+Release/
+*.opt
+*.mk
+*.d
+*.o
+
+# IDE stuff
+.settings/
+.theia/
+.clangd/
+
+# OS junk
+.DS_Store

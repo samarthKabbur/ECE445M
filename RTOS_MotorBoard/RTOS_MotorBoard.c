@@ -21,6 +21,9 @@
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/esp8266.h"
 #include "../RTOS_Labs_common/WifiSettings.h"
+#include "../inc/SSD1306.h"
+#include "../inc/I2C.h"
+
 
 
 #include <stdio.h>
@@ -433,6 +436,8 @@ char LOGDATA[256] =
   "systick=0&addthread=0&jitter=0 "
   "HTTP/1.0\r\nHOST: embedded.ece.utexas.edu\r\n\r\n";
 
+  char Status[16];
+  uint32_t StartTime,EndTime,ElapsedTime;
   extern uint32_t SysTickElapsed;
   extern uint32_t AddThreadElapsed;
 
@@ -440,13 +445,21 @@ char LOGDATA[256] =
 
 
 void WiFiThread(void){
+  char *s;
+ 
   if(!ESP8266_Connect(true)){
-    while(1);   // cannot connect to AP
+    SSD1306_DrawString(0,16,"No Wifi network",SSD1306_WHITE);
+    SSD1306_OutBuffer();
+    while(1);
   }
+
+ 
+  SSD1306_DrawString(0,16,"Wifi connected   ",SSD1306_WHITE);
+  SSD1306_OutBuffer();
   
   for(;;){
-      snprintf(SysTickStr, sizeof(SysTickStr), "%lu", SysTickElapsed);
-      snprintf(AddThreadStr, sizeof(AddThreadStr), "%lu", AddThreadElapsed);
+      snprintf(SysTickStr, sizeof(SysTickStr), "%u", SysTickElapsed);
+      snprintf(AddThreadStr, sizeof(AddThreadStr), "%u", AddThreadElapsed);
 
     // Build GET request directly from global ASCII strings
     snprintf(LOGDATA, sizeof(LOGDATA),
@@ -459,11 +472,52 @@ void WiFiThread(void){
 
     // Send to server
     if(ESP8266_MakeTCPConnection("embedded.ece.utexas.edu", 80, 0, false)){
-      ESP8266_Send(LOGDATA);
-      ESP8266_CloseTCPConnection();
+      
+       ESP8266_StartReceiveSearch("status=");
+       int StartTime = OS_MsTime();
+
+      if(ESP8266_Send(LOGDATA)){
+
+        uint32_t timeout = 10000000;
+        do{
+          s = ESP8266_GetReceiveBuffer();
+          timeout--;
+        }while((s == 0) && timeout);
+
+        // End timing
+        EndTime = OS_MsTime();
+        if(StartTime>EndTime){
+        ElapsedTime = StartTime - EndTime;
+        }
+        else{
+          ElapsedTime = EndTime - StartTime;
+        }
+
+        if(s){
+          int i = 0;
+          while(((*s) != ' ') && (i < 15)){
+            Status[i] = *s;
+            s++; 
+            i++;
+          }
+          Status[i] = 0;
+         
+
+          if(ElapsedTime > 999999){
+          ElapsedTime = 999999;  // prevent overflow on screen
+          }
+          SSD1306_DrawString(0,44,Status,SSD1306_WHITE); 
+          SSD1306_DrawString(0,56,"Time(ms)      ",SSD1306_WHITE); 
+          SSD1306_DrawUDec(56,56,ElapsedTime,SSD1306_WHITE);   
+          SSD1306_OutBuffer();
+        }
+      
+    }
+    ESP8266_CloseTCPConnection();
     }
 
     OS_Sleep(100);   // log every 100 ms
+  
   }
 }
 
@@ -471,6 +525,11 @@ int mainWifi(void){
 // 1. Initialize OS and hardware
   OS_Init();
   Logic_Init();
+  SSD1306_Init(2);
+ 
+
+  SSD1306_SetCursor(0,0);
+  SSD1306_OutString("ECE445M wifi test\n");  
 
   // 2. Initialize ESP8266
   if(!ESP8266_Init(true, false)){
