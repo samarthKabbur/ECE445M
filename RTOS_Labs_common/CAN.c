@@ -36,6 +36,8 @@
 
 long StartCritical(void);
 void EndCritical(long);
+#define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
+#define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
 
 uint32_t CAN_PID,CAN_CREL; // version
 
@@ -357,11 +359,14 @@ __STATIC_INLINE void WRITE_REG32_RAW(uint32_t addr, uint32_t value){
 // 0 if failure
 // 1 if ok
 int CAN_Send(uint32_t id, uint32_t dlc, uint8_t *data){
+  long sr;
   uint16_t count;
   uint32_t regVal, loopCnt;
   uint32_t elemAddr;
   if(id > 2047) return 1;
   if(dlc > 8) return 1;
+
+  OSCRITICAL_ENTER(sr);
 
 // always uses buffer 0
   elemAddr = CANFD0->MCANSS.MCAN.MCAN_TXBC&0xFFFC; // bits 15:2, 112*4= 448
@@ -370,6 +375,7 @@ int CAN_Send(uint32_t id, uint32_t dlc, uint8_t *data){
                ((uint32_t)(0  << 29 )) |   // rtr=0 Transmit data frame
                ((uint32_t)(0  << 30 )) |   // xtd=0 11-bit standard identifier
                ((uint32_t)(0  << 31 )));   // esi=0 ESI bit in CAN FD format depends only on error passive flag
+
   WRITE_REG32_RAW(((uint32_t)CANFD0 + (uint32_t) elemAddr), regVal); //448,0, 0x40508000=0
   elemAddr += 4U;
 
@@ -410,6 +416,7 @@ int CAN_Send(uint32_t id, uint32_t dlc, uint8_t *data){
          */
   CANFD0->MCANSS.MCAN.MCAN_CCCR &= ~0x02; //Configuration Change Enable
   CANFD0->MCANSS.MCAN.MCAN_TXBAR = regVal;
+  OSCRITICAL_EXIT(sr);
   return 1; // success
 }
 
@@ -574,23 +581,21 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data){
 // CAN functions can be called from anywhere
 // These function will NOT block and wait
 
-#define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
-#define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
-
 // Gets value from receive FIFO
 // Returns 1 if successful
 // Returns 0 if failure
 uint32_t CAN_Get(uint32_t *data)
 {
   long sr;
-  OSCRITICAL_ENTER(sr); 
+  uint32_t id;
+  uint32_t dlc;
+  OSCRITICAL_ENTER(sr);
   if(CANGetI != CANPutI){
-    *id  = CANFIFO[CANGetI].id;
-    *dlc = CANFIFO[CANGetI].dlc;
+    id  = CANFIFO[CANGetI].id;
+    dlc = CANFIFO[CANGetI].dlc;
     *data = 0;
-    for(int i=0; i<*dlc; i++){
-      *data += CANFIFO[CANGetI].data[i];
-      *data = *data << 8;
+    for(int i=0; i<dlc; i++){
+      *data += CANFIFO[CANGetI].data[i] << (i * 8);
     }
     CANGetI = (CANGetI+1)&(CANFIFOSIZE-1);
     OSCRITICAL_EXIT(sr);
@@ -600,25 +605,7 @@ uint32_t CAN_Get(uint32_t *data)
   return 0;
 }
 
-// Puts a value into the send FIFO
-// Returns 1 if successful
-// Returns 0 if failed
-// Does not block, only 1 thread should ever be sending 
 uint32_t CAN_Put(uint32_t id, uint32_t data)
 {
-  /*long sr;
-  OS_CRITICAL_ENTER(); 
-  uint32_t newPutI = (CAN_SendFifo.PutI+1)&(fifo.size-1);
-  if (newPutI == CAN_SendFifo.GetI){ // FIFO Full 
-    OS_CRITICAL_EXIT(); 
-    return 0;
-  } 
-  else {
-    
-    CAN_SendFifo.data[CAN_SendFifo.PutI] = data; // put in FIFO
-    CAN_SendFifo.PutI = newPutI;
-    OS_CRITICAL_EXIT(); 
-    return 1;
-  }*/
-  return CAN_Send(id, 4, (uint8_t*)(&data));
+  return CAN_Send(id, 4, (uint8_t*)&data);
 }

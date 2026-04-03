@@ -20,6 +20,8 @@
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/CAN.h"
+#include "../inc/SSD1306.h"
+#include "../inc/I2C.h"
 #include <stdio.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
@@ -745,21 +747,19 @@ int Testmain3(void){   // Testmain3
 uint32_t CANData;
 uint32_t failures;
 uint32_t id = 1;
-void EchoCAN(void)
+void ReceiveCAN(void)
 {
   while (true)
   {
-    //OS_Wait(&CAN_Available);
+    OS_Wait(&CAN_Available);
     while (!CAN_Get(&CANData)) { 
       OS_Sleep(1000);
     }
-    //ST7735_Message(0, 0, "CAN Data=", CANData);
-    //OS_Sleep(1000);
-    while (!CAN_Put(id, CANData + 1))
-    {
-      failures++;
-      //ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
-    }
+    TogglePB4();
+    SSD1306_SetCursor(0,0);
+    SSD1306_OutString("CAN Received");
+    SSD1306_SetCursor(0,1);
+    SSD1306_OutUDec(CANData);
   }
 }
 
@@ -769,9 +769,10 @@ int TestmainCAN(void)
   Logic_Init();
   OS_CAN_Init(1);
   OS_InitSemaphore(&CAN_Available, 0);
+  SSD1306_Init(SSD1306_SWITCHCAPVCC);
 
   NumCreated = 0;
-  NumCreated += OS_AddThread(&EchoCAN, 128, 1);
+  NumCreated += OS_AddThread(&ReceiveCAN, 128, 1);
   NumCreated += OS_AddThread(&VirusDetector, 128, 2);
 
   OS_Launch(TIME_2MS);

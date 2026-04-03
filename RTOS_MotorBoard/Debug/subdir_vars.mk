@@ -16,6 +16,7 @@ C:/Users/admin/Documents/GitHub/ECE445M/inc/ADC.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/CAN.c \
 C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/DFT16.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/IRDistance.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/Interpreter.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LPF.c \
@@ -26,6 +27,7 @@ C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_FIFO.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UART.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UARTints.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c \
+C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLuna2.c \
 C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLunaCommon.c \
@@ -41,6 +43,7 @@ C_DEPS += \
 ./CAN.d \
 ./Clock.d \
 ./DFT16.d \
+./I2C.d \
 ./IRDistance.d \
 ./Interpreter.d \
 ./LPF.d \
@@ -51,6 +54,7 @@ C_DEPS += \
 ./RTOS_UART.d \
 ./RTOS_UARTints.d \
 ./SPI.d \
+./SSD1306.d \
 ./ST7735_SDC.d \
 ./TFLuna2.d \
 ./TFLunaCommon.d \
@@ -63,6 +67,7 @@ OBJS += \
 ./CAN.o \
 ./Clock.o \
 ./DFT16.o \
+./I2C.o \
 ./IRDistance.o \
 ./Interpreter.o \
 ./LPF.o \
@@ -73,6 +78,7 @@ OBJS += \
 ./RTOS_UART.o \
 ./RTOS_UARTints.o \
 ./SPI.o \
+./SSD1306.o \
 ./ST7735_SDC.o \
 ./TFLuna2.o \
 ./TFLunaCommon.o \
@@ -86,6 +92,7 @@ OBJS__QUOTED += \
 "CAN.o" \
 "Clock.o" \
 "DFT16.o" \
+"I2C.o" \
 "IRDistance.o" \
 "Interpreter.o" \
 "LPF.o" \
@@ -96,6 +103,7 @@ OBJS__QUOTED += \
 "RTOS_UART.o" \
 "RTOS_UARTints.o" \
 "SPI.o" \
+"SSD1306.o" \
 "ST7735_SDC.o" \
 "TFLuna2.o" \
 "TFLunaCommon.o" \
@@ -109,6 +117,7 @@ C_DEPS__QUOTED += \
 "CAN.d" \
 "Clock.d" \
 "DFT16.d" \
+"I2C.d" \
 "IRDistance.d" \
 "Interpreter.d" \
 "LPF.d" \
@@ -119,6 +128,7 @@ C_DEPS__QUOTED += \
 "RTOS_UART.d" \
 "RTOS_UARTints.d" \
 "SPI.d" \
+"SSD1306.d" \
 "ST7735_SDC.d" \
 "TFLuna2.d" \
 "TFLunaCommon.d" \
@@ -134,6 +144,7 @@ C_SRCS__QUOTED += \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/CAN.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/inc/Clock.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/DFT16.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/I2C.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/IRDistance.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/Interpreter.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/LPF.c" \
@@ -144,6 +155,7 @@ C_SRCS__QUOTED += \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UART.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/RTOS_UARTints.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/SPI.c" \
+"C:/Users/admin/Documents/GitHub/ECE445M/inc/SSD1306.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/ST7735_SDC.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLuna2.c" \
 "C:/Users/admin/Documents/GitHub/ECE445M/RTOS_Labs_common/TFLunaCommon.c" \

@@ -51,6 +51,16 @@
 			<locationURI>PARENT-1-PROJECT_LOC/RTOS_Labs_common/DFT16.c</locationURI>
 		</link>
 		<link>
+			<name>I2C.c</name>
+			<type>1</type>
+			<locationURI>CCS_WORKSPACE_DIR/inc/I2C.c</locationURI>
+		</link>
+		<link>
+			<name>I2C.h</name>
+			<type>1</type>
+			<locationURI>CCS_WORKSPACE_DIR/inc/I2C.h</locationURI>
+		</link>
+		<link>
 			<name>IRDistance.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/RTOS_Labs_common/IRDistance.c</locationURI>
@@ -94,6 +104,16 @@
 			<name>SPI.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/RTOS_Labs_common/SPI.c</locationURI>
+		</link>
+		<link>
+			<name>SSD1306.c</name>
+			<type>1</type>
+			<locationURI>CCS_WORKSPACE_DIR/inc/SSD1306.c</locationURI>
+		</link>
+		<link>
+			<name>SSD1306.h</name>
+			<type>1</type>
+			<locationURI>CCS_WORKSPACE_DIR/inc/SSD1306.h</locationURI>
 		</link>
 		<link>
 			<name>ST7735_SDC.c</name>
