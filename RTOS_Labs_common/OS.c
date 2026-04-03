@@ -58,6 +58,8 @@ void EndCritical(long);
 void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
+uint32_t SysTickStart,SysTickElapsed;
+uint32_t AddThreadStart,AddThreadElapsed;
 
 volatile uint32_t TimeMs;
 volatile uint32_t TimeMsG8; // in ms
@@ -163,8 +165,10 @@ void StartOS(void); // implemented in osasm.s
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
    //TogglePB4();
+   SysTickStart = TIMG12->COUNTERREGS.CTR;
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
+  SysTickElapsed = SysTickStart-TIMG12->COUNTERREGS.CTR;                                    
 } // end SysTick_Handler
 
 /*
@@ -622,6 +626,7 @@ int OS_AddProcessThread(void(*task)(void),
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
    OSCRITICAL_ENTER(sr);
+  AddThreadStart = TIMG12->COUNTERREGS.CTR; // down count
   // find a thread that is free
   int i;
   for (i = 0; i < MAXTHREADS; i++) {
@@ -678,7 +683,7 @@ if (RunPt == (void*)0) {
 //prevNode <---- newNode ----> pt
 
 }
-
+  AddThreadElapsed = AddThreadStart-TIMG12->COUNTERREGS.CTR; 
   OSCRITICAL_EXIT(sr);
   return 1;
 }

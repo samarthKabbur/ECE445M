@@ -94,7 +94,7 @@ int RxFifo_Put(char data){
   return 1;
 }
 char RxFifo_Get(void){char data;
-  OS_Wait(&rx_fifo_semaphore.current_size); // block if full
+  OS_Wait(&rx_fifo_semaphore.current_size); // block if empty
   OS_Wait(&rx_fifo_semaphore.mutex); // block if busy
   TogglePA9();
   data = RxFifo[RxGetI];              // retrieve data
