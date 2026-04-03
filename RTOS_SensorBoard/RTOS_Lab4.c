@@ -21,6 +21,7 @@
 #include "../RTOS_Labs_common/OS.h"
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
+#include "../RTOS_Labs_common/fixed.h"
 #include <stdio.h>
 #include <math.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
@@ -56,6 +57,9 @@ uint32_t NumCreated;   // number of foreground threads created
 extern fifo_t tfluna1_fifo;
 extern fifo_t tfluna2_fifo;
 extern fifo_t tfluna3_fifo;
+extern fifo_t ir1_fifo;
+extern fifo_t ir2_fifo;
+
 Median5_data_t tfluna1_median_data;
 Median5_data_t tfluna2_median_data;
 Median5_data_t tfluna3_median_data;
@@ -97,9 +101,10 @@ uint32_t ChecksWork; // number of checks in 10 second
 #define PERIOD TIME_1MS      // DAS 1kHz sampling period in system time units
 #define FS 1000              // DAS sampling
 #define RUNLENGTH (10000)     // display results and quit when FilterWork==RUNLENGTH
-uint32_t FilterOutput,Distance;
 Sema4_t LCDFree;  // SDC and LCD sharing
 uint32_t FilterWork;
+
+
 uint32_t MaxJitter3;  
 #define JITTERSIZE3 512
 uint32_t const JitterSize3=JITTERSIZE3;
@@ -110,23 +115,56 @@ void Jitter3_Init(void){
   }
   MaxJitter3 = 0;
 }
+
+uint32_t FilterOutputDAS1;
+uint32_t DataLostDAS1;
+uint32_t DistanceDAS1;
+uint32_t CountDAS1;
+uint32_t IndexDAS1;
+#define BUFSIZEDAS1 30
+uint32_t DataBufDAS1[BUFSIZEDAS1]; // distance in mm
+int32_t TheSignalDAS1,TheNoiseDAS1,SNRDAS1,sumDAS1,sumsqDAS1;
+int32_t x1DAS[16],ReX1DAS[16],ImX1DAS[16]; 
 //******** DAS *************** 
 // background thread, calculates 60Hz notch filter
 // runs 1000 times/sec
 // samples PA24 Center ADC0_3, calculates Distance
 // inputs:  none
 // outputs: none
-void DAS(void){ 
-  uint32_t input;  
+void DAS1(void){ 
+  uint32_t input;
+  uint32_t d2;  
   static uint32_t LastTime;      // time at previous ADC sample, 12.5 ns
   uint32_t thisTime;             // time at current ADC sample, 12.5 ns
-  uint32_t jitter;               // time between measured and expected, 12.5 ns
+  uint32_t jitter; 
   TogglePA8();                   // toggle PA8
-  input = ADC0_In();             // channel 3 set when calling ADC0_Init
+  ADC_InDual(ADC0, &input, &d2);
   TogglePA8();                   // toggle PA8
   thisTime = OS_Time();          // current time, 12.5 ns
-  FilterOutput = Filter(input);
-  Distance = IRDistance_Convert(FilterOutput,0); // in mm
+  FilterOutputDAS1 = Filter(input);
+  DistanceDAS1 = IRDistance_Convert(FilterOutputDAS1,0); // in mm
+  CountDAS1++;
+  DataBufDAS1[IndexDAS1] = DistanceDAS1;
+  sumDAS1 = sumDAS1 + DistanceDAS1;
+  IndexDAS1++;
+  if (IndexDAS1 >= BUFSIZEDAS1) {
+    IndexDAS1 = 0;
+    TheSignalDAS1 = sumDAS1/BUFSIZEDAS1;
+    sumsqDAS1 = 0;
+    for (int i = 0; i < BUFSIZEDAS1; i++) {
+      int32_t v;
+      v = 100 * (DataBufDAS1[i] - TheSignalDAS1);
+      sumsqDAS1 = sumsqDAS1+v*v;
+    }
+    TheNoiseDAS1 = sqrt2(sumsqDAS1/BUFSIZEDAS1);
+    if(TheNoiseDAS1 != 0){
+      SNRDAS1 = (100*TheSignalDAS1)/TheNoiseDAS1;
+    }else{
+      SNRDAS1 = 0;
+    }
+    sumDAS1 = 0;
+  }
+
   if(Running){    // finite time run
     FilterWork++;        // calculation finished
     if(FilterWork>2){    // ignore timing of first interrupt
@@ -148,7 +186,78 @@ void DAS(void){
     ChecksWork = Checks;
     LastTime = thisTime;
   }
+  
+  if(OS_Fifo_Put_Specific(DistanceDAS1, &ir1_fifo) == 0){ // send to consumer
+      DataLostDAS1++;
+  } 
   TogglePA8();    // toggle PA8
+}
+
+uint32_t FilterOutputDAS2;
+uint32_t DataLostDAS2;
+uint32_t DistanceDAS2;
+uint32_t CountDAS2;
+uint32_t IndexDAS2;
+#define BUFSIZEDAS2 30
+uint32_t DataBufDAS2[BUFSIZEDAS2]; // distance in mm
+int32_t TheSignalDAS2,TheNoiseDAS2,SNRDAS2,sumDAS2,sumsqDAS2;
+int32_t x1DAS[16],ReX1DAS[16],ImX1DAS[16]; 
+//******** DAS *************** 
+// background thread, calculates 60Hz notch filter
+// runs 1000 times/sec
+// samples PA24 Center ADC0_3, calculates Distance
+// inputs:  none
+// outputs: none
+void DAS2(void){ 
+  uint32_t input;  
+  uint32_t d1;
+  static uint32_t LastTime;      // time at previous ADC sample, 12.5 ns
+  uint32_t thisTime;             // time at current ADC sample, 12.5 ns
+  uint32_t jitter; 
+  TogglePA8();                   // toggle PA8
+  ADC_InDual(ADC0, &d1, &input);
+  TogglePA8();                   // toggle PA8
+  thisTime = OS_Time();          // current time, 12.5 ns
+  FilterOutputDAS2 = Filter(input);
+  DistanceDAS2 = IRDistance_Convert(FilterOutputDAS2,0); // in mm
+  CountDAS2++;
+  DataBufDAS2[IndexDAS2] = DistanceDAS2;
+  sumDAS2 = sumDAS2 + DistanceDAS2;
+  IndexDAS2++;
+  if (IndexDAS2 >= BUFSIZEDAS2) {
+    IndexDAS2 = 0;
+    TheSignalDAS2 = sumDAS2/BUFSIZEDAS2;
+    sumsqDAS2 = 0;
+    for (int i = 0; i < BUFSIZEDAS2; i++) {
+      int32_t v;
+      v = 100 * (DataBufDAS2[i] - TheSignalDAS2);
+      sumsqDAS2 = sumsqDAS2+v*v;
+    }
+    TheNoiseDAS2 = sqrt2(sumsqDAS2/BUFSIZEDAS2);
+    if(TheNoiseDAS2 != 0){
+      SNRDAS2 = (100*TheSignalDAS2)/TheNoiseDAS2;
+    }else{
+      SNRDAS2 = 0;
+    }
+    sumDAS2 = 0;
+  }
+  
+  if(OS_Fifo_Put_Specific(DistanceDAS2, &ir2_fifo) == 0){ // send to consumer
+      DataLostDAS2++;
+  } 
+  TogglePA8();    // toggle PA8
+}
+
+void DFT(void){ int i;  int32_t real,imag,mag;
+  UART_OutString("\r\nLab 2/3 DFT data");
+  UART_OutString("\r\nInput,  Output Real, Output Imaginary, Magnitude");
+  for(i=0; i<8; i++){
+    real = ReX1DAS[i];
+    imag = ImX1DAS[i];    
+    mag = sqrt2(real*real+imag*imag);
+    UART_OutString("\r\n"); UART_OutUDec(x1DAS[i]); UART_OutChar(' '); UART_OutSDec(real); UART_OutChar(' '); UART_OutSDec(imag);
+    UART_OutChar(' '); UART_OutSDec(mag);
+  }
 }
 //--------------end of Task 1-----------------------------
 
@@ -227,7 +336,6 @@ void Producer1(uint32_t data){
     TogglePA16();        // toggle PA16
   } 
 }
-
 
 uint32_t DataLost2;        // data sent by Producer, but not received by Consumer
 uint32_t Distance2;       // mm
@@ -360,6 +468,7 @@ char FileName[8]="robot0";
 static tfluna_mail_t tfluna_mail_buffer;
 
 void Robot(void){   
+  uint32_t LastHeaderPrint;
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
   Running = 1;
@@ -367,12 +476,18 @@ void Robot(void){
 
   OS_ClearMsTime();    
   OS_Fifo_Init(256);
-  OS_Fifo_Init_Specific(64, &tfluna1_fifo);
-  OS_Fifo_Init_Specific(64, &tfluna2_fifo);
-  OS_Fifo_Init_Specific(64, &tfluna3_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna1_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna2_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna3_fifo);
+  OS_Fifo_Init_Specific(32, &ir1_fifo);
+  OS_Fifo_Init_Specific(32, &ir2_fifo);
+  
   NumCreated += OS_AddThread(&Display,128,0); 
   UART_OutString("Robot running...");
   StartFileDump(FileName);
+  UART_OutString("\r\nTime(ms) |   IR1 |   IR2 |   TF1 |   TF2 |   TF3 |  SNR1 |  SNR2 | SNRDAS");
+  UART_OutString("\r\n---------+-------+-------+-------+-------+-------+-------+-------+-------");
+  LastHeaderPrint = OS_MsTime();
 
   // while(FilterWork < RUNLENGTH) { 
   while (true) {
@@ -385,25 +500,66 @@ void Robot(void){
       sum1 += data1;             // average
     }
     
-    // uint32_t data2;      // in mm, from TFLuna
-    // uint32_t sum2=0;
-    // for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-    //   data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
-    //   x2[t] = data2;
-    //   sum2 += data2;             // average
-    // }
-    
-    uint32_t data3;      // in mm, from TFLuna
-    uint32_t sum3=0;
+    uint32_t data2;      // in mm, from TFLuna
+    uint32_t sum2=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-      data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
-      x3[t] = data3;
-      sum3 += data3;             // average
+      data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
+      x2[t] = data2;
+      sum2 += data2;             // average
+    }
+    
+    // uint32_t data3;      // in mm, from TFLuna
+    // uint32_t sum3=0;
+    // for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+    //   data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
+    //   x3[t] = data3;
+    //   sum3 += data3;             // average
+    // }
+
+    uint32_t dataDAS1;
+    uint32_t sumDAS1=0;
+    for (int t = 0; t < 16; t++) { // collect 16 IR samples 
+      dataDAS1 = OS_Fifo_Get_Specific(&ir1_fifo);
+      x1DAS[t] = dataDAS1;
+      sumDAS1 += dataDAS1;
+    }
+
+    uint32_t dataDAS2;
+    uint32_t sumDAS2=0;
+    for (int t = 0; t < 16; t++) { // collect 16 IR samples 
+      dataDAS2 = OS_Fifo_Get_Specific(&ir2_fifo);
+      x1DAS[t] = dataDAS2;
+      sumDAS2 += dataDAS2;
     }
 
     Distance1 = sum1>>4;  // in mm
     Distance2 = sum2>>4;  // in mm
     Distance3 = sum3>>4;  // in mm
+    DistanceDAS1 = sumDAS1 >>4;
+    DistanceDAS2 = sumDAS2 >>4;
+
+    // double angle_to_wall = acos((double)Distance1 / Distance2) * 180.0 / 3.14159265359;
+
+    if((OS_MsTime() - LastHeaderPrint) >= 5000){
+      UART_OutString("\r\nTime(ms)|  IR1  |  IR2   |   TF1  |   TF2  |   TF3  |  SNR1  |  SNR2 | SNRDAS1 | SNRDAS2 | Angle to Wall");
+      UART_OutString("\r\n--------+-------+--------+--------+--------+--------+--------+-------+---------+---------+--------------+");
+      LastHeaderPrint = OS_MsTime();
+    }
+
+    UART_OutString("\r\n");
+    UART_OutUDec5(OS_MsTime()); UART_OutString(" | ");
+    UART_OutUDec5(DistanceDAS1); UART_OutString(" | ");
+    UART_OutUDec5(DistanceDAS2); UART_OutString(" | ");
+    UART_OutUDec5(Distance1); UART_OutString(" | ");
+    UART_OutUDec5(Distance2); UART_OutString(" | ");
+    UART_OutUDec5(Distance3); UART_OutString(" | ");
+    UART_OutUDec5((uint32_t)SNR1); UART_OutString(" | ");
+    UART_OutUDec5((uint32_t)SNR2); UART_OutString(" | ");
+    UART_OutUDec5((uint32_t)SNRDAS1);
+    UART_OutUDec5((uint32_t)SNRDAS2);
+    // UART_OutUDec5((uint32_t)angle_to_wall);
+    
+    
     tfluna_mail_buffer.Distance1 = Distance1;
     tfluna_mail_buffer.Distance2 = Distance2;
     tfluna_mail_buffer.Distance3 = Distance3;
@@ -454,12 +610,12 @@ void Display(void){
     ST7735_Message(0,5,"D1(mm) =",Distance1);
     ST7735_Message(0,6,"D2(mm) =",Distance2);
     ST7735_Message(0,7,"D3(mm) =",Distance3);
-      
-    ST7735_Message(0, 8, "SNR =", SNR3);
-
     
-    int angle = (uint32_t)acos(Distance1 / (Distance2)) * 60;
-    ST7735_Message(0, 9, "Angle =", angle);
+      
+    ST7735_Message(0, 8, "SNR1 =", SNR1);
+    ST7735_Message(0, 9, "SNR2 =", SNR2);
+    ST7735_Message(0, 10, "SNRDAS =", SNRDAS1);
+    
     TogglePB1();        // toggle PB1
  } 
   OS_Kill();  // done
@@ -543,18 +699,6 @@ void Lab4(void){int i;
   UART_OutString("\r\nMaxJitter3(cyc) = "); UART_OutUDec(MaxJitter3); 
 }
 
-void DFT(void){ int i;  int32_t real,imag,mag;
-  UART_OutString("\r\nLab 2/3 DFT data");
-  UART_OutString("\r\nInput,  Output Real, Output Imaginary, Magnitude");
-  for(i=0; i<8; i++){
-    real = ReX1[i];
-    imag = ImX1[i];    
-    mag = sqrt2(real*real+imag*imag);
-    UART_OutString("\r\n"); UART_OutUDec(x1[i]); UART_OutChar(' '); UART_OutSDec(real); UART_OutChar(' '); UART_OutSDec(imag);
-    UART_OutChar(' '); UART_OutSDec(mag);
-  }
-}
-
 //--------------end of Task 5-----------------------------
 
 
@@ -565,18 +709,20 @@ int realmain(void){     // realmain
   Logic_Init();
   DataLost = 0;     // lost data between producer and consumer
   FilterWork = 0;
-  Jitter3_Init();
+  
   // initialize communication channels
   OS_MailBox_Init();
-  OS_Fifo_Init(256);    // ***note*** 4 is not big enough*****
+  OS_Fifo_Init(256);
+  OS_InitSemaphore(&LCDFree, 1);
 
   // hardware init
-  ADC0_Init(3,ADCVREF_VDDA);  // PA24 Center ADC0_3, sampling in DAS() 
-  OS_InitSemaphore(&LCDFree, 1);
+  ADC_InitDual(ADC0, 3, 7, ADCVREF_VDDA);
+
   // attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
-  OS_AddPeriodicThread(&DAS,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
+  OS_AddPeriodicThread(&DAS1,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
+  OS_AddPeriodicThread(&DAS2,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_7
   OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
   
   // create initial foreground threads
@@ -612,307 +758,6 @@ int realmain(void){     // realmain
 //+++++++++++++++++++++++++DEBUGGING CODE++++++++++++++++++++++++
 // ONCE YOUR RTOS WORKS YOU CAN COMMENT OUT THE REMAINING CODE
 // 
-
-uint32_t M=1;
-uint32_t Random32(void){
-  M = 1664525*M+1013904223;
-  return M;
-}
-// 0 to 31
-uint32_t Random5(void){
-  return (Random32()>>27);
-}
-// 0 to 127
-uint32_t Random7(void){
-  return (Random32()>>25);
-}
-// 0 to 255
-uint8_t Random8(void){
-  return (Random32()>>24);
-}
-
-//*****************Test project 1*************************
-// This test should run. If ST7735R works, but this fails:
-// -  there may be bad solder joints on Sensor board
-// -  the MSPM0 might have bad pins (PB0 or PB8)
-// -  SDC not seated correctly or damaged
-// Write and read test of random access disk blocks
-// Warning: this overwrites whatever is on the disk
-unsigned char buffer[512];  // don't put on stack
-#define MAXBLOCKS 100
-void TestDisk(void){  DSTATUS result;  uint32_t block;  int i; uint8_t n;
-  // simple test of eDisk
-  ST7735_DrawString(0, 1, "eDisk test      ", ST7735_WHITE);
-  UART_OutString("\n\rECE445M, Lab 4 eDisk test\n\rTestmain1\n\r");
-  result = eDisk_Init(0);  // initialize disk
-  if(result) diskError("eDisk_Init",result);
-  UART_OutString("Writing blocks\n\r");
-  M = 1;    // seed
-  for(block = 0; block < MAXBLOCKS; block++){
-    for(i=0;i<512;i++){
-      buffer[i] = Random8();        
-    }
-    SetPA8();     // PA8 high for 100 block writes
-    if(eDisk_WriteBlock(buffer,block))diskError("eDisk_WriteBlock",block); // save to disk
-    //TogglePA16();
-    ClrPA8();     
-  }  
-  UART_OutString("Reading blocks\n\r");
-  M = 1;  // reseed, start over to get the same sequence
-  for(block = 0; block < MAXBLOCKS; block++){
-    SetPA9();     // PA9 high for one block read
-    if(eDisk_ReadBlock(buffer,block))diskError("eDisk_ReadBlock",block); // read from disk
-    ClrPA9();
-    for(i=0;i<512;i++){
-      n = Random8(); // same pseudo random sequence
-      if(buffer[i] != (0xFF&n)){
-        UART_OutString("Read data not correct, block="); UART_OutUDec(block); 
-        UART_OutString(", i="); UART_OutUDec(i); 
-        UART_OutString(", expected "); UART_OutUDec(0xFF&n); 
-        UART_OutString(", read "); UART_OutUDec(buffer[i]);       
-        UART_OutString("\n\r");
-        OS_Kill();
-      }      
-    }
-  }  
-  UART_OutString("Successful test of 100 blocks\n\r");
-  ST7735_DrawString(0, 1, "eDisk successful", ST7735_YELLOW);
-  Running = 0; // allow launch again
-  OS_Kill();
-}
-
-void StartTestDisk(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two test threads
-    NumCreated += OS_AddThread(&TestDisk,128,1);  // test eDisk
-  }
-}
-
-int Testmain1(void){   // Testmain1
-  OS_Init();           // initialize, disable interrupts
- // OS_AddDevices(1,1,0);  // attach printf to UART0, allow ST7735, not eFile
-  Logic_Init();
-  Running = 1; 
-
-  // attach background tasks
-  OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
-  OS_AddS2Task(&StartTestDisk,1);
-  OS_AddPA28Task(&StartTestDisk,1);
-    
-  // create initial foreground threads
-  NumCreated = 0 ;
-  NumCreated += OS_AddThread(&TestDisk,128,1);  
-  NumCreated += OS_AddThread(&VirusDetector,128,3); 
- 
-  OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
-  return 0;            // this never executes
-}
-
-
-//*******************Measurement of context switch time**********
-// Run this to measure the time it takes to perform a task switch
-// UART0 not needed 
-// SYSTICK interrupts, period established by OS_Launch
-// first timer not needed
-// second timer not needed
-// S1 not needed, 
-// S2 not needed
-// logic analyzer on PB22 for systick interrupt (in your OS)
-//                on PA8 to measure context switch time
-void ThreadCS(void){    // only thread running
-  while(1){
-    TogglePA8();        // toggle PA8
-  }
-}
-int TestmainCS(void){       // TestmainCS
-  Logic_Init();
-  OS_Init();           // initialize, disable interrupts
-  NumCreated = 0 ;
-  NumCreated += OS_AddThread(&ThreadCS,128,0); 
-  OS_Launch(TIME_1MS/10); // 100us, doesn't return, interrupts enabled in here
-  return 0;               // this never executes
-}
-
-
-//*****************Test project 2*************************
-// Filesystem test. 
-// Warning: this reformats the disk, all existing data will be lost
-void PrintDirectory(void){ char *name; unsigned long size; 
-  unsigned int num;
-  unsigned long total;
-  num = 0;
-  total = 0;
-  UART_OutString("\n\r");
-  if(eFile_DOpen(""))           diskError("eFile_DOpen",0);
-  while(!eFile_DirNext(&name, &size)){
-    UART_OutString("Filename = "); UART_OutString(name); UART_OutString("  ");
-    UART_OutString("Size (bytes)= "); UART_OutUDec(size); UART_OutString("\n\r");
-    total = total+size;
-    num++;    
-  }
-  UART_OutString("Number of Files = "); UART_OutUDec(num); UART_OutString("\n\r");
-  UART_OutString("Number of Bytes = "); UART_OutUDec(total); UART_OutString("\n\r");
-  if(eFile_DClose())            diskError("eFile_DClose",0);
-}
-void TestFile(void){   int i; char data; int status;
-  UART_OutString("\n\rECE445M Lab 4 eFile test 2\n\r");
-  ST7735_DrawString(0, 1, "eFile test 2    ", ST7735_WHITE);
-  // simple test of eFile
-  if(eFile_Init())              diskError("eFile_Init",0); 
-  if(eFile_Format())            diskError("eFile_Format",0); 
-  if(eFile_Mount())             diskError("eFile_Mount",0);
-  PrintDirectory();
-  if(eFile_Create("file1"))     diskError("eFile_Create",0);
-  if(eFile_WOpen("file1"))      diskError("eFile_WOpen",0);
-  for(i=5; i<=15; i++){
-    eFile_WriteString("Testmain2\tabcdefghijklmnopqrstuvwxyz\t");
-    eFile_WriteUFix2(OS_MsTime()/10); eFile_Write('\t');
-    eFile_WriteUDec(i); eFile_Write('\t');
-    eFile_WriteSFix2(i-10); eFile_Write('\t');
-    eFile_WriteSDec(i-10); eFile_WriteString("\n\r");
-    OS_Sleep(10);
-  }
-  if(eFile_WClose())            diskError("eFile_WClose",0);
-  PrintDirectory();
-
-  if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
-  do{
-    status = eFile_ReadNext(&data);
-    if(status == 0) UART_OutChar(data);
-  }while(status==0);
-  if(eFile_RClose())  diskError("eFile_RClose",0);
-  if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
-  PrintDirectory();
-  if(eFile_Unmount())           diskError("eFile_Unmount",0);
-  UART_OutString("Successful test\n\r");
-  ST7735_DrawString(0, 1, "eFile successful", ST7735_YELLOW);
-  Running=0; // launch again
-  OS_Kill();
-}
-
-void StartFileTest(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two test threads
-    NumCreated += OS_AddThread(&TestFile,128,1);  // test eFile
-  }
-}
-
-int Testmain2(void){   // Testmain2 
-  OS_Init();           // initialize, disable interrupts
-  Logic_Init();
-  Running = 1; 
-
-  // attach background tasks
-  OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
-  OS_AddS2Task(&StartFileTest,1);
-  OS_AddPA28Task(&StartFileTest,1);
-    
-  // create initial foreground threads
-  NumCreated = 0 ;
-  NumCreated += OS_AddThread(&TestFile,128,1);  
-  NumCreated += OS_AddThread(&VirusDetector,128,3); 
- 
-  OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
-  return 0;            // this never executes
-}
-
-void PrintFile3(char *pt){int status; char data; 
-  OS_bWait(&LCDFree);  
-  eFile_ROpen(pt);
-  do{
-    status = eFile_ReadNext(&data);
-    if(status == 0) UART_OutChar(data);
-  }while(status==0);
-  eFile_RClose();
-  OS_bSignal(&LCDFree);
-}
-void Dump3(uint32_t run,int32_t data){
-  SetPA8();
-  OS_bWait(&LCDFree);
-  eFile_WriteString("Testmain3\tabcdefghijklmnopqrstuvwxyz\t");
-  eFile_WriteUFix2(OS_MsTime()/10); eFile_Write('\t');
-  eFile_WriteUDec(run); eFile_Write('\t');
-  eFile_WriteSFix2(data); eFile_Write('\t');
-  eFile_WriteSDec(data); eFile_WriteString("\n\r");
-  OS_bSignal(&LCDFree);
-  ClrPA8();
-}
-//*****************Test project 3*************************
-// Filesystem stream test. 
-// Warning: this reformats the disk, all existing data will be lost
-uint32_t Run3=0;
-void TestFile3(void){   int i; char data; 
-  UART_OutString("\n\rECE445M Lab 4 eFile test 3\n\r");
-  ST7735_Message(0,1,"eFile test 3", Run3);
-  // test of eFile
-
-  PrintDirectory();
-  OS_bWait(&LCDFree);
-  eFile_Create(FileName);
-  eFile_WOpen(FileName);
-  OS_bSignal(&LCDFree);
-  for(i=-5; i<=5; i++){
-    Dump3(Run3,i);
-    Run3++;
-    OS_Sleep(10);
-  }
-  OS_bWait(&LCDFree);
-  eFile_WClose();
-  OS_bSignal(&LCDFree);
-  PrintDirectory();
-  PrintFile3(FileName);
-  UART_OutString("Successful test 3, Run3="); UART_OutUDec(Run3);
-  UART_OutString("\n\r");
-  ST7735_Message(0,2,"Run3 =",Run3);  
-
-  Running = 0; // allowed to launch again
-  FileName[5] = (FileName[5]+1)&0xF7; // 0 to 7
- 
-  OS_Kill();
-}
-void Chaos3(void){
-  ST7735_Message(1,0,"Chaos",3); 
-  while(1){
-    for(int l=1; l<5; l++){
-      ST7735_Message(1,l,"n =",Random8());  
-    }
-    OS_Sleep(100);
-  }
-}
-void StartFileTest3(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two test threads
-    NumCreated += OS_AddThread(&TestFile3,128,1);  // test eFile
-  }
-}
-
-int Testmain3(void){   // Testmain3 
-  OS_Init();           // initialize, disable interrupts
-  Logic_Init();
-  Running = 1; 
-  OS_InitSemaphore(&LCDFree, 1);
-
-  // attach background tasks
-  OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
-  OS_AddS2Task(&StartFileTest3,1);
-  OS_AddPA28Task(&StartFileTest3,1);
-    
-  // create initial foreground threads
-  NumCreated = 0 ;
-  NumCreated += OS_AddThread(&TestFile3,128,1);  
-  NumCreated += OS_AddThread(&Chaos3,128,1);  
-  NumCreated += OS_AddThread(&VirusDetector,128,3); 
-
-  if(eFile_Init())              diskError("eFile_Init",0); 
-  int error = eFile_Format();
-  if(error == 2)            diskError("eFile_Format",2); 
-  if(error == 1)            diskError("eFile_Format",0);
-  if(eFile_Mount())             diskError("eFile_Mount",0);
-
-  OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
-  return 0;            // this never executes
-}
-
 
 //*******************Trampoline for selecting which main to execute**********
 int main(void) {      // main 

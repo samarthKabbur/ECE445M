@@ -63,7 +63,7 @@ volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
-#define MAXTHREADS 32  // maximum number of threads
+#define MAXTHREADS 16  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
@@ -85,7 +85,7 @@ typedef struct periodic_task {
   int priority;
 } periodic_task_t;
 
-#define MAX_PERIODIC_THREADS 64
+#define MAX_PERIODIC_THREADS 16
 int NumPeriodic; //for allocated periodic threads
 
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
@@ -99,7 +99,7 @@ typedef struct button_task {
   int priority; 
 } button_task_t;
 
-#define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
+#define MAX_BUTTON_THREADS 16  // arbritrary value, TODO change if needed
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
@@ -119,6 +119,8 @@ fifo_t fifo;
 fifo_t tfluna1_fifo;
 fifo_t tfluna2_fifo;
 fifo_t tfluna3_fifo;
+fifo_t ir1_fifo;
+fifo_t ir2_fifo;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
