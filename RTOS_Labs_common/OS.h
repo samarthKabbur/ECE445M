@@ -60,6 +60,25 @@ typedef struct tcb {
   enum state Status; // active or free or blocked
 } tcb_t;
 
+/* GLOBAL FIFO */
+#define FIFOSIZE 64 // can be any size
+typedef struct fifo {
+  uint32_t volatile PutI; // put index
+  uint32_t volatile GetI; // get index
+  uint32_t data[FIFOSIZE];
+  Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
+  Sema4_t mutex; // 1 means available, 0 means busy
+  Sema4_t room_left;
+  uint32_t size;
+  uint32_t lost_data;
+} fifo_t;
+
+typedef struct tfluna_mail {
+  uint32_t Distance1;
+  uint32_t Distance2;
+  uint32_t Distance3;
+} tfluna_mail_t;
+
 /**
  * @details  Initialize operating system, disable interrupts until OS_Launch.
  * Initialize OS controlled I/O: serial, ADC, systick, LaunchPad I/O and timers.
@@ -235,6 +254,10 @@ uint32_t OS_LockScheduler(void);
 // resume foreground thread switching
 void OS_UnLockScheduler(uint32_t previous);
  
+// ******** OS_CAN_Init ************
+// Initializes CAN
+void OS_CAN_Init(uint32_t priority);
+
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
 // Inputs: size
@@ -245,6 +268,7 @@ void OS_UnLockScheduler(uint32_t previous);
 //    e.g., 4 to 64 elements
 //    e.g., must be a power of 2,4,8,16,32,64,128
 void OS_Fifo_Init(uint32_t size);
+void OS_Fifo_Init_Specific(uint32_t size, fifo_t* fifo);
 
 // ******** OS_Fifo_Put ************
 // Enter one data sample into the Fifo
@@ -255,6 +279,7 @@ void OS_Fifo_Init(uint32_t size);
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data);  
+int OS_Fifo_Put_Specific(uint32_t data, fifo_t* fifo);
 
 // ******** OS_Fifo_Get ************
 // Remove one data sample from the Fifo
@@ -262,6 +287,7 @@ int OS_Fifo_Put(uint32_t data);
 // Inputs:  none
 // Outputs: data 
 uint32_t OS_Fifo_Get(void);
+uint32_t OS_Fifo_Get_Specific(fifo_t* fifo);
 
 // ******** OS_Fifo_Size ************
 // Check the status of the Fifo
@@ -271,6 +297,7 @@ uint32_t OS_Fifo_Get(void);
 //          zero or less than zero if the Fifo is empty 
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void);
+int32_t OS_Fifo_Size_Specific(fifo_t* fifo);
 
 // ******** OS_MailBox_Init ************
 // Initialize communication channel

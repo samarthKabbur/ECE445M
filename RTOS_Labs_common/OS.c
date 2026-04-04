@@ -21,6 +21,7 @@
 #include "../RTOS_Labs_common/ST7735_SDC.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/heap.h"
+#include "../RTOS_Labs_common/CAN.h"
 
 // Hardware interrupt priorities
 //   Priority 0: Periodic threads 
@@ -57,13 +58,15 @@ void EndCritical(long);
 void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
+uint32_t SysTickStart,SysTickElapsed;
+uint32_t AddThreadStart,AddThreadElapsed;
 
 volatile uint32_t TimeMs;
 volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
-#define MAXTHREADS 32  // maximum number of threads
+#define MAXTHREADS 16  // maximum number of threads
 #define STACKSIZE 128 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
@@ -85,7 +88,7 @@ typedef struct periodic_task {
   int priority;
 } periodic_task_t;
 
-#define MAX_PERIODIC_THREADS 64
+#define MAX_PERIODIC_THREADS 16
 int NumPeriodic; //for allocated periodic threads
 
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
@@ -99,7 +102,7 @@ typedef struct button_task {
   int priority; 
 } button_task_t;
 
-#define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
+#define MAX_BUTTON_THREADS 16  // arbritrary value, TODO change if needed
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
@@ -115,21 +118,12 @@ typedef struct mailbox {
 
 mailbox_t mailbox;
 
-/* GLOBAL FIFO */
-#define FIFOSIZE 256 // can be any size
-
-typedef struct fifo {
-  uint32_t volatile PutI; // put index
-  uint32_t volatile GetI; // get index
-  uint32_t data[FIFOSIZE];
-  Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
-  Sema4_t mutex; // 1 means available, 0 means busy
-  Sema4_t room_left;
-  uint32_t size;
-  uint32_t lost_data;
-} fifo_t;
-
 fifo_t fifo;
+fifo_t tfluna1_fifo;
+fifo_t tfluna2_fifo;
+fifo_t tfluna3_fifo;
+fifo_t ir1_fifo;
+fifo_t ir2_fifo;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -171,8 +165,10 @@ void StartOS(void); // implemented in osasm.s
 // ------------------------------------------------------------------------------
 void SysTick_Handler(void) { 
    //TogglePB4();
+   SysTickStart = TIMG12->COUNTERREGS.CTR;
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
+  SysTickElapsed = SysTickStart-TIMG12->COUNTERREGS.CTR;                                    
 } // end SysTick_Handler
 
 /*
@@ -496,13 +492,10 @@ void OS_Wait(Sema4_t *semaPt){
     // 3a. set status of this thread to blocked. Scheduler will remove it from main TCB pool
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
-    
-    //OSCRITICAL_EXIT(sr);
+    // Re-enable interrupts before context switch to avoid deadlock.
+    OSCRITICAL_EXIT(sr);
     OS_Suspend();
-
-    // 4. restore i bit to its previous value
-   // OSCRITICAL_EXIT(sr);
-    //return;
+    return;
   }
   
   OSCRITICAL_EXIT(sr);
@@ -539,9 +532,9 @@ void OS_Signal(Sema4_t *semaPt) {
       // get ipsr = 0 means we're not inside an ISR
       // prevents suspending a background thread
       if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
-       // OSCRITICAL_EXIT(sr);
+        OSCRITICAL_EXIT(sr);
         OS_Suspend(); // preempt the current thread
-       // return;
+        return;
       }
     }
   }
@@ -570,11 +563,10 @@ void OS_bWait(Sema4_t *semaPt) {
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
 
-    
-   // OSCRITICAL_EXIT(sr);
+    // Re-enable interrupts before context switch to avoid deadlock.
+    OSCRITICAL_EXIT(sr);
     OS_Suspend();
-    
-   // OSCRITICAL_ENTER(sr); 
+    return;
   }
   else{
   semaPt->Value = 0;
@@ -602,7 +594,9 @@ void OS_bSignal(Sema4_t *semaPt) {
     wokenThread->Status = Active;
 
     if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
+      OSCRITICAL_EXIT(sr);
       OS_Suspend();
+      return;
     }
   } else {
     semaPt->Value = 1;
@@ -632,6 +626,7 @@ int OS_AddProcessThread(void(*task)(void),
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
    OSCRITICAL_ENTER(sr);
+  AddThreadStart = TIMG12->COUNTERREGS.CTR; // down count
   // find a thread that is free
   int i;
   for (i = 0; i < MAXTHREADS; i++) {
@@ -688,7 +683,7 @@ if (RunPt == (void*)0) {
 //prevNode <---- newNode ----> pt
 
 }
-
+  AddThreadElapsed = AddThreadStart-TIMG12->COUNTERREGS.CTR; 
   OSCRITICAL_EXIT(sr);
   return 1;
 }
@@ -1099,6 +1094,17 @@ void OS_Suspend(void){
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // trigger SysTick
 };
   
+// ******** OS_CAN_Init *************
+// Initialize CAN fifo
+void OS_CAN_Init(uint32_t priority)
+{
+  CAN_Init(priority);
+  CAN_EnableInterrupts(priority);
+  CAN_ReceiveFifo.PutI = 0;
+  CAN_ReceiveFifo.GetI = 0;
+  OS_InitSemaphore(&CAN_Available, 0);
+}
+
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
 // Inputs: size
@@ -1121,6 +1127,19 @@ void OS_Fifo_Init(uint32_t size){
   fifo.size = size;
 }
 
+void OS_Fifo_Init_Specific(uint32_t size, fifo_t* fifo){
+  fifo->GetI = 0; // empty
+  fifo->PutI = 0; // empty
+  fifo->lost_data = 0; // no data lost yet
+  if(size >FIFOSIZE){
+    return;
+  }
+  OS_InitSemaphore(&fifo->current_size, 0);
+  OS_InitSemaphore(&fifo->room_left, size);
+  OS_InitSemaphore(&fifo->mutex, 1);
+  fifo->size = size;
+}
+
 // ******** OS_Fifo_Put ************
 // Enter one data sample into the Fifo
 // Called from the background, so no waiting 
@@ -1129,31 +1148,13 @@ void OS_Fifo_Init(uint32_t size){
 //          false if data not saved, because it was full
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
-// int OS_Fifo_Put(uint32_t data){
-//   // put Lab 2 (and beyond) solution here
-//   if (fifo.current_size.Value == FIFOSIZE ) {
-//     fifo.lost_data++;
-//     return 0; // fail if fifo is full
-//   }
-//   // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
-//   //     return 0;
-//   //   }
-//   *(fifo.putPt) = data;
-//   fifo.putPt++;
-
-//   if (fifo.putPt == &fifo.data[FIFOSIZE]) {
-//     fifo.putPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.current_size);
-//   return 1;
-// }
 int OS_Fifo_Put(uint32_t data){
   long sr;
   OSCRITICAL_ENTER(sr);
   uint32_t newPutI = (fifo.PutI+1)&(fifo.size-1);
   if (newPutI == fifo.GetI){ // FIFO Full 
     fifo.lost_data++;
+    OSCRITICAL_EXIT(sr);
     return 0;
     
   } else {
@@ -1165,29 +1166,31 @@ int OS_Fifo_Put(uint32_t data){
   return 1; 
 }
 
+int OS_Fifo_Put_Specific(uint32_t data, fifo_t* fifo){
+    long sr;
+  OSCRITICAL_ENTER(sr);
+  uint32_t newPutI = (fifo->PutI+1)&(fifo->size-1);
+  if (newPutI == fifo->GetI){ // FIFO Full 
+    fifo->lost_data++;
+    OSCRITICAL_EXIT(sr);
+    return 0;
+    
+  } else {
+    fifo->data[(fifo->PutI & (fifo->size - 1))] = data; // put in FIFO
+    fifo->PutI = newPutI;
+  }
+ OSCRITICAL_EXIT(sr);
+ OS_Signal(&fifo->current_size);
+  return 1; 
+}
+
 // ******** OS_Fifo_Get ************
 // Remove one data sample from the Fifo
 // Called in foreground, will spin/block if empty
 // Inputs:  none
 // Outputs: data 
-// uint32_t OS_Fifo_Get(void){
-//   // put Lab 2 (and beyond) solution here
-//   //if (fifo.getPt == fifo.putPt){}
-//   OS_Wait(&fifo.current_size);  // block if empty
-  
-//   OS_Wait(&fifo.mutex); // block if busy
-
-//   uint32_t data = *(fifo.getPt);
-//   fifo.getPt++;
-
-//   if (fifo.getPt == &fifo.data[FIFOSIZE]) {
-//     fifo.getPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.mutex);
-//   return data;
-// }
-uint32_t OS_Fifo_Get(void){long sr;
+uint32_t OS_Fifo_Get(void){
+  long sr;
   
   OS_Wait(&fifo.current_size);// block if empty
   OS_Wait(&fifo.mutex); // block if busy
@@ -1205,6 +1208,25 @@ uint32_t OS_Fifo_Get(void){long sr;
   return data;
 }
 
+uint32_t OS_Fifo_Get_Specific(fifo_t* fifo){
+  long sr;
+  
+  OS_Wait(&fifo->current_size);// block if empty
+  OS_Wait(&fifo->mutex); // block if busy
+  OSCRITICAL_ENTER(sr);
+  uint32_t data;
+  if (fifo->PutI == fifo->GetI){ // FIFO is empty, this should never run cause we would block if empty
+    return 0;
+  } else {
+    data  = fifo->data[(fifo->GetI & (fifo->size - 1))];
+    fifo->GetI = (fifo->GetI+1) & (fifo->size - 1);
+  }
+  OSCRITICAL_EXIT(sr);
+  OS_Signal(&fifo->mutex);
+  OS_Signal(&fifo->room_left);
+  return data;
+}
+
 // ******** OS_Fifo_Size ************
 // Check the status of the Fifo
 // Inputs: none
@@ -1213,10 +1235,13 @@ uint32_t OS_Fifo_Get(void){long sr;
 //          zero or less than zero if the Fifo is empty 
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
-  // put Lab 2 (and beyond) solution here
- return fifo.PutI - fifo.GetI;// replace this line with solution
-  //return 0;
+ return fifo.PutI - fifo.GetI;
 }
+
+int32_t OS_Fifo_Size_Specific(fifo_t* fifo){
+  return fifo->PutI - fifo->GetI;
+}
+
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
 // Inputs:  none
