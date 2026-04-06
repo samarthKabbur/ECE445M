@@ -24,6 +24,7 @@
 #include "../RTOS_Labs_common/fixed.h"
 #include "../RTOS_Labs_common/CAN.h"
 #include <stdio.h>
+#include <math.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J25: Connects PA10 to XDS_UART
@@ -63,6 +64,14 @@ extern fifo_t ir2_fifo;
 Median5_data_t tfluna1_median_data;
 Median5_data_t tfluna2_median_data;
 Median5_data_t tfluna3_median_data;
+
+typedef enum command {
+  weak_left = 0,
+  strong_left,
+  straight,
+  strong_right,
+  weak_right
+} command_t;
 
 //---------------------User debugging-----------------------
 
@@ -446,6 +455,34 @@ void FileDump(uint32_t data, uint32_t data2){
   OS_bSignal(&LCDFree);
   ClrPB4();
 }
+
+// TODO: Currently causes hardfault
+#define PI 3
+uint32_t calculate_angle(uint32_t a, uint32_t b) {
+  double angle_C_rad = 50 * (PI / 180);
+  double c_squared = pow(a, 2) + pow(b, 2) - 2 * a * b * cos(angle_C_rad);
+  double c = sqrt(c_squared);
+
+  // 2. Calculate angle 'B' using Law of Cosines (Rearranged)
+  // cos(B) = (a^2 + c^2 - b^2) / (2ac)
+  double cos_B = (pow(a, 2) + pow(c, 2) - pow(b, 2)) / (2 * a * c);
+  
+  // Safety check: acos() will return NaN if the value is outside [-1, 1]
+  // which can happen due to tiny floating-point rounding errors.
+  if (cos_B > 1.0) cos_B = 1.0;
+  if (cos_B < -1.0) cos_B = -1.0;
+
+  double angle_B_rad = acos(cos_B);
+  double angle_B_deg = angle_B_rad * (180.0 / PI);
+
+  return angle_B_deg;
+}
+
+void print_header(void) {
+  UART_OutString("\r\nTime(ms)|  IR1  |  IR2   |  TF1  |   TF3  |   TF2  |  WA Left | WA Right |");
+  UART_OutString("\r\n--------+-------+--------+-------+--------+--------+----------+----------+");
+}
+
 //******** Robot *************** 
 // foreground Consumer thread, accepts data from producer
 // inputs:  none
@@ -456,6 +493,9 @@ char FileName[8]="robot0";
 static tfluna_mail_t tfluna_mail_buffer;
 
 void Robot(void){   
+
+  /* INIT */
+  command_t command;
   uint32_t LastHeaderPrint;
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
@@ -473,13 +513,12 @@ void Robot(void){
   NumCreated += OS_AddThread(&Display,128,0); 
   UART_OutString("Robot running...");
   StartFileDump(FileName);
-  UART_OutString("\r\nTime(ms) |   IR1 |   IR2 |   TF1 |   TF2 |   TF3 |  SNR1 |  SNR2 | SNRDAS");
-  UART_OutString("\r\n---------+-------+-------+-------+-------+-------+-------+-------+-------");
+  print_header();
   LastHeaderPrint = OS_MsTime();
+  /* END INIT */
 
-  // while(FilterWork < RUNLENGTH) { 
   while (true) {
-
+    /* DATA COLLECTION */
     uint32_t data1;      // in mm, from TFLuna
     uint32_t sum1=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
@@ -487,7 +526,6 @@ void Robot(void){
       x1[t] = data1;
       sum1 += data1;             // average
     }
-    
     uint32_t data2;      // in mm, from TFLuna
     uint32_t sum2=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
@@ -495,15 +533,13 @@ void Robot(void){
       x2[t] = data2;
       sum2 += data2;             // average
     }
-    
-    // uint32_t data3;      // in mm, from TFLuna
-    // uint32_t sum3=0;
-    // for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-    //   data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
-    //   x3[t] = data3;
-    //   sum3 += data3;             // average
-    // }
-
+    uint32_t data3;      // in mm, from TFLuna
+    uint32_t sum3=0;
+    for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+      data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
+      x3[t] = data3;
+      sum3 += data3;             // average
+    }
     uint32_t dataDAS1;
     uint32_t sumDAS1=0;
     for (int t = 0; t < 16; t++) { // collect 16 IR samples 
@@ -511,7 +547,6 @@ void Robot(void){
       x1DAS[t] = dataDAS1;
       sumDAS1 += dataDAS1;
     }
-
     uint32_t dataDAS2;
     uint32_t sumDAS2=0;
     for (int t = 0; t < 16; t++) { // collect 16 IR samples 
@@ -519,18 +554,20 @@ void Robot(void){
       x1DAS[t] = dataDAS2;
       sumDAS2 += dataDAS2;
     }
-
     Distance1 = sum1>>4;  // in mm
     Distance2 = sum2>>4;  // in mm
     Distance3 = sum3>>4;  // in mm
     DistanceDAS1 = sumDAS1 >>4;
     DistanceDAS2 = sumDAS2 >>4;
 
-    // double angle_to_wall = acos((double)Distance1 / Distance2) * 180.0 / 3.14159265359;
+    uint32_t wall_angle_left = calculate_angle(Distance1, Distance2);
+    uint32_t wall_angle_right = calculate_angle(Distance2, Distance3);
 
+    /* END DATA COLLECTION */
+
+    /* DATA DEBUG PRINT */
     if((OS_MsTime() - LastHeaderPrint) >= 5000){
-      UART_OutString("\r\nTime(ms)|  IR1  |  IR2   |   TF1  |   TF2  |   TF3  |  SNR1  |  SNR2 | SNRDAS1 | SNRDAS2 | Angle to Wall");
-      UART_OutString("\r\n--------+-------+--------+--------+--------+--------+--------+-------+---------+---------+--------------+");
+      print_header();
       LastHeaderPrint = OS_MsTime();
     }
 
@@ -539,21 +576,27 @@ void Robot(void){
     UART_OutUDec5(DistanceDAS1); UART_OutString(" | ");
     UART_OutUDec5(DistanceDAS2); UART_OutString(" | ");
     UART_OutUDec5(Distance1); UART_OutString(" | ");
-    UART_OutUDec5(Distance2); UART_OutString(" | ");
     UART_OutUDec5(Distance3); UART_OutString(" | ");
-    UART_OutUDec5((uint32_t)SNR1); UART_OutString(" | ");
-    UART_OutUDec5((uint32_t)SNR2); UART_OutString(" | ");
-    UART_OutUDec5((uint32_t)SNRDAS1);
-    UART_OutUDec5((uint32_t)SNRDAS2);
+    UART_OutUDec5(Distance2); UART_OutString(" | ");
+    // UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
+    // UART_OutUDec5(wall_angle_right); UART_OutString(" | ");
     // UART_OutUDec5((uint32_t)angle_to_wall);
-
-    int can_result = CAN_Send(0, sizeof(Distance1), &Distance1);
     
-    tfluna_mail_buffer.Distance1 = Distance1;
-    tfluna_mail_buffer.Distance2 = Distance2;
-    tfluna_mail_buffer.Distance3 = Distance3;
     // FileDump(Distance,Distance2);
-    OS_MailBox_Send(1); // called every 10ms*16 = 160ms
+
+    /* END DATA DEBUG PRINT */
+
+    /* CONTROL ALGORITHM */
+    // TODO
+    if (Distance1 > Distance2) {
+      command = weak_left;
+    } else if (Distance1 < Distance2) {
+      command = weak_right;
+    } else {
+      command = straight;
+    }
+    OS_MailBox_Send(command); // called every 10ms*16 = 160ms
+    /* END CONTROL ALGORITHM */
   }
   EndFileDump();
   UART_OutString("done.\n\r>");
@@ -579,25 +622,20 @@ void S2Push(void){
 // inputs:  none                            
 // outputs: none
 void Display(void){ 
-  uint32_t Distance1;
-  uint32_t Distance2;
-  uint32_t Distance3;
+  command_t command;
   uint32_t myId = OS_Id();
   ST7735_Message(0,1,"myId = ",myId);   // top half used for Display
   ST7735_Message(0,2,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
   while(Running) { 
     TogglePB1();
-    int val = OS_MailBox_Recv();  // will block if mail isn't available.
-    Distance1 = tfluna_mail_buffer.Distance1;
-    Distance2 = tfluna_mail_buffer.Distance2;
-    Distance3 = tfluna_mail_buffer.Distance3;
+    
+    command = OS_MailBox_Recv();  // will block if mail isn't available.
     TogglePB1();
     ST7735_Message(0,3,"Time(ms) =",OS_MsTime());  
     ST7735_Message(0,4,"work  =",FilterWork);
-      
-    ST7735_Message(0,5,"D1(mm) =",Distance1);
-    ST7735_Message(0,6,"D2(mm) =",Distance2);
-    ST7735_Message(0,7,"D3(mm) =",Distance3);
+    ST7735_Message(0, 5, "Turn :", command);
+
+    CAN_Put(0, command);
     
     TogglePB1();        // toggle PB1
  } 
@@ -607,29 +645,10 @@ void Display(void){
 //--------------end of Task 3-----------------------------
 
 //------------------Task 4--------------------------------
-uint32_t Check(uint32_t start, uint32_t end){
-  uint32_t sum=0;
-  uint32_t *pt; pt = (uint32_t *)start;
-  while((uint32_t)pt < end){
-    sum += *pt++;
-  }
-  return sum;
-}
+
 //******** Virus Detector *************** 
-uint32_t Checksum;             // sum of data stored in ROM
-uint32_t ChecksumOriginal;     // sum of data stored in ROM
-uint32_t ChecksumErrors;
 void VirusDetector(void){ 
-  Checks = ChecksumErrors = 0;
-  ChecksumOriginal = Check(0,0x20000);
-  while(1) { 
-    TogglePB20();        // toggle PB20
-    Checksum = Check(0,0x20000);
-    Checks++;
-    if(Checksum !=  ChecksumOriginal){
-      ChecksumErrors++; 
-    }    
-  }
+  while(1){}
 }
 
 //--------------end of Task 4-----------------------------
@@ -641,7 +660,6 @@ void Lab4(void){}
 void DFT(void){}
 
 //--------------end of Task 5-----------------------------
-
 
 //*******************final user main DEMONTRATE THIS TO TA**********
 int realmain(void){     // realmain
@@ -655,6 +673,8 @@ int realmain(void){     // realmain
   OS_MailBox_Init();
   OS_Fifo_Init(256);
   OS_InitSemaphore(&LCDFree, 1);
+  OS_CAN_Init(1);
+  OS_InitSemaphore(&CAN_Available, 0);
 
   // hardware init
   ADC_InitDual(ADC0, 3, 7, ADCVREF_VDDA);
@@ -695,41 +715,6 @@ int realmain(void){     // realmain
   if(eFile_Mount())             diskError("eFile_Mount",0);
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
-}
-//+++++++++++++++++++++++++DEBUGGING CODE++++++++++++++++++++++++
-// ONCE YOUR RTOS WORKS YOU CAN COMMENT OUT THE REMAINING CODE
-// 
-
-//*******************CAN TEST**********
-uint32_t CANData;
-uint32_t failures;
-uint32_t id = 2;
-uint32_t count = 0;
-
-void SendCAN(void)
-{
-  TogglePB4();
-  if (!CAN_Put(id, count))
-  {
-    failures++;
-    ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
-  }
-  count++;
-}
-
-int TestmainCAN(void)
-{
-  OS_Init();  
-  Logic_Init();
-  OS_CAN_Init(1);
-  OS_InitSemaphore(&CAN_Available, 0);
-
-  NumCreated = 0;
-  NumCreated += OS_AddS2Task(&SendCAN, 1);
-  NumCreated += OS_AddThread(&VirusDetector, 128, 2);
-
-  OS_Launch(TIME_2MS);
-  return 0;
 }
 
 //*******************Trampoline for selecting which main to execute**********
