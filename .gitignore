@@ -26,3 +26,8 @@ Release/
 
 # OS junk
 .DS_Store
+RTOS_Lab4_FileSystem/.clangd
+.gitignore
+RTOS_Lab4_FileSystem/targetConfigs/MSPM0G3507.ccxml
+RTOS_SensorBoard/.clangd
+RTOS_Lab4_FileSystem/.project

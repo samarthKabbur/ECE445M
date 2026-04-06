@@ -22,8 +22,8 @@
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/fixed.h"
+#include "../RTOS_Labs_common/CAN.h"
 #include <stdio.h>
-#include <math.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J25: Connects PA10 to XDS_UART
@@ -246,18 +246,6 @@ void DAS2(void){
       DataLostDAS2++;
   } 
   TogglePA8();    // toggle PA8
-}
-
-void DFT(void){ int i;  int32_t real,imag,mag;
-  UART_OutString("\r\nLab 2/3 DFT data");
-  UART_OutString("\r\nInput,  Output Real, Output Imaginary, Magnitude");
-  for(i=0; i<8; i++){
-    real = ReX1DAS[i];
-    imag = ImX1DAS[i];    
-    mag = sqrt2(real*real+imag*imag);
-    UART_OutString("\r\n"); UART_OutUDec(x1DAS[i]); UART_OutChar(' '); UART_OutSDec(real); UART_OutChar(' '); UART_OutSDec(imag);
-    UART_OutChar(' '); UART_OutSDec(mag);
-  }
 }
 //--------------end of Task 1-----------------------------
 
@@ -558,7 +546,8 @@ void Robot(void){
     UART_OutUDec5((uint32_t)SNRDAS1);
     UART_OutUDec5((uint32_t)SNRDAS2);
     // UART_OutUDec5((uint32_t)angle_to_wall);
-    
+
+    int can_result = CAN_Send(0, sizeof(Distance1), &Distance1);
     
     tfluna_mail_buffer.Distance1 = Distance1;
     tfluna_mail_buffer.Distance2 = Distance2;
@@ -605,16 +594,10 @@ void Display(void){
     TogglePB1();
     ST7735_Message(0,3,"Time(ms) =",OS_MsTime());  
     ST7735_Message(0,4,"work  =",FilterWork);
-    
       
     ST7735_Message(0,5,"D1(mm) =",Distance1);
     ST7735_Message(0,6,"D2(mm) =",Distance2);
     ST7735_Message(0,7,"D3(mm) =",Distance3);
-    
-      
-    ST7735_Message(0, 8, "SNR1 =", SNR1);
-    ST7735_Message(0, 9, "SNR2 =", SNR2);
-    ST7735_Message(0, 10, "SNRDAS =", SNRDAS1);
     
     TogglePB1();        // toggle PB1
  } 
@@ -624,8 +607,6 @@ void Display(void){
 //--------------end of Task 3-----------------------------
 
 //------------------Task 4--------------------------------
-// foreground thread that runs without waiting or sleeping
-// it executes a virus detector 
 uint32_t Check(uint32_t start, uint32_t end){
   uint32_t sum=0;
   uint32_t *pt; pt = (uint32_t *)start;
@@ -635,10 +616,6 @@ uint32_t Check(uint32_t start, uint32_t end){
   return sum;
 }
 //******** Virus Detector *************** 
-// foreground thread, performs a checksum of all ROM
-// never blocks, never sleeps, never dies
-// inputs:  none
-// outputs: none
 uint32_t Checksum;             // sum of data stored in ROM
 uint32_t ChecksumOriginal;     // sum of data stored in ROM
 uint32_t ChecksumErrors;
@@ -658,46 +635,10 @@ void VirusDetector(void){
 //--------------end of Task 4-----------------------------
 
 //------------------Task 5--------------------------------
-// UART0 background ISR performs serial input/output
-// Two software fifos are used to pass I/O data to foreground
-// The interpreter runs as a foreground thread
-// The UART0 driver should call OS_Wait(&RxDataAvailable) when foreground tries to receive
-// The UART0 ISR should call OS_Signal(&RxDataAvailable) when it receives data from Rx
-// Similarly, the transmit channel waits on a semaphore in the foreground
-// and the UART0 ISR signals this semaphore (TxRoomLeft) when getting data from fifo
-
 //******** Interpreter *************** 
-// Modify your intepreter from Lab 1, adding commands to help debug 
-// Interpreter is a foreground thread, accepts input from serial port, outputs to serial port
-// inputs:  none
-// outputs: none
 void Interpreter(void);    // just a prototype, link to your interpreter
-// add the following commands, leave other commands, if they make sense
-// 1) print performance measures 
-//    time-jitter, number of data points lost, number of calculations performed
-//    i.e., NumCreated, MaxJitter, DataLost, FilterWork, Checks
-      
-// 2) print debugging parameters 
-//    i.e., Checks, ChecksumErrors
-
-// Call these from your interpreter
-void Lab4(void){int i;
-  UART_OutString("\r\nLab 4 performance data");
-  UART_OutString("\r\nFilterWork     = "); UART_OutUDec(FilterWork);
-  UART_OutString("\r\nNumCreated     = "); UART_OutUDec(NumCreated);
-  UART_OutString("\r\nChecksWork     = "); UART_OutUDec(ChecksWork);
-  UART_OutString("\r\nDataLost       = "); UART_OutUDec(DataLost); 
-  UART_OutString("\r\nReal-time sampling jitter (cyc)");
-  UART_OutString("\r\nTime,  Frequencies");
-  for(i=0; i<JitterSize3; i++){
-    if(JitterHistogram3[i]){ // skip blanks
-      UART_OutString("\r\n "); 
-      UART_OutUDec5(i);
-      UART_OutUDec5(JitterHistogram3[i]);
-    }
-  }
-  UART_OutString("\r\nMaxJitter3(cyc) = "); UART_OutUDec(MaxJitter3); 
-}
+void Lab4(void){}
+void DFT(void){}
 
 //--------------end of Task 5-----------------------------
 
