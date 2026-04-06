@@ -253,6 +253,10 @@ void OS_Suspend(void);
 uint32_t OS_LockScheduler(void);
 // resume foreground thread switching
 void OS_UnLockScheduler(uint32_t previous);
+ 
+// ******** OS_CAN_Init ************
+// Initializes CAN
+void OS_CAN_Init(uint32_t priority);
 
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
