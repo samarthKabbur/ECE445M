@@ -759,6 +759,38 @@ int realmain(void){     // realmain
 // ONCE YOUR RTOS WORKS YOU CAN COMMENT OUT THE REMAINING CODE
 // 
 
+//*******************CAN TEST**********
+uint32_t CANData;
+uint32_t failures;
+uint32_t id = 2;
+uint32_t count = 0;
+
+void SendCAN(void)
+{
+  TogglePB4();
+  if (!CAN_Put(id, count))
+  {
+    failures++;
+    ST7735_Message(0, 1, "CAN SEND FAILED ", failures);
+  }
+  count++;
+}
+
+int TestmainCAN(void)
+{
+  OS_Init();  
+  Logic_Init();
+  OS_CAN_Init(1);
+  OS_InitSemaphore(&CAN_Available, 0);
+
+  NumCreated = 0;
+  NumCreated += OS_AddS2Task(&SendCAN, 1);
+  NumCreated += OS_AddThread(&VirusDetector, 128, 2);
+
+  OS_Launch(TIME_2MS);
+  return 0;
+}
+
 //*******************Trampoline for selecting which main to execute**********
 int main(void) {      // main 
   __disable_irq();
