@@ -130,7 +130,7 @@ void Cmd_Jitter(char* args, int l){
 }
 
 void Cmd_Format(char* args, int l){
- if(eFile_Format())            diskError("eFile_Format",0); 
+ //if(eFile_Format())            diskError("eFile_Format",0); 
   UART_OutString("\n");
 }
 
@@ -143,7 +143,7 @@ void Cmd_Dir(char* args, int l){
   UART_OutString("\n\r");
   OS_bWait(&LCDFree);
   if(eFile_DOpen(""))
-    diskError("eFile_DOpen",0);
+   // diskError("eFile_DOpen",0);
 
   while(!eFile_DirNext(&name, &size)){
     UART_OutString("Filename = ");
@@ -165,7 +165,7 @@ void Cmd_Dir(char* args, int l){
   UART_OutString("\n\r");
 
   if(eFile_DClose())
-    diskError("eFile_DClose",0);
+  //  diskError("eFile_DClose",0);
   OS_bSignal(&LCDFree);
 }
 

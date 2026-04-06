@@ -79,11 +79,11 @@
 
 #if (! TRANSPARENT) && (! SERVER)
 // client mode
-const char Fetch[] = "GET /data/2.5/weather?q=Austin%20Texas&APPID=1234567890abcdef1234567890abcdef HTTP/1.1\r\nHost:api.openweathermap.org\r\n\r\n";
+const char Fetch[] = "GET /data/2.5/weather?q=Austin%20Texas&APPID=328f946eaee6811810ecfef04a95d6f5 HTTP/1.1\r\nHost:api.openweathermap.org\r\n\r\n";
 // 1) go to http://openweathermap.org/appid#use 
 // 2) Register on the Sign up page
 // 3) get an API key (APPID) replace the 1234567890abcdef1234567890abcdef with your APPID
-char LOGDATA[] ="GET /php/json/write.php?name=Robot13&bump=19&steering=123&right=456&left=678&systick=44&addthread=75&jitter=75 HTTP/1.0\r\nHOST: embedded.ece.utexas.edu\r\n\r\n";
+char LOGDATA[] ="GET /php/json/write.php?name=Robot17&bump=19&steering=123&right=456&left=678&systick=44&addthread=75&jitter=75 HTTP/1.0\r\nHOST: embedded.ece.utexas.edu\r\n\r\n";
 
 char Response[512];
 char Status[16];
