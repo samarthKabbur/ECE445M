@@ -594,7 +594,7 @@ int calculate_angle_fixedpt(int a, int b) {
 }
 
 void print_header(void) {
-  UART_OutString("\r\nTime(ms)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | Command |");
+  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | Command |");
   UART_OutString("\r\n--------+----------+----------+-------+--------+--------+---------+");
 }
 
@@ -688,7 +688,7 @@ void Robot(void){
 
     /* CONTROL ALGORITHM */
     // TODO
-    if (LunaCenter < 2000) {
+    if ((LunaCenter < 2000 || (IRDistanceLeft < 100) || (IRDistanceRight < 100))) {
       if (IRDistanceRight > IRDistanceLeft) {
         int difference = IRDistanceRight - IRDistanceLeft;
         if (difference > 500) {
@@ -731,7 +731,7 @@ void Robot(void){
     }
 
     UART_OutString("\r\n");
-    UART_OutSDec(OS_MsTime()); UART_OutString("    | ");
+    UART_OutSDec(OS_MsTime() / 1000); UART_OutString("    | ");
     UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
     UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
     UART_OutUDec5(LunaLeft); UART_OutString(" | ");
@@ -809,9 +809,41 @@ void Display(void){
     
     command = (command_t*)OS_MailBox_Recv();  // will block if mail isn't available.
     TogglePB1();
-    ST7735_Message(0,3,"Time(ms) =",OS_MsTime());  
-    ST7735_Message(0,4,"work  =",FilterWork);
-    ST7735_Message(0, 5, "Turn :", command->direction);
+    ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000);  
+
+    switch (command->direction) {
+      case weak_left:
+        ST7735_Message(0,4,"Weak Left", command->direction); 
+        break;
+      case strong_left:
+        ST7735_Message(0,4,"Strong Left", command->direction); 
+        break;
+      case straight:
+        ST7735_Message(0,4,"Straight", command->direction); 
+        break;
+      case strong_right:
+        ST7735_Message(0,4,"Strong Right", command->direction);
+        break;
+      case weak_right:
+        ST7735_Message(0,4,"Weak Right", command->direction);
+        break;
+    }
+
+    switch (command->speed) {
+      case stop:
+        ST7735_Message(0,5,"Stop", command->speed);
+        break;
+      case slow:
+        ST7735_Message(0,5,"Slow", command->speed);
+        break;
+      case medium:
+        ST7735_Message(0,5,"Medium", command->speed);
+        break;
+      case fast:
+        ST7735_Message(0,5,"Fast", command->speed);
+        break;
+    }
+    
 
     CAN_Put(0, command->direction);
     CAN_Put(1, command->speed);
