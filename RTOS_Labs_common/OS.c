@@ -1267,11 +1267,7 @@ void OS_Kill(void){
 
   OS_Suspend();
 
-  if ((__get_IPSR() & 0X1FF) != 0) {
-    return; // return if called from SVC
-  }
-
-  while(1){};
+  // Removed infinite loop to allow calls from SVC Handler
 }
 
 void Deallocate_Thread(void) {
