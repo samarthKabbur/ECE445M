@@ -457,9 +457,10 @@ void FileDump(uint32_t data, uint32_t data2){
 }
 
 // TODO: Currently causes hardfault
+#define TFLUNA_ANGLE 50
 #define PI 3
-uint32_t calculate_angle(uint32_t a, uint32_t b) {
-  double angle_C_rad = 50 * (PI / 180);
+double calculate_angle(double a, double b) {
+  double angle_C_rad = TFLUNA_ANGLE * (PI / 180);
   double c_squared = pow(a, 2) + pow(b, 2) - 2 * a * b * cos(angle_C_rad);
   double c = sqrt(c_squared);
 
@@ -476,6 +477,108 @@ uint32_t calculate_angle(uint32_t a, uint32_t b) {
   double angle_B_deg = angle_B_rad * (180.0 / PI);
 
   return angle_B_deg;
+}
+
+// Fixed-point helper functions for angle calculation
+// Fixed-point multiply: (a * b) / scale where both inputs and output use scale
+// Input: a, b in fixed-point representation
+// Returns: product scaled appropriately
+int32_t fixed_multiply(int32_t a, int32_t b, int32_t scale) {
+  return (int64_t)a * b / scale;
+}
+
+// Fixed-point integer square root using Newton's method
+// Input: n in fixed-point (scale = 10000)
+// Returns: sqrt(n) in fixed-point (scale = 10000)
+int32_t fixed_sqrt(int32_t n) {
+  if (n <= 0) return 0;
+  int32_t x = n;
+  int32_t prev_x = 0;
+  // Newton's method: x_new = (x + n/x) / 2
+  // In fixed-point: x_new = (x*10000 + n/(x/10000)) / 2
+  for (int i = 0; i < 20; i++) {  // Usually converges in 5-10 iterations
+    prev_x = x;
+    x = (x + (int32_t)((int64_t)n * 10000 / x)) / 2;
+    if (x == prev_x) break;  // Converged
+  }
+  return x;
+}
+
+// Fixed-point arc cosine approximation using Taylor series
+// Input: x in range [-10000, 10000] (fixed-point, scale=10000)
+// Output: angle in radians/1000 units (compatible with fixed_sin/cos)
+// Valid for |x| <= 1.0 (10000 in fixed-point)
+int32_t fixed_acos(int32_t x) {
+  if (x >= 10000) return 0;        // acos(1) = 0
+  if (x <= -10000) return 3142;    // acos(-1) = pi ≈ 3.142 (radians/1000)
+  
+  // Use the identity: acos(x) = pi/2 - asin(x)
+  // For better accuracy, use: acos(x) ≈ 1.5708 - (x + x^3/6 + 3x^5/40 + ...)
+  // Simplified: acos(x) ≈ 1.5708 - x - x^3/6 (in radians)
+  // Scaled to radians/1000: acos(x) ≈ 1571 - x - x^3/6000 (where x is scaled by 10000)
+  
+  int32_t x_scaled = x / 100;  // Scale down for calculation
+  int64_t x3 = (int64_t)x_scaled * x_scaled * x_scaled / 1000000;
+  int32_t result = 1571 - x_scaled - (int32_t)(x3 / 6);
+  return result;
+}
+
+// Fixed-point angle calculation using Law of Cosines
+// Inputs: a, b in millimeters
+// Output: angle in degrees (0-180)
+// Uses fixed-point arithmetic throughout
+int calculate_angle_fixedpt(int a, int b) {
+  // Constants
+  const int32_t TFLUNA_ANGLE_FIXED = 873;  // 50 degrees in radians/1000
+  const int32_t SCALE = 10000;             // Fixed-point scale for trig functions
+  const int32_t MM_SCALE = 100;            // Distance scale factor
+  
+  // Convert distances to fixed-point
+  int32_t a_fp = a * MM_SCALE;
+  int32_t b_fp = b * MM_SCALE;
+  
+  // Step 1: Calculate c using Law of Cosines: c^2 = a^2 + b^2 - 2ab*cos(C)
+  // cos(50°) in fixed-point
+  int16_t cos_angle_C = fixed_cos(TFLUNA_ANGLE_FIXED);
+  
+  // a^2 and b^2 (in fixed-point scale 100^2 = 10000)
+  int32_t a_sq = fixed_multiply(a_fp, a_fp, MM_SCALE);
+  int32_t b_sq = fixed_multiply(b_fp, b_fp, MM_SCALE);
+  
+  // 2*a*b*cos(C) 
+  int32_t two_ab_cos = fixed_multiply(2 * a_fp, b_fp, MM_SCALE);
+  two_ab_cos = fixed_multiply(two_ab_cos, (int32_t)cos_angle_C, SCALE);
+  
+  // c^2 = a^2 + b^2 - 2ab*cos(C)
+  int32_t c_sq = a_sq + b_sq - two_ab_cos;
+  
+  if (c_sq <= 0) return 0;  // Safety check
+  
+  // c = sqrt(c^2)
+  int32_t c_fp = fixed_sqrt(c_sq);
+  
+  // Step 2: Calculate angle B using Law of Cosines: cos(B) = (a^2 + c^2 - b^2) / (2ac)
+  int32_t numerator = a_sq + c_sq - b_sq;
+  int32_t denominator = 2 * fixed_multiply(a_fp, c_fp, MM_SCALE);
+  
+  if (denominator == 0) return 0;  // Safety check
+  
+  // cos_B in fixed-point (scale 10000)
+  int32_t cos_B = (numerator * SCALE) / denominator;
+  
+  // Clamp to valid range [-10000, 10000]
+  if (cos_B > SCALE) cos_B = SCALE;
+  if (cos_B < -SCALE) cos_B = -SCALE;
+  
+  // angle_B in radians/1000
+  int32_t angle_B_rad = fixed_acos(cos_B);
+  
+  // Convert from radians/1000 to degrees
+  // angle_deg = angle_rad * (180/pi) = angle_rad * (180/3.14159) ≈ angle_rad * 57.3
+  // In our units: degrees = (radians/1000) * (180000/3142) / 1000
+  int32_t angle_B_deg = (angle_B_rad * 180) / 314;  // Simplified: 180/3.14 ≈ 57.3
+  
+  return (int)angle_B_deg;
 }
 
 void print_header(void) {
@@ -519,13 +622,13 @@ void Robot(void){
 
   while (true) {
     /* DATA COLLECTION */
-    uint32_t data1;      // in mm, from TFLuna
-    uint32_t sum1=0;
-    for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-      data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
-      x1[t] = data1;
-      sum1 += data1;             // average
-    }
+    // uint32_t data1;      // in mm, from TFLuna
+    // uint32_t sum1=0;
+    // for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+    //   data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
+    //   x1[t] = data1;
+    //   sum1 += data1;             // average
+    // }
     uint32_t data2;      // in mm, from TFLuna
     uint32_t sum2=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
@@ -560,8 +663,8 @@ void Robot(void){
     DistanceDAS1 = sumDAS1 >>4;
     DistanceDAS2 = sumDAS2 >>4;
 
-    uint32_t wall_angle_left = calculate_angle(Distance1, Distance2);
-    uint32_t wall_angle_right = calculate_angle(Distance2, Distance3);
+    int wall_angle_left = calculate_angle_fixedpt(Distance2, Distance3);
+    // int wall_angle_right = calculate_angle_fixedpt(Distance2, Distance3);
 
     /* END DATA COLLECTION */
 
@@ -572,15 +675,14 @@ void Robot(void){
     }
 
     UART_OutString("\r\n");
-    UART_OutUDec5(OS_MsTime()); UART_OutString(" | ");
+    UART_OutSDec(OS_MsTime()); UART_OutString(" | ");
     UART_OutUDec5(DistanceDAS1); UART_OutString(" | ");
     UART_OutUDec5(DistanceDAS2); UART_OutString(" | ");
     UART_OutUDec5(Distance1); UART_OutString(" | ");
     UART_OutUDec5(Distance3); UART_OutString(" | ");
     UART_OutUDec5(Distance2); UART_OutString(" | ");
-    // UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
+    UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
     // UART_OutUDec5(wall_angle_right); UART_OutString(" | ");
-    // UART_OutUDec5((uint32_t)angle_to_wall);
     
     // FileDump(Distance,Distance2);
 
