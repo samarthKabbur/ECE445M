@@ -30,8 +30,10 @@
 // 2    Serial TxD: PA17 is UART1 Tx (MSPM0 to TFLuna1)
 // 3    Serial RxD: PA18 is UART1 Rx (TFLuna1 to MSPM0)
 // 4    black ground
-#define TFLUNA1_RX PA18INDEX
+// #define TFLUNA1_RX PA18INDEX
 #define TFLUNA1_TX PA17INDEX
+// Step 2) move UART1 Rx from PA18 to PA9
+#define TFLUNA1_RX PA9INDEX
 
 // SJ-PM-TF-Luna+A01 
 // Pin

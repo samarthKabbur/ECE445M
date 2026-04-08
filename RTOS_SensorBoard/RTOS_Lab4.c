@@ -65,12 +65,24 @@ Median5_data_t tfluna1_median_data;
 Median5_data_t tfluna2_median_data;
 Median5_data_t tfluna3_median_data;
 
-typedef enum command {
+typedef enum direction {
   weak_left = 0,
-  strong_left,
-  straight,
-  strong_right,
-  weak_right
+  strong_left,  //1
+  straight, //2 
+  strong_right, //3
+  weak_right  // 4
+} direction_t;
+
+typedef enum speed {
+  stop = 0,
+  slow, // 1
+  medium, // 2
+  fast  // 3
+} speed_t;
+
+typedef struct command {
+  direction_t direction;
+  speed_t speed;
 } command_t;
 
 //---------------------User debugging-----------------------
@@ -80,18 +92,18 @@ typedef enum command {
 // Jumper J15 select PA16
 void Logic_Init(void){
   IOMUX->SECCFG.PINCM[PA8INDEX] = (uint32_t) 0x00000081;
-  IOMUX->SECCFG.PINCM[PA9INDEX] = (uint32_t) 0x00000081;
+  IOMUX->SECCFG.PINCM[PB23INDEX] = (uint32_t) 0x00000081; //****CHANGE from PA9****
   IOMUX->SECCFG.PINCM[PA16INDEX] = (uint32_t) 0x00000081;
   IOMUX->SECCFG.PINCM[PB4INDEX] = (uint32_t) 0x00000081;
   IOMUX->SECCFG.PINCM[PB1INDEX] = (uint32_t) 0x00000081;
   IOMUX->SECCFG.PINCM[PB20INDEX] = (uint32_t) 0x00000081;
-  GPIOA->DOE31_0 |= (1<<8)|(1<<9)|(1<<16);
-  GPIOB->DOE31_0 |= (1<<4)|(1<<1)|(1<<20);
+  GPIOA->DOE31_0 |= (1<<8)|(1<<16);  //****CHANGE removing PA9****
+  GPIOB->DOE31_0 |= (1<<4)|(1<<1)|(1<<20)|(1<<23);//****CHANGE adding PB23****
 }
 #define TogglePA8() (GPIOA->DOUTTGL31_0 = (1<<8))
 #define SetPA8() (GPIOA->DOUTSET31_0 = (1<<8))
 #define ClrPA8() (GPIOA->DOUTCLR31_0 = (1<<8))
-#define TogglePA9() (GPIOA->DOUTTGL31_0 = (1<<9))
+#define TogglePB23() (GPIOB->DOUTTGL31_0 = (1<<23)) //****CHANGE from PA9****
 #define SetPA9() (GPIOA->DOUTSET31_0 = (1<<9))
 #define ClrPA9() (GPIOA->DOUTCLR31_0 = (1<<9))
 #define TogglePA16() (GPIOA->DOUTTGL31_0 = (1<<16))
@@ -127,7 +139,7 @@ void Jitter3_Init(void){
 
 uint32_t FilterOutputDAS1;
 uint32_t DataLostDAS1;
-uint32_t DistanceDAS1;
+uint32_t IRDistanceRight;
 uint32_t CountDAS1;
 uint32_t IndexDAS1;
 #define BUFSIZEDAS1 30
@@ -151,10 +163,10 @@ void DAS1(void){
   TogglePA8();                   // toggle PA8
   thisTime = OS_Time();          // current time, 12.5 ns
   FilterOutputDAS1 = Filter(input);
-  DistanceDAS1 = IRDistance_Convert(FilterOutputDAS1,0); // in mm
+  IRDistanceRight = IRDistance_Convert(FilterOutputDAS1,0); // in mm
   CountDAS1++;
-  DataBufDAS1[IndexDAS1] = DistanceDAS1;
-  sumDAS1 = sumDAS1 + DistanceDAS1;
+  DataBufDAS1[IndexDAS1] = IRDistanceRight;
+  sumDAS1 = sumDAS1 + IRDistanceRight;
   IndexDAS1++;
   if (IndexDAS1 >= BUFSIZEDAS1) {
     IndexDAS1 = 0;
@@ -196,7 +208,7 @@ void DAS1(void){
     LastTime = thisTime;
   }
   
-  if(OS_Fifo_Put_Specific(DistanceDAS1, &ir1_fifo) == 0){ // send to consumer
+  if(OS_Fifo_Put_Specific(IRDistanceRight, &ir1_fifo) == 0){ // send to consumer
       DataLostDAS1++;
   } 
   TogglePA8();    // toggle PA8
@@ -204,7 +216,7 @@ void DAS1(void){
 
 uint32_t FilterOutputDAS2;
 uint32_t DataLostDAS2;
-uint32_t DistanceDAS2;
+uint32_t IRDistanceLeft;
 uint32_t CountDAS2;
 uint32_t IndexDAS2;
 #define BUFSIZEDAS2 30
@@ -228,10 +240,10 @@ void DAS2(void){
   TogglePA8();                   // toggle PA8
   thisTime = OS_Time();          // current time, 12.5 ns
   FilterOutputDAS2 = Filter(input);
-  DistanceDAS2 = IRDistance_Convert(FilterOutputDAS2,0); // in mm
+  IRDistanceLeft = IRDistance_Convert(FilterOutputDAS2,0); // in mm
   CountDAS2++;
-  DataBufDAS2[IndexDAS2] = DistanceDAS2;
-  sumDAS2 = sumDAS2 + DistanceDAS2;
+  DataBufDAS2[IndexDAS2] = IRDistanceLeft;
+  sumDAS2 = sumDAS2 + IRDistanceLeft;
   IndexDAS2++;
   if (IndexDAS2 >= BUFSIZEDAS2) {
     IndexDAS2 = 0;
@@ -251,7 +263,7 @@ void DAS2(void){
     sumDAS2 = 0;
   }
   
-  if(OS_Fifo_Put_Specific(DistanceDAS2, &ir2_fifo) == 0){ // send to consumer
+  if(OS_Fifo_Put_Specific(IRDistanceLeft, &ir2_fifo) == 0){ // send to consumer
       DataLostDAS2++;
   } 
   TogglePA8();    // toggle PA8
@@ -268,13 +280,13 @@ uint32_t DataLost;     // data sent by Producer, but not received by Consumer
 // ***********PA28Push*************
 int ArmCrash=1;
 void HandleCrash(void){
-  TogglePA9();
-  TogglePA9();
+  TogglePB23();
+  TogglePB23();
   uint32_t myId = OS_Id(); 
   ST7735_Message(1,0,"myID        =",myId); 
   ST7735_Message(1,1,"*Crash*,  t= ",OS_MsTime());
   ArmCrash=1;
-  TogglePA9();
+  TogglePB23();
   OS_Kill();
 } 
 void PA28Push(void){ // real time task
@@ -293,7 +305,7 @@ void PA28Push(void){ // real time task
 // Display thread updates LCD with measurement
 
 uint32_t DataLost1;        // data sent by Producer, but not received by Consumer
-uint32_t Distance1;       // mm
+uint32_t LunaRight;       // mm
 uint32_t Count1;
 uint32_t Index1;
 #define BUFSIZE1 30
@@ -308,11 +320,11 @@ int32_t x1[16],ReX1[16],ImX1[16];           // input and output arrays for FFT
 void Producer1(uint32_t data){ 
   if(Running){           // finite time run
     TogglePA16();        // toggle PA16
-    // Distance1 = Median5_Specific((int32_t) data, &tfluna1_median_data);
-    Distance1 = data;
+    // LunaRight = Median5_Specific((int32_t) data, &tfluna1_median_data);
+    LunaRight = data;
     Count1++;
-    DataBuf1[Index1] = Distance1;
-    sum1 = sum1+Distance1;
+    DataBuf1[Index1] = LunaRight;
+    sum1 = sum1+LunaRight;
     Index1++;        // calculation finished
     if(Index1 >= BUFSIZE1){
       Index1 = 0;
@@ -327,7 +339,7 @@ void Producer1(uint32_t data){
       sum1 = 0;   
     }
     TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put_Specific(Distance1, &tfluna1_fifo) == 0){ // send to consumer
+    if(OS_Fifo_Put_Specific(LunaRight, &tfluna1_fifo) == 0){ // send to consumer
       DataLost++;
     } 
     TogglePA16();        // toggle PA16
@@ -335,7 +347,7 @@ void Producer1(uint32_t data){
 }
 
 uint32_t DataLost2;        // data sent by Producer, but not received by Consumer
-uint32_t Distance2;       // mm
+uint32_t LunaLeft;       // mm
 uint32_t Count2;
 uint32_t Index2;
 #define BUFSIZE2 50
@@ -350,11 +362,11 @@ int32_t x2[16],ReX2[16],ImX2[16];           // input and output arrays for FFT
 void Producer2(uint32_t data){ 
   if(Running){           // finite time run
     TogglePA16();        // toggle PA16
-    // Distance2 = Median5_Specific((int32_t) data, &tfluna2_median_data);
-    Distance2 = data;
+    // LunaLeft = Median5_Specific((int32_t) data, &tfluna2_median_data);
+    LunaLeft = data;
     Count2++;
-    DataBuf2[Index2] = Distance2;
-    sum2 = sum2+Distance2;
+    DataBuf2[Index2] = LunaLeft;
+    sum2 = sum2+LunaLeft;
     Index2++;        // calculation finished
     if(Index2 >= BUFSIZE2){
       Index2 = 0;
@@ -369,7 +381,7 @@ void Producer2(uint32_t data){
       sum2 = 0;   
     }
     TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put_Specific(Distance2, &tfluna2_fifo) == 0){ // send to consumer
+    if(OS_Fifo_Put_Specific(LunaLeft, &tfluna2_fifo) == 0){ // send to consumer
       DataLost++;
     } 
     TogglePA16();        // toggle PA16
@@ -377,7 +389,7 @@ void Producer2(uint32_t data){
 }
 
 uint32_t DataLost3;        // data sent by Producer, but not received by Consumer
-uint32_t Distance3;       // mm
+uint32_t LunaCenter;       // mm
 uint32_t Count3;
 uint32_t Index3;
 #define BUFSIZE3 50
@@ -392,11 +404,11 @@ int32_t x3[16],ReX3[16],ImX3[16];           // input and output arrays for FFT
 void Producer3(uint32_t data){ 
   if(Running){           // finite time run
     TogglePA16();        // toggle PA16
-    // Distance3 = Median5_Specific((int32_t) data, &tfluna3_median_data);
-    Distance3 = data;
+    // LunaCenter = Median5_Specific((int32_t) data, &tfluna3_median_data);
+    LunaCenter = data;
     Count3++;
-    DataBuf3[Index3] = Distance3;
-    sum3 = sum3+Distance3;
+    DataBuf3[Index3] = LunaCenter;
+    sum3 = sum3+LunaCenter;
     Index3++;        // calculation finished
     if(Index3 >= BUFSIZE3){
       Index3 = 0;
@@ -411,7 +423,7 @@ void Producer3(uint32_t data){
       sum3 = 0;   
     }
     TogglePA16();        // toggle PA16
-    if(OS_Fifo_Put_Specific(Distance3, &tfluna3_fifo) == 0){ // send to consumer
+    if(OS_Fifo_Put_Specific(LunaCenter, &tfluna3_fifo) == 0){ // send to consumer
       DataLost++;
     } 
     TogglePA16();        // toggle PA16
@@ -582,8 +594,8 @@ int calculate_angle_fixedpt(int a, int b) {
 }
 
 void print_header(void) {
-  UART_OutString("\r\nTime(ms)|  IR1  |  IR2   |  TF1  |   TF3  |   TF2  |  WA Left | WA Right |");
-  UART_OutString("\r\n--------+-------+--------+-------+--------+--------+----------+----------+");
+  UART_OutString("\r\nTime(ms)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | Command |");
+  UART_OutString("\r\n--------+----------+----------+-------+--------+--------+---------+");
 }
 
 //******** Robot *************** 
@@ -598,7 +610,10 @@ static tfluna_mail_t tfluna_mail_buffer;
 void Robot(void){   
 
   /* INIT */
+  direction_t direction;
+  speed_t speed;
   command_t command;
+  
   uint32_t LastHeaderPrint;
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
@@ -657,16 +672,55 @@ void Robot(void){
       x1DAS[t] = dataDAS2;
       sumDAS2 += dataDAS2;
     }
-    Distance1 = sum1>>4;  // in mm
-    Distance2 = sum2>>4;  // in mm
-    Distance3 = sum3>>4;  // in mm
-    DistanceDAS1 = sumDAS1 >>4;
-    DistanceDAS2 = sumDAS2 >>4;
+    
+    LunaRight = sum1>>4;  // in mm
+    LunaLeft = sum2>>4;  // in mm
+    LunaCenter = sum3>>4;  // in mm
+    IRDistanceRight = sumDAS1 >>4;
+    IRDistanceLeft = sumDAS2 >>4;
 
-    int wall_angle_left = calculate_angle_fixedpt(Distance2, Distance3);
-    // int wall_angle_right = calculate_angle_fixedpt(Distance2, Distance3);
+    // int wall_angle_left = calculate_angle_fixedpt(LunaLeft, LunaCenter);
+    // int wall_angle_right = calculate_angle_fixedpt(LunaLeft, LunaCenter);
 
     /* END DATA COLLECTION */
+
+    /* CONTROL ALGORITHM */
+    // TODO
+    if (LunaCenter < 2000) {
+      if (IRDistanceRight > IRDistanceLeft) {
+        int difference = IRDistanceRight - IRDistanceLeft;
+        if (difference > 500) {
+          direction = strong_right;
+        } else if (difference > 100) {
+          direction = weak_right;
+        }
+      } else if (IRDistanceRight <= IRDistanceLeft) {
+        int difference = IRDistanceLeft - IRDistanceRight;
+        if (difference > 500) {
+          direction = strong_left;
+        } else if (difference > 100) {
+          direction = weak_left;
+        }
+      } 
+    } else {
+      direction = straight;
+    }
+
+    if (LunaCenter > 5000) {
+      speed = fast; 
+    } else if (LunaCenter > 3000) {
+      speed = medium;
+    } else if (LunaCenter > 500) {
+      speed = slow;
+    } else {
+      speed = stop;
+    }
+    
+    command.direction = direction;
+    command.speed = speed;
+    OS_MailBox_Send((uint32_t)&direction);
+    
+    /* END CONTROL ALGORITHM */
 
     /* DATA DEBUG PRINT */
     if((OS_MsTime() - LastHeaderPrint) >= 5000){
@@ -675,30 +729,53 @@ void Robot(void){
     }
 
     UART_OutString("\r\n");
-    UART_OutSDec(OS_MsTime()); UART_OutString(" | ");
-    UART_OutUDec5(DistanceDAS1); UART_OutString(" | ");
-    UART_OutUDec5(DistanceDAS2); UART_OutString(" | ");
-    UART_OutUDec5(Distance1); UART_OutString(" | ");
-    UART_OutUDec5(Distance3); UART_OutString(" | ");
-    UART_OutUDec5(Distance2); UART_OutString(" | ");
-    UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
+    UART_OutSDec(OS_MsTime()); UART_OutString("    | ");
+    UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
+    UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
+    UART_OutUDec5(LunaLeft); UART_OutString(" | ");
+    UART_OutUDec5(LunaCenter); UART_OutString(" | ");
+    UART_OutUDec5(LunaRight); UART_OutString(" | ");
+    
+    switch (command.direction) {
+      case weak_left:
+        UART_OutString(" Weak Left "); UART_OutString(" | ");
+        break;
+      case strong_left:
+        UART_OutString(" Strong Left "); UART_OutString(" | ");
+        break;
+      case straight:
+        UART_OutString(" Straight "); UART_OutString(" | ");
+        break;
+      case strong_right:
+        UART_OutString(" Strong Right "); UART_OutString(" | ");
+        break;
+      case weak_right:
+        UART_OutString(" Weak Right "); UART_OutString(" | ");
+        break;
+    }
+
+    switch (command.speed) {
+      case stop:
+        UART_OutString(" Stop "); UART_OutString(" | ");
+        break;
+      case slow:
+        UART_OutString(" Slow "); UART_OutString(" | ");
+        break;
+      case medium:
+        UART_OutString(" Medium "); UART_OutString(" | ");
+        break;
+      case fast:
+        UART_OutString(" Fast "); UART_OutString(" | ");
+        break;
+    }
+
+    // UART_OutUDec5(command); UART_OutString(" | ");
+    // UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
     // UART_OutUDec5(wall_angle_right); UART_OutString(" | ");
     
-    // FileDump(Distance,Distance2);
+    // FileDump(Distance,LunaLeft);
 
     /* END DATA DEBUG PRINT */
-
-    /* CONTROL ALGORITHM */
-    // TODO
-    if (Distance1 > Distance2) {
-      command = weak_left;
-    } else if (Distance1 < Distance2) {
-      command = weak_right;
-    } else {
-      command = straight;
-    }
-    OS_MailBox_Send(command); // called every 10ms*16 = 160ms
-    /* END CONTROL ALGORITHM */
   }
   EndFileDump();
   UART_OutString("done.\n\r>");
@@ -724,20 +801,21 @@ void S2Push(void){
 // inputs:  none                            
 // outputs: none
 void Display(void){ 
-  command_t command;
+  command_t *command;
   uint32_t myId = OS_Id();
   ST7735_Message(0,1,"myId = ",myId);   // top half used for Display
   ST7735_Message(0,2,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
   while(Running) { 
     TogglePB1();
     
-    command = OS_MailBox_Recv();  // will block if mail isn't available.
+    command = (command_t*)OS_MailBox_Recv();  // will block if mail isn't available.
     TogglePB1();
     ST7735_Message(0,3,"Time(ms) =",OS_MsTime());  
     ST7735_Message(0,4,"work  =",FilterWork);
-    ST7735_Message(0, 5, "Turn :", command);
+    ST7735_Message(0, 5, "Turn :", command->direction);
 
-    CAN_Put(0, command);
+    CAN_Put(0, command->direction);
+    CAN_Put(1, command->speed);
     
     TogglePB1();        // toggle PB1
  } 
