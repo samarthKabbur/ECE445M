@@ -630,34 +630,36 @@ void Robot(void){
   
   NumCreated += OS_AddThread(&Display,128,0); 
   UART_OutString("Robot running...");
-  StartFileDump(FileName);
+  // StartFileDump(FileName);
   print_header();
   LastHeaderPrint = OS_MsTime();
   /* END INIT */
 
   while (true) {
     /* DATA COLLECTION */
-    // uint32_t data1;      // in mm, from TFLuna
-    // uint32_t sum1=0;
-    // for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
-    //   data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
-    //   x1[t] = data1;
-    //   sum1 += data1;             // average
-    // }
-    uint32_t data2;      // in mm, from TFLuna
+    uint32_t data1;      // in mm, from TFLuna1
+    uint32_t sum1=0;
+    for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
+      data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
+      x1[t] = data1;
+      sum1 += data1;             // average
+    }
+    uint32_t data2;      // in mm, from TFLuna2
     uint32_t sum2=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
       x2[t] = data2;
       sum2 += data2;             // average
     }
-    uint32_t data3;      // in mm, from TFLuna
+    uint32_t data3;      // in mm, from TFLuna3
     uint32_t sum3=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
       x3[t] = data3;
       sum3 += data3;             // average
     }
+
+    
     uint32_t dataDAS1;
     uint32_t sumDAS1=0;
     for (int t = 0; t < 16; t++) { // collect 16 IR samples 
@@ -769,17 +771,14 @@ void Robot(void){
         break;
     }
 
-    // UART_OutUDec5(command); UART_OutString(" | ");
     // UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
     // UART_OutUDec5(wall_angle_right); UART_OutString(" | ");
-    
-    // FileDump(Distance,LunaLeft);
 
     /* END DATA DEBUG PRINT */
   }
-  EndFileDump();
-  UART_OutString("done.\n\r>");
-  FileName[5] = (FileName[5]+1)&0xF7; // 0 to 7
+  // EndFileDump();
+  // UART_OutString("done.\n\r>");
+  // FileName[5] = (FileName[5]+1)&0xF7; // 0 to 7
   Running = 0;             // robot no longer running
   OS_Kill();
 }
@@ -864,10 +863,11 @@ int realmain(void){     // realmain
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
   OS_AddPeriodicThread(&DAS1,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
   OS_AddPeriodicThread(&DAS2,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_7
-  OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
+  // OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
   
   // create initial foreground threads
   NumCreated = 0;
+  NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
   NumCreated += OS_AddThread(&Interpreter,128,1); 
   NumCreated += OS_AddThread(&VirusDetector,128,2);
  
@@ -890,9 +890,9 @@ int realmain(void){     // realmain
   TFLuna3_SaveSettings();  // save format and rate
   TFLuna3_System_Reset();  // start measurements
 
-  if(eFile_Init())              diskError("eFile_Init",0); 
-  if(eFile_Format())            diskError("eFile_Format",0); 
-  if(eFile_Mount())             diskError("eFile_Mount",0);
+  // if(eFile_Init())              diskError("eFile_Init",0); 
+  // if(eFile_Format())            diskError("eFile_Format",0); 
+  // if(eFile_Mount())             diskError("eFile_Mount",0);
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
