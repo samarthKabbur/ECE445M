@@ -26,10 +26,18 @@
 #include "../RTOS_Labs_common/PWMG6.h"
 #include "../inc/SSD1306.h"
 #include "../inc/I2C.h"
-
-
-
+#include "../RTOS_Labs_common/CAN.h"
 #include <stdio.h>
+
+typedef enum command {
+  weak_left = 0,
+  strong_left,
+  straight,
+  strong_right,
+  weak_right
+} command_t;
+
+
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J25: Connects PA10 to XDS_UART
@@ -121,7 +129,7 @@ void PA28Push(void){ // real time task
 void S2Push(void){
   if(Running==0){
     Running = 1;  // prevents you from starting two test threads
-    NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+    // NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
   }
 }
 //--------------end of Task 2-----------------------------
@@ -331,6 +339,8 @@ int mainWifi(void){
 
 
   // 5. Launch OS
+  OS_Launch(TIME_2MS);
+  return 0;
 }
 
 
@@ -517,6 +527,7 @@ int mainMotor(void) {
 
 //*******************CAN TEST**********
 uint32_t CANData;
+uint32_t id;
 uint32_t failures;
 uint32_t id = 1;
 void ReceiveCAN(void)
@@ -524,7 +535,7 @@ void ReceiveCAN(void)
   while (true)
   {
     OS_Wait(&CAN_Available);
-    while (!CAN_Get(&CANData)) { 
+    while (!CAN_Get(&CANData, &id)) { 
       OS_Sleep(1000);
     }
     TogglePB4();
@@ -551,6 +562,198 @@ int TestmainCAN(void)
   return 0;
 }
 
+//*************** Can and Motor Test ****************/
+
+
+#define BASE_SPEED   3000
+#define WEAK_DELTA   800
+#define STRONG_DELTA 1600
+ #define SERVO_CENTER 2900
+#define SERVO_LEFT   2450
+#define SERVO_RIGHT  3450
+
+
+void ExecuteCommand(command_t cmd, int id){
+
+  uint32_t leftDuty;
+  uint32_t rightDuty;
+  uint32_t ServoDuty;
+  if(id == 0){
+  switch(cmd){
+
+    case weak_left:
+      leftDuty  = BASE_SPEED - WEAK_DELTA;
+      rightDuty = BASE_SPEED + WEAK_DELTA;
+      // PWMA0_Backward(leftDuty);
+      // PWMA1_Forward(rightDuty);
+        ServoDuty = SERVO_CENTER;
+      PWMA0_Backward(rightDuty);
+      PWMA1_Forward(leftDuty);
+       PWMG6_SetDuty(ServoDuty);
+      break;
+
+    case strong_left:
+      leftDuty  = BASE_SPEED - STRONG_DELTA;
+      rightDuty = BASE_SPEED + STRONG_DELTA;
+      ServoDuty = SERVO_LEFT;
+      // PWMA0_Backward(leftDuty);
+      // PWMA1_Forward(rightDuty);
+       PWMA0_Backward(rightDuty);
+      PWMA1_Forward(leftDuty);
+      PWMG6_SetDuty(ServoDuty);
+      break;
+
+    case straight:
+      leftDuty  = BASE_SPEED;
+      rightDuty = BASE_SPEED;
+      // PWMA0_Backward(leftDuty);
+      // PWMA1_Forward(rightDuty);
+      ServoDuty = SERVO_CENTER;
+      PWMA0_Backward(rightDuty);
+      PWMA1_Forward(leftDuty);
+      PWMG6_SetDuty(ServoDuty);
+      break;
+
+    case strong_right:
+      leftDuty  = BASE_SPEED + STRONG_DELTA;
+      rightDuty = BASE_SPEED - STRONG_DELTA;
+      // PWMA0_Backward(leftDuty);
+      // PWMA1_Forward(rightDuty);
+      ServoDuty = SERVO_RIGHT;
+      PWMA0_Backward(rightDuty);
+      PWMA1_Forward(leftDuty);
+      PWMG6_SetDuty(ServoDuty);
+      break;
+
+    case weak_right:
+      leftDuty  = BASE_SPEED + WEAK_DELTA;
+      rightDuty = BASE_SPEED - WEAK_DELTA;
+      // PWMA0_Backward(leftDuty);
+      // PWMA1_Forward(rightDuty);
+       ServoDuty = SERVO_CENTER;
+       PWMA0_Backward(rightDuty);
+      PWMA1_Forward(leftDuty);
+       PWMG6_SetDuty(ServoDuty);
+      break;
+
+    default:
+     leftDuty  = BASE_SPEED;
+      rightDuty = BASE_SPEED;
+      // PWMA0_Backward(leftDuty);
+      // PWMA1_Forward(rightDuty);
+      PWMA0_Backward(rightDuty);
+      PWMA1_Forward(leftDuty);
+      // PWMA0_Forward(0);
+      // PWMA1_Backward(0);
+      break;
+  }
+  }
+  else if(id == 1){
+      
+  }
+
+ SSD1306_SetCursor(0,2);
+SSD1306_OutString("CMD: ");
+
+switch(cmd){
+
+  case weak_left:
+    SSD1306_OutString("weak_left   ");
+    break;
+
+  case strong_left:
+    SSD1306_OutString("strong_left ");
+    break;
+
+  case straight:
+    SSD1306_OutString("straight    ");
+    break;
+
+  case strong_right:
+    SSD1306_OutString("strong_right");
+    break;
+
+  case weak_right:
+    SSD1306_OutString("weak_right  ");
+    break;
+
+  default:
+    SSD1306_OutString("straight    ");
+    break;
+}
+
+}
+
+
+void MotorCANThread(void)
+{
+  command_t cmd = straight;
+
+  while(1){
+
+    OS_Wait(&CAN_Available);
+
+    while(!CAN_Get(&CANData, &id)){
+      OS_Sleep(1);
+    }
+
+    cmd = (command_t)CANData;
+    
+    ExecuteCommand(cmd, id);
+
+  }
+}
+
+
+int mainCAN_Motor(void){
+  OS_Init();
+  Logic_Init();
+
+  SSD1306_Init(SSD1306_SWITCHCAPVCC);
+
+  ServoDuty = SERVOINIT;
+
+  PWMG6_Init(PWMUSEBUSCLK,39,
+              SERVOPERIOD,
+              SERVOINIT);
+
+  // CAN setup
+  OS_CAN_Init(1);
+  OS_InitSemaphore(&CAN_Available,0);
+
+  // Motor PWM setup
+  PWMA0_Init(PWMUSEBUSCLK,39,
+              MOTORPERIOD,
+              2500,7500);
+  PWMA0_Break();
+
+  PWMA1_Init(PWMUSEBUSCLK,39,
+              MOTORPERIOD,
+              2500,7500);
+  PWMA1_Break();
+
+  NumCreated = 0;
+
+  NumCreated +=
+      OS_AddThread(&MotorCANThread,
+                   128,1);
+
+  NumCreated +=
+      OS_AddThread(&VirusDetector,
+                   128,2);
+
+  OS_Launch(TIME_2MS);
+
+  return 0;
+
+
+
+  
+}
+
+
+
+
 //*******************Trampoline for selecting which main to execute**********
 int main(void) { 			// main 
   __disable_irq();
@@ -558,8 +761,9 @@ int main(void) { 			// main
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   
   
-  mainWifi();
-  mainMotor();
+  //mainWifi();
+  //mainMotor();
+  mainCAN_Motor();
 }
 
 

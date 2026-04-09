@@ -22,7 +22,7 @@ Release/
 # IDE stuff
 .settings/
 .theia/
-.clangd/
+*.clangd
 
 # OS junk
 .DS_Store

@@ -605,7 +605,6 @@ uint32_t CAN_Get(uint32_t* data, uint32_t* id)
   return 0;
 }
 
-
 uint32_t CAN_Put(uint32_t id, uint32_t data)
 {
   return CAN_Send(id, 4, (uint8_t*)&data);

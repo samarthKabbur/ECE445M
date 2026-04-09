@@ -63,7 +63,8 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data);
 // Gets value from receive FIFO
 // Returns 1 if successful
 // Returns 0 if failed
-uint32_t CAN_Get(uint32_t *data, uint32_t * id);
+// uint32_t CAN_Get(uint32_t *data);
+uint32_t CAN_Get(uint32_t * data, uint32_t * id);
 
 // Puts a value into the send FIFO
 // Returns 1 if successful
