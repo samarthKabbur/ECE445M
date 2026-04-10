@@ -468,131 +468,6 @@ void FileDump(uint32_t data, uint32_t data2){
   ClrPB4();
 }
 
-// TODO: Currently causes hardfault
-#define TFLUNA_ANGLE 50
-#define PI 3
-double calculate_angle(double a, double b) {
-  double angle_C_rad = TFLUNA_ANGLE * (PI / 180);
-  double c_squared = pow(a, 2) + pow(b, 2) - 2 * a * b * cos(angle_C_rad);
-  double c = sqrt(c_squared);
-
-  // 2. Calculate angle 'B' using Law of Cosines (Rearranged)
-  // cos(B) = (a^2 + c^2 - b^2) / (2ac)
-  double cos_B = (pow(a, 2) + pow(c, 2) - pow(b, 2)) / (2 * a * c);
-  
-  // Safety check: acos() will return NaN if the value is outside [-1, 1]
-  // which can happen due to tiny floating-point rounding errors.
-  if (cos_B > 1.0) cos_B = 1.0;
-  if (cos_B < -1.0) cos_B = -1.0;
-
-  double angle_B_rad = acos(cos_B);
-  double angle_B_deg = angle_B_rad * (180.0 / PI);
-
-  return angle_B_deg;
-}
-
-// Fixed-point helper functions for angle calculation
-// Fixed-point multiply: (a * b) / scale where both inputs and output use scale
-// Input: a, b in fixed-point representation
-// Returns: product scaled appropriately
-int32_t fixed_multiply(int32_t a, int32_t b, int32_t scale) {
-  return (int64_t)a * b / scale;
-}
-
-// Fixed-point integer square root using Newton's method
-// Input: n in fixed-point (scale = 10000)
-// Returns: sqrt(n) in fixed-point (scale = 10000)
-int32_t fixed_sqrt(int32_t n) {
-  if (n <= 0) return 0;
-  int32_t x = n;
-  int32_t prev_x = 0;
-  // Newton's method: x_new = (x + n/x) / 2
-  // In fixed-point: x_new = (x*10000 + n/(x/10000)) / 2
-  for (int i = 0; i < 20; i++) {  // Usually converges in 5-10 iterations
-    prev_x = x;
-    x = (x + (int32_t)((int64_t)n * 10000 / x)) / 2;
-    if (x == prev_x) break;  // Converged
-  }
-  return x;
-}
-
-// Fixed-point arc cosine approximation using Taylor series
-// Input: x in range [-10000, 10000] (fixed-point, scale=10000)
-// Output: angle in radians/1000 units (compatible with fixed_sin/cos)
-// Valid for |x| <= 1.0 (10000 in fixed-point)
-int32_t fixed_acos(int32_t x) {
-  if (x >= 10000) return 0;        // acos(1) = 0
-  if (x <= -10000) return 3142;    // acos(-1) = pi ≈ 3.142 (radians/1000)
-  
-  // Use the identity: acos(x) = pi/2 - asin(x)
-  // For better accuracy, use: acos(x) ≈ 1.5708 - (x + x^3/6 + 3x^5/40 + ...)
-  // Simplified: acos(x) ≈ 1.5708 - x - x^3/6 (in radians)
-  // Scaled to radians/1000: acos(x) ≈ 1571 - x - x^3/6000 (where x is scaled by 10000)
-  
-  int32_t x_scaled = x / 100;  // Scale down for calculation
-  int64_t x3 = (int64_t)x_scaled * x_scaled * x_scaled / 1000000;
-  int32_t result = 1571 - x_scaled - (int32_t)(x3 / 6);
-  return result;
-}
-
-// Fixed-point angle calculation using Law of Cosines
-// Inputs: a, b in millimeters
-// Output: angle in degrees (0-180)
-// Uses fixed-point arithmetic throughout
-int calculate_angle_fixedpt(int a, int b) {
-  // Constants
-  const int32_t TFLUNA_ANGLE_FIXED = 873;  // 50 degrees in radians/1000
-  const int32_t SCALE = 10000;             // Fixed-point scale for trig functions
-  const int32_t MM_SCALE = 100;            // Distance scale factor
-  
-  // Convert distances to fixed-point
-  int32_t a_fp = a * MM_SCALE;
-  int32_t b_fp = b * MM_SCALE;
-  
-  // Step 1: Calculate c using Law of Cosines: c^2 = a^2 + b^2 - 2ab*cos(C)
-  // cos(50°) in fixed-point
-  int16_t cos_angle_C = fixed_cos(TFLUNA_ANGLE_FIXED);
-  
-  // a^2 and b^2 (in fixed-point scale 100^2 = 10000)
-  int32_t a_sq = fixed_multiply(a_fp, a_fp, MM_SCALE);
-  int32_t b_sq = fixed_multiply(b_fp, b_fp, MM_SCALE);
-  
-  // 2*a*b*cos(C) 
-  int32_t two_ab_cos = fixed_multiply(2 * a_fp, b_fp, MM_SCALE);
-  two_ab_cos = fixed_multiply(two_ab_cos, (int32_t)cos_angle_C, SCALE);
-  
-  // c^2 = a^2 + b^2 - 2ab*cos(C)
-  int32_t c_sq = a_sq + b_sq - two_ab_cos;
-  
-  if (c_sq <= 0) return 0;  // Safety check
-  
-  // c = sqrt(c^2)
-  int32_t c_fp = fixed_sqrt(c_sq);
-  
-  // Step 2: Calculate angle B using Law of Cosines: cos(B) = (a^2 + c^2 - b^2) / (2ac)
-  int32_t numerator = a_sq + c_sq - b_sq;
-  int32_t denominator = 2 * fixed_multiply(a_fp, c_fp, MM_SCALE);
-  
-  if (denominator == 0) return 0;  // Safety check
-  
-  // cos_B in fixed-point (scale 10000)
-  int32_t cos_B = (numerator * SCALE) / denominator;
-  
-  // Clamp to valid range [-10000, 10000]
-  if (cos_B > SCALE) cos_B = SCALE;
-  if (cos_B < -SCALE) cos_B = -SCALE;
-  
-  // angle_B in radians/1000
-  int32_t angle_B_rad = fixed_acos(cos_B);
-  
-  // Convert from radians/1000 to degrees
-  // angle_deg = angle_rad * (180/pi) = angle_rad * (180/3.14159) ≈ angle_rad * 57.3
-  // In our units: degrees = (radians/1000) * (180000/3142) / 1000
-  int32_t angle_B_deg = (angle_B_rad * 180) / 314;  // Simplified: 180/3.14 ≈ 57.3
-  
-  return (int)angle_B_deg;
-}
-
 void print_header(void) {
   UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | Command |");
   UART_OutString("\r\n--------+----------+----------+-------+--------+--------+---------+");
@@ -614,7 +489,6 @@ void Robot(void){
   speed_t speed;
   command_t command;
   
-  uint32_t LastHeaderPrint;
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
   Running = 1;
@@ -631,8 +505,6 @@ void Robot(void){
   NumCreated += OS_AddThread(&Display,128,0); 
   UART_OutString("Robot running...");
   // StartFileDump(FileName);
-  print_header();
-  LastHeaderPrint = OS_MsTime();
   /* END INIT */
 
   while (true) {
@@ -641,48 +513,39 @@ void Robot(void){
     uint32_t sum1=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data1 = OS_Fifo_Get_Specific(&tfluna1_fifo);    // get from producer, mm
-      x1[t] = data1;
       sum1 += data1;             // average
     }
     uint32_t data2;      // in mm, from TFLuna2
     uint32_t sum2=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data2 = OS_Fifo_Get_Specific(&tfluna2_fifo);    // get from producer, mm
-      x2[t] = data2;
       sum2 += data2;             // average
     }
     uint32_t data3;      // in mm, from TFLuna3
     uint32_t sum3=0;
     for(int t = 0; t < 16; t++){   // collect 16 TFLuna samples
       data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
-      x3[t] = data3;
       sum3 += data3;             // average
     }
 
-    
     uint32_t dataDAS1;
     uint32_t sumDAS1=0;
     for (int t = 0; t < 16; t++) { // collect 16 IR samples 
       dataDAS1 = OS_Fifo_Get_Specific(&ir1_fifo);
-      x1DAS[t] = dataDAS1;
       sumDAS1 += dataDAS1;
     }
     uint32_t dataDAS2;
     uint32_t sumDAS2=0;
     for (int t = 0; t < 16; t++) { // collect 16 IR samples 
       dataDAS2 = OS_Fifo_Get_Specific(&ir2_fifo);
-      x1DAS[t] = dataDAS2;
       sumDAS2 += dataDAS2;
     }
     
     LunaRight = sum1>>4;  // in mm
     LunaLeft = sum2>>4;  // in mm
     LunaCenter = sum3>>4;  // in mm
-    IRDistanceRight = sumDAS1 >>4;
-    IRDistanceLeft = sumDAS2 >>4;
-
-    // int wall_angle_left = calculate_angle_fixedpt(LunaLeft, LunaCenter);
-    // int wall_angle_right = calculate_angle_fixedpt(LunaLeft, LunaCenter);
+    IRDistanceRight = sumDAS1>>4;
+    IRDistanceLeft = sumDAS2>>4;
 
     /* END DATA COLLECTION */
 
@@ -724,57 +587,6 @@ void Robot(void){
     
     /* END CONTROL ALGORITHM */
 
-    /* DATA DEBUG PRINT */
-    if((OS_MsTime() - LastHeaderPrint) >= 5000){
-      print_header();
-      LastHeaderPrint = OS_MsTime();
-    }
-
-    UART_OutString("\r\n");
-    UART_OutSDec(OS_MsTime() / 1000); UART_OutString("    | ");
-    UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
-    UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
-    UART_OutUDec5(LunaLeft); UART_OutString(" | ");
-    UART_OutUDec5(LunaCenter); UART_OutString(" | ");
-    UART_OutUDec5(LunaRight); UART_OutString(" | ");
-    
-    switch (command.direction) {
-      case weak_left:
-        UART_OutString(" Weak Left "); UART_OutString(" | ");
-        break;
-      case strong_left:
-        UART_OutString(" Strong Left "); UART_OutString(" | ");
-        break;
-      case straight:
-        UART_OutString(" Straight "); UART_OutString(" | ");
-        break;
-      case strong_right:
-        UART_OutString(" Strong Right "); UART_OutString(" | ");
-        break;
-      case weak_right:
-        UART_OutString(" Weak Right "); UART_OutString(" | ");
-        break;
-    }
-
-    switch (command.speed) {
-      case stop:
-        UART_OutString(" Stop "); UART_OutString(" | ");
-        break;
-      case slow:
-        UART_OutString(" Slow "); UART_OutString(" | ");
-        break;
-      case medium:
-        UART_OutString(" Medium "); UART_OutString(" | ");
-        break;
-      case fast:
-        UART_OutString(" Fast "); UART_OutString(" | ");
-        break;
-    }
-
-    // UART_OutUDec5(wall_angle_left); UART_OutString(" | ");
-    // UART_OutUDec5(wall_angle_right); UART_OutString(" | ");
-
-    /* END DATA DEBUG PRINT */
   }
   // EndFileDump();
   // UART_OutString("done.\n\r>");
@@ -794,6 +606,68 @@ void S2Push(void){
 }
 //--------------end of Task 2-----------------------------
  
+void Debug_Print(command_t* command) {
+  uint32_t LastHeaderPrint;
+  print_header();
+  LastHeaderPrint = OS_MsTime();
+  
+  if((OS_MsTime() - LastHeaderPrint) >= 5000){
+    print_header();
+    LastHeaderPrint = OS_MsTime();
+  }
+
+  ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000);  
+  UART_OutString("\r\n");
+  UART_OutSDec(OS_MsTime() / 1000); UART_OutString("    | ");
+  UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
+  UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
+  UART_OutUDec5(LunaLeft); UART_OutString(" | ");
+  UART_OutUDec5(LunaCenter); UART_OutString(" | ");
+  UART_OutUDec5(LunaRight); UART_OutString(" | ");
+  
+  switch (command->direction) {
+    case weak_left:
+      UART_OutString(" Weak Left "); UART_OutString(" | ");
+      ST7735_Message(0,4,"Weak Left", command->direction); 
+      break;
+    case strong_left:
+      UART_OutString(" Strong Left "); UART_OutString(" | ");
+      ST7735_Message(0,4,"Strong Left", command->direction); 
+      break;
+    case straight:
+      UART_OutString(" Straight "); UART_OutString(" | ");
+      ST7735_Message(0,4,"Straight", command->direction); 
+      break;
+    case strong_right:
+      UART_OutString(" Strong Right "); UART_OutString(" | ");
+      ST7735_Message(0,4,"Strong Right", command->direction);
+      break;
+    case weak_right:
+      UART_OutString(" Weak Right "); UART_OutString(" | ");
+      ST7735_Message(0,4,"Weak Right", command->direction);
+      break;
+  }
+
+  switch (command->speed) {
+    case stop:
+      UART_OutString(" Stop "); UART_OutString(" | ");
+      ST7735_Message(0,5,"Stop", command->speed);
+      break;
+    case slow:
+      UART_OutString(" Slow "); UART_OutString(" | ");
+      ST7735_Message(0,5,"Slow", command->speed);
+      break;
+    case medium:
+      UART_OutString(" Medium "); UART_OutString(" | ");
+      ST7735_Message(0,5,"Medium", command->speed);
+      break;
+    case fast:
+      UART_OutString(" Fast "); UART_OutString(" | ");
+      ST7735_Message(0,5,"Fast", command->speed);
+      break;
+  }
+}
+ 
 //******** Display *************** 
 // foreground thread, accepts data from consumer
 // displays results on the LCD
@@ -809,41 +683,8 @@ void Display(void){
     
     command = (command_t*)OS_MailBox_Recv();  // will block if mail isn't available.
     TogglePB1();
-    ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000);  
-
-    switch (command->direction) {
-      case weak_left:
-        ST7735_Message(0,4,"Weak Left", command->direction); 
-        break;
-      case strong_left:
-        ST7735_Message(0,4,"Strong Left", command->direction); 
-        break;
-      case straight:
-        ST7735_Message(0,4,"Straight", command->direction); 
-        break;
-      case strong_right:
-        ST7735_Message(0,4,"Strong Right", command->direction);
-        break;
-      case weak_right:
-        ST7735_Message(0,4,"Weak Right", command->direction);
-        break;
-    }
-
-    switch (command->speed) {
-      case stop:
-        ST7735_Message(0,5,"Stop", command->speed);
-        break;
-      case slow:
-        ST7735_Message(0,5,"Slow", command->speed);
-        break;
-      case medium:
-        ST7735_Message(0,5,"Medium", command->speed);
-        break;
-      case fast:
-        ST7735_Message(0,5,"Fast", command->speed);
-        break;
-    }
-    
+  
+    Debug_Print(command);
 
     CAN_Put(0, command->direction);
     CAN_Put(1, command->speed);
@@ -900,7 +741,7 @@ int realmain(void){     // realmain
   // create initial foreground threads
   NumCreated = 0;
   NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
-  NumCreated += OS_AddThread(&Interpreter,128,1); 
+  // NumCreated += OS_AddThread(&Interpreter,128,1); 
   NumCreated += OS_AddThread(&VirusDetector,128,2);
  
   LPF_Init7(500,7);
