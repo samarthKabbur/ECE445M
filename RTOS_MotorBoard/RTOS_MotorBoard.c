@@ -914,9 +914,9 @@ uint32_t Duty;
 uint32_t ServoDuty; // 2000,2250,2500,2750,3000,3250,3500,3750,4000
 #define SERVOMIN 2000      // 1ms
 #define SERVOMAX 4000      // 2ms
-#define SERVOINIT 3000     // 1.5ms
+#define SERVOINIT 2900     // 1.5ms
 #define SERVOPERIOD 40000  // 20ms
-#define SERVOCHANGE 250    // 0.125ms
+#define SERVOCHANGE 100    // 0.125ms
 
 
 
@@ -941,90 +941,29 @@ void SSD1306_Display(void){
   SSD1306_SetCursor(13,6);SSD1306_OutUDec(ServoDuty);
 }
 
-uint32_t Array[20] = {2750, 2800, 2850, 2900, 2950, 3000, 3050, 3100, 3150, 3200, 
-3250, 3200, 3150, 3100, 3050, 3000, 2950, 2900, 2850, 2800};
-uint8_t count = 0;
 
-void RunForward(void){   uint32_t sw2,lasts2;
-  uint32_t sw1,lasts1;
+
+void RunForward(void){
   PWMA0_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA0_Break(); // high, high, break mode
   PWMA1_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
+  PWMA0_Break();
   PWMA1_Break(); // high, high, break mode
   Duty = MOTORMIN;
-  lasts2 = (~(GPIOB->DIN31_0)) & S2;
   while(1){   
     while (StoppedFlag) {
       PWMG6_SetDuty(ServoDuty);
       PWMA0_Forward(0);
       PWMA1_Backward(0); 
     }
-    Clock_Delay(1000000); // debounce switch
-    sw2 = (~(GPIOB->DIN31_0)) & S2;
-    sw1 = GPIOA->DIN31_0 & S1;
-    if(sw2 && (lasts2==0)){ // touch s2
-      Duty = Duty+MOTORCHANGE;
-      if(Duty > MOTORMAX){
-        Duty = MOTORMIN;
-      }
-      SSD1306_Display();
-      PWMA0_Backward(Duty);
-      PWMA1_Forward(Duty);
-    }
-     // touch s1
-    ServoDuty = Array[count];
-    count = (count + 1) % 20;
-    SSD1306_Display();
+    PWMA0_Backward(Duty);
+    PWMA1_Forward(Duty);
     PWMG6_SetDuty(ServoDuty);
-    
-    lasts2 = sw2;
-    lasts1 = sw1;
   }
 }
 
-// scope on PB1 PB4, spins with left motor backward
-// PB4 is high , PB1 is Duty (time low)
-// scope on PB8 PB9, spins with right motor backward
-// PB8 is high , PB9 is Duty (time low)
-// PB6 1ms to 2ms pulse high, 20ms period
-void RunBackward(void){   uint32_t sw2,lasts2;
-uint32_t sw1,lasts1;
-  PWMA0_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA0_Break(); // high, high, break mode
-  PWMA1_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA1_Break(); // high, high, break mode
-  Duty = MOTORMIN;
-  lasts2 = (~(GPIOB->DIN31_0)) & S2;
-  while(1){   
-    while (StoppedFlag) {
-      PWMG6_SetDuty(ServoDuty);
-      PWMA0_Forward(0);
-      PWMA1_Backward(0);   
-    } 
-    Clock_Delay(1000000); // debounce switch
-    sw1 = GPIOA->DIN31_0 & S1;
-    sw2 = (~(GPIOB->DIN31_0)) & S2;
-    if(sw2 && (lasts2==0)){ // touch s2
-      Duty = Duty+MOTORCHANGE;
-      if(Duty > MOTORMAX){
-        Duty = MOTORMIN;
-      }
-      SSD1306_Display();
-      PWMA0_Forward(Duty);
-      PWMA1_Backward(Duty);   
-   }
-    ServoDuty = Array[count];
-    count = (count + 1) % 20;
-    SSD1306_Display();
-    PWMG6_SetDuty(ServoDuty);
-    
-    lasts2 = sw2;
-    lasts1 = sw1;
-  }
 
-}
 int mainMotor(void) {
-  //uint32_t  sw2 = (~(GPIOB->DIN31_0)) & S2;
+  
   SSD1306_SetCursor(0,0);
   SSD1306_OutString("ECE445M motor test\n");  
   ServoDuty = SERVOINIT;    // 1.5ms
