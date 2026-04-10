@@ -699,8 +699,33 @@ void Display(void){
 //------------------Task 4--------------------------------
 
 //******** Virus Detector *************** 
+uint32_t Check(uint32_t start, uint32_t end){
+  uint32_t sum=0;
+  uint32_t *pt; pt = (uint32_t *)start;
+  while((uint32_t)pt < end){
+    sum += *pt++;
+  }
+  return sum;
+}
+//******** Virus Detector *************** 
+// foreground thread, performs a checksum of all ROM
+// never blocks, never sleeps, never dies
+// inputs:  none
+// outputs: none
+uint32_t Checksum;             // sum of data stored in ROM
+uint32_t ChecksumOriginal;     // sum of data stored in ROM
+uint32_t ChecksumErrors;
 void VirusDetector(void){ 
-  while(1){}
+  Checks = ChecksumErrors = 0;
+  ChecksumOriginal = Check(0,0x20000);
+  while(1) { 
+    TogglePB20();        // toggle PB20
+    Checksum = Check(0,0x20000);
+    Checks++;
+    if(Checksum !=  ChecksumOriginal){
+      ChecksumErrors++; 
+    }    
+  }
 }
 
 //--------------end of Task 4-----------------------------
