@@ -24,7 +24,6 @@
 #include "../RTOS_Labs_common/fixed.h"
 #include "../RTOS_Labs_common/CAN.h"
 #include <stdio.h>
-#include <math.h>
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
 // Insert jumper J25: Connects PA10 to XDS_UART
@@ -84,6 +83,8 @@ typedef struct command {
   direction_t direction;
   speed_t speed;
 } command_t;
+
+command_t command;
 
 //---------------------User debugging-----------------------
 
@@ -312,6 +313,7 @@ uint32_t Index1;
 uint32_t DataBuf1[BUFSIZE1]; // distance in mm
 int32_t TheSignal1,TheNoise1,SNR1,sum1,sumsq1;
 int32_t x1[16],ReX1[16],ImX1[16];           // input and output arrays for FFT
+uint32_t LastHeaderPrint;
 
 //******** Producer1 *************** 
 // The Producer in this lab will be called from the UART2 ISR
@@ -487,7 +489,6 @@ void Robot(void){
   /* INIT */
   direction_t direction;
   speed_t speed;
-  command_t command;
   
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
@@ -502,8 +503,10 @@ void Robot(void){
   OS_Fifo_Init_Specific(32, &ir1_fifo);
   OS_Fifo_Init_Specific(32, &ir2_fifo);
   
-  NumCreated += OS_AddThread(&Display,128,0); 
+  NumCreated += OS_AddThread(&Display,256,0); 
   UART_OutString("Robot running...");
+  print_header();
+  LastHeaderPrint = OS_MsTime();
   // StartFileDump(FileName);
   /* END INIT */
 
@@ -583,7 +586,7 @@ void Robot(void){
     
     command.direction = direction;
     command.speed = speed;
-    OS_MailBox_Send((uint32_t)&direction);
+    OS_MailBox_Send(1);
     
     /* END CONTROL ALGORITHM */
 
@@ -601,15 +604,11 @@ void Robot(void){
 void S2Push(void){
   if(Running==0){
     Running = 1;  // prevents you from starting two test threads
-    NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+    // NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
   }
 }
 //--------------end of Task 2-----------------------------
- 
-void Debug_Print(command_t* command) {
-  uint32_t LastHeaderPrint;
-  print_header();
-  LastHeaderPrint = OS_MsTime();
+void Debug_Print() {
   
   if((OS_MsTime() - LastHeaderPrint) >= 5000){
     print_header();
@@ -625,45 +624,45 @@ void Debug_Print(command_t* command) {
   UART_OutUDec5(LunaCenter); UART_OutString(" | ");
   UART_OutUDec5(LunaRight); UART_OutString(" | ");
   
-  switch (command->direction) {
+  switch (command.direction) {
     case weak_left:
       UART_OutString(" Weak Left "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Weak Left", command->direction); 
+      ST7735_Message(0,4,"Weak Left", command.direction); 
       break;
     case strong_left:
       UART_OutString(" Strong Left "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Strong Left", command->direction); 
+      ST7735_Message(0,4,"Strong Left", command.direction); 
       break;
     case straight:
       UART_OutString(" Straight "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Straight", command->direction); 
+      ST7735_Message(0,4,"Straight", command.direction); 
       break;
     case strong_right:
       UART_OutString(" Strong Right "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Strong Right", command->direction);
+      ST7735_Message(0,4,"Strong Right", command.direction);
       break;
     case weak_right:
       UART_OutString(" Weak Right "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Weak Right", command->direction);
+      ST7735_Message(0,4,"Weak Right", command.direction);
       break;
   }
 
-  switch (command->speed) {
+  switch (command.speed) {
     case stop:
       UART_OutString(" Stop "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Stop", command->speed);
+      ST7735_Message(0,5,"Stop", command.speed);
       break;
     case slow:
       UART_OutString(" Slow "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Slow", command->speed);
+      ST7735_Message(0,5,"Slow", command.speed);
       break;
     case medium:
       UART_OutString(" Medium "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Medium", command->speed);
+      ST7735_Message(0,5,"Medium", command.speed);
       break;
     case fast:
       UART_OutString(" Fast "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Fast", command->speed);
+      ST7735_Message(0,5,"Fast", command.speed);
       break;
   }
 }
@@ -674,20 +673,19 @@ void Debug_Print(command_t* command) {
 // inputs:  none                            
 // outputs: none
 void Display(void){ 
-  command_t *command;
   uint32_t myId = OS_Id();
   ST7735_Message(0,1,"myId = ",myId);   // top half used for Display
   ST7735_Message(0,2,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
   while(Running) { 
     TogglePB1();
     
-    command = (command_t*)OS_MailBox_Recv();  // will block if mail isn't available.
+    OS_MailBox_Recv();  // will block if mail isn't available.
     TogglePB1();
   
-    Debug_Print(command);
+    Debug_Print();
 
-    CAN_Put(0, command->direction);
-    CAN_Put(1, command->speed);
+    CAN_Put(0, command.direction);
+    CAN_Put(1, command.speed);
     
     TogglePB1();        // toggle PB1
  } 
@@ -765,9 +763,9 @@ int realmain(void){     // realmain
   
   // create initial foreground threads
   NumCreated = 0;
-  NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+  NumCreated += OS_AddThread(&Robot,256,1);  // test eDisk
   // NumCreated += OS_AddThread(&Interpreter,128,1); 
-  NumCreated += OS_AddThread(&VirusDetector,128,2);
+  NumCreated += OS_AddThread(&VirusDetector,256,2);
  
   LPF_Init7(500,7);
   TFLuna1_Init(&Producer1);

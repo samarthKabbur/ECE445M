@@ -66,8 +66,8 @@ volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
-#define MAXTHREADS 16  // maximum number of threads
-#define STACKSIZE 128 // maximum of 32-bit words on the stack 
+#define MAXTHREADS 8  // maximum number of threads
+#define STACKSIZE 256 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
 tcb_t tcbs [MAXTHREADS];
@@ -979,9 +979,9 @@ int OS_AddS2Task(void(*task)(void), uint32_t priority){
   }
 
   // init background thread
-  s2_button_threads[i].task = task;
-  s2_button_threads[i].priority = priority;
-  s2_button_threads[i].Status = Active;
+  s2_button_threads[j].task = task;
+  s2_button_threads[j].priority = priority;
+  s2_button_threads[j].Status = Active;
    NumButtonThreads++;
   // can kill a button thread by deactivating its task
     // and marking the thread as free
@@ -1031,9 +1031,9 @@ int OS_AddPA28Task(void(*task)(void), uint32_t priority){
   }
   
   // init background thread
-  pa28_button_threads[i].task = task;
-  pa28_button_threads[i].priority = priority;
-  pa28_button_threads[i].Status = Active;
+  pa28_button_threads[j].task = task;
+  pa28_button_threads[j].priority = priority;
+  pa28_button_threads[j].Status = Active;
   NumButtonThreads++;
   OSCRITICAL_EXIT(sr);
   
