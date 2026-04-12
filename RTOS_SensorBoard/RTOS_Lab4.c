@@ -84,6 +84,11 @@ typedef struct command {
   speed_t speed;
 } command_t;
 
+typedef struct point {
+  int x;
+  int y;
+} point_t;
+
 command_t command;
 
 //---------------------User debugging-----------------------
@@ -484,6 +489,30 @@ char FileName[8]="robot0";
 // Global buffer for mailbox communication (persistent, valid memory)
 static tfluna_mail_t tfluna_mail_buffer;
 
+int slopeFrontLeft;
+int slopeFrontRight;
+
+#include <stdint.h>
+#define SCALE 1000
+#define SIN50_FIXED 766
+#define COS50_FIXED 643
+
+int calculate_slope(int32_t dist1, int32_t dist2) {
+    point_t left;
+    point_t right;
+    left.x = -(distL * SIN50_FIXED); 
+    left.y = (distL * COS50_FIXED);
+
+    right.x = 0;
+    right.y = distC * SCALE;
+
+    // slope components
+    int32_t vLx = right.x - left.x;
+    int32_t vLy = right.y - left.y;
+
+    return (vLy * SCALE) / vLx; // slope
+}
+
 void Robot(void){   
 
   /* INIT */
@@ -552,6 +581,9 @@ void Robot(void){
 
     /* END DATA COLLECTION */
 
+    int slopeFrontLeft = calculate_slope(LunaLeft, LunaCenter);
+    int slopeFrontRight = calculate_slope(LunaCenter, LunaRight);
+    
     /* CONTROL ALGORITHM */
     // TODO
     if ((LunaCenter < 2000 || (IRDistanceLeft < 100) || (IRDistanceRight < 100))) {
