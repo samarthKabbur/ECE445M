@@ -20,8 +20,8 @@ enum Menu_Status {RX=0, TX, CONNECTED};
 #define SOFTAP        0
 
 // Access Point Parameters
-#define SSID_NAME  "Velocity Wi-Fi"
-#define PASSKEY    "8334914117"
+#define SSID_NAME  "utexas-iot"
+#define PASSKEY    "65185562551590162457"
 
 //#define SSID_NAME  "utexas-iot"
 //#define PASSKEY    ""
