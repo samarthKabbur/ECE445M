@@ -605,28 +605,6 @@ uint32_t CAN_Get(uint32_t *data)
   return 0;
 }
 
-uint32_t CAN_Get_ID(uint32_t *data, uint32_t *id)
-{
-  long sr;
-  uint32_t id;
-  uint32_t dlc;
-  OSCRITICAL_ENTER(sr);
-  if(CANGetI != CANPutI){
-    id  = CANFIFO[CANGetI].id;
-    dlc = CANFIFO[CANGetI].dlc;
-    *data = 0;
-    for(int i=0; i<dlc; i++){
-      *data += CANFIFO[CANGetI].data[i] << (i * 8);
-    }
-    *id = id;
-    CANGetI = (CANGetI+1)&(CANFIFOSIZE-1);
-    OSCRITICAL_EXIT(sr);
-    return 1;
-  }
-  OSCRITICAL_EXIT(sr);
-  return 0;
-}
-
 uint32_t CAN_Put(uint32_t id, uint32_t data)
 {
   return CAN_Send(id, 4, (uint8_t*)&data);

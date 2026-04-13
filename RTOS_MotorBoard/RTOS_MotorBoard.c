@@ -529,13 +529,13 @@ int mainMotor(void) {
 uint32_t CANData;
 uint32_t id;
 uint32_t failures;
-uint32_t id = 1;
 void ReceiveCAN(void)
 {
   while (true)
   {
     OS_Wait(&CAN_Available);
-    while (!CAN_Get(&CANData, &id)) { 
+    // while (!CAN_Get_ID(&CANData, &id)) { 
+    while (!CAN_Get(&CANData)) { 
       OS_Sleep(1000);
     }
     TogglePB4();
@@ -688,22 +688,16 @@ switch(cmd){
 void MotorCANThread(void)
 {
   command_t cmd = straight;
-
   while(1){
-
     OS_Wait(&CAN_Available);
-
-    while(!CAN_Get(&CANData, &id)){
+    // while(!CAN_Get_ID(&CANData, &id)){
+    while(!CAN_Get(&CANData)){
       OS_Sleep(1);
     }
-
     cmd = (command_t)CANData;
-    
     ExecuteCommand(cmd, id);
-
   }
 }
-
 
 int mainCAN_Motor(void){
   OS_Init();
