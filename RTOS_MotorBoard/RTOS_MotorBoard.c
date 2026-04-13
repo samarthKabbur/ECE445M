@@ -360,7 +360,7 @@ int mainWifi(void){
 
 
   // 3. Add WiFi thread (globals-only version)
-  NumCreated += OS_AddThread(&WiFiThread, 128, 2);
+  NumCreated += OS_AddThread(&WiFiThread, 512, 1);
   NumCreated += OS_AddThread(&VirusDetector,128,2);
 
 
@@ -699,6 +699,12 @@ void ExecuteCommand(command_t cmd, int id){
       break;
   }
 
+  if (cmd.speed == stop)
+  {
+    PWMA0_Backward(0);
+    PWMA1_Forward(0);
+  }
+
  SSD1306_SetCursor(0,2);
 SSD1306_OutString("CMD: ");
 
@@ -755,7 +761,11 @@ void MotorCANThread(void)
 
       ExecuteCommand(cmd, id);
     }
-
+    else
+    {
+      command_t stop_cmd = { straight, stop };
+      ExecuteCommand(stop_cmd, 0);
+    }
   }
 }
 
@@ -770,6 +780,11 @@ int mainCAN_Motor(void){
   PWMG6_Init(PWMUSEBUSCLK,39,
               SERVOPERIOD,
               SERVOINIT);
+
+    // 2. Initialize ESP8266
+  if(!ESP8266_Init(true, false)){
+    while(1);   // no WiFi adapter
+  }
 
   // CAN setup
   OS_CAN_Init(1);
@@ -794,7 +809,7 @@ int mainCAN_Motor(void){
 
   NumCreated +=
       OS_AddThread(&WiFiThread,
-                   128,1);
+                   512,1);
 
   NumCreated +=
       OS_AddThread(&VirusDetector,

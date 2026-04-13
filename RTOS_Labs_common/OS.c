@@ -66,8 +66,8 @@ volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
 
-#define MAXTHREADS 16  // maximum number of threads
-#define STACKSIZE 128 // maximum of 32-bit words on the stack 
+#define MAXTHREADS 8  // maximum number of threads
+#define STACKSIZE 512 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
 tcb_t tcbs [MAXTHREADS];
