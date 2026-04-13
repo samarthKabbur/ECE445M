@@ -486,8 +486,8 @@ void FileDump(uint32_t data, uint32_t data2){
 }
 
 void print_header(void) {
-  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | Command |");
-  UART_OutString("\r\n--------+----------+----------+-------+--------+--------+---------+");
+  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
+  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
 }
 
 // Compute PID for 1 step
@@ -635,60 +635,32 @@ void Robot(void){
     
     /* CONTROL ALGORITHM */
     // TODO
-    // Handle near collision cases
-    if (IRDistanceLeft < 100) {
-      direction = strong_right;
-    }
-    else if (IRDistanceLeft < 500)
-    {
-      direction = weak_right;
-    }
-    else if (IRDistanceRight < 100)
-    {
-      direction = strong_left;
-    }
-    else if (IRDistanceLeft < 500)
-    {
-      direction = weak_right;
-    }
-    // Handle turning
-    else if (LunaCenter < 2000)
-    {
-      if (averageFrontSlope > 500)
-      {
+    
+    // Direction Vector Generation
+    if (LunaCenter < 2000) {
+      // Turn strongly when close to front wall
+      if (averageFrontSlope > 500) {
         direction = strong_right;
-      }
-      else if (averageFrontSlope > 0)
-      {
+      } else if (averageFrontSlope > 0) {
         direction = weak_right;
-      }
-      else if (averageFrontSlope > 500)
-      {
+      } else if (averageFrontSlope < 500) {
         direction = strong_left;
-      }
-      else
-      {
+      } else if (averageFrontSlope < 0) {
         direction = weak_left;
       }
-    }
-    // Straight path
-    // Use left and right slopes to adjust
-    else {
+    } else if (LunaCenter > 2000) {
+      // Turn weakly on straight path
       //PID_Compute(&pid, 0, averageSlope, 1);
-      if (averageSlope > 0)
-      {
+      if (averageSlope > 100) {
         direction = weak_right;
-      }
-      else if (averageSlope < 0)
-      {
+      } else if (averageSlope < 100) {
         direction = weak_left;
-      }
-      else
-      {
+      } else {
         direction = straight;
       }
     }
 
+    // Speed Vector Generation
     if (LunaCenter > 5000) {
       speed = fast; 
     } else if (LunaCenter > 3000) {
@@ -738,9 +710,8 @@ void Debug_Print() {
   UART_OutUDec5(LunaLeft); UART_OutString(" | ");
   UART_OutUDec5(LunaCenter); UART_OutString(" | ");
   UART_OutUDec5(LunaRight); UART_OutString(" | ");
-  UART_OutSDec(slopeLeft); UART_OutString(" | ");
-  UART_OutSDec(slopeRight); UART_OutString(" | ");
-  UART_OutSDec(averageSlope); UART_OutString(" | ");
+  UART_OutSDec(averageSlope); UART_OutString("       | ");
+  UART_OutSDec(averageFrontSlope); UART_OutString("       | ");
   
   switch (command.direction) {
     case weak_left:
