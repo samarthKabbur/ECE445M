@@ -773,8 +773,8 @@ void Display(void){
   
     Debug_Print();
 
-    CAN_Put(0, command.direction);
-    CAN_Put(1, command.speed);
+    while (!CAN_Put(0, command.direction)) { }
+    while (!CAN_Put(1, command.speed)) { }
     
     TogglePB1();        // toggle PB1
  } 

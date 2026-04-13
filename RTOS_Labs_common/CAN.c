@@ -363,8 +363,8 @@ int CAN_Send(uint32_t id, uint32_t dlc, uint8_t *data){
   uint16_t count;
   uint32_t regVal, loopCnt;
   uint32_t elemAddr;
-  if(id > 2047) return 1;
-  if(dlc > 8) return 1;
+  if(id > 2047) return 0;
+  if(dlc > 8) return 0;
 
   OSCRITICAL_ENTER(sr);
 
