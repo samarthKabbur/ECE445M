@@ -546,28 +546,20 @@ int calculate_slope(int32_t distL, int32_t distR) {
     return (vLy * SCALE) / vLx; // slope
 }
 
-
-
+#define LEFT 2000
+#define CENTER 2900
+#define RIGHT 3800
 void Robot(void){   
 
   /* INIT */
-  direction_t direction;
-  speed_t speed;
+  direction_t direction = straight;
+  speed_t speed = slow;
   
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
   Running = 1;
-  Jitter3_Init();
 
   OS_ClearMsTime();    
-  OS_Fifo_Init(256);
-  OS_Fifo_Init_Specific(32, &tfluna1_fifo);
-  OS_Fifo_Init_Specific(32, &tfluna2_fifo);
-  OS_Fifo_Init_Specific(32, &tfluna3_fifo);
-  OS_Fifo_Init_Specific(32, &ir1_fifo);
-  OS_Fifo_Init_Specific(32, &ir2_fifo);
-  
-  NumCreated += OS_AddThread(&Display,256,0); 
   UART_OutString("Robot running...");
   print_header();
   LastHeaderPrint = OS_MsTime();
@@ -579,12 +571,9 @@ void Robot(void){
   pid.Kd = 0 * pid.scale;
   pid.integral = 0;
   pid.prev_error = 0;
-
-  // StartFileDump(FileName);
   /* END INIT */
 
-
-  while (true) {
+  while (command.speed != stop) {
     /* DATA COLLECTION */
     uint32_t data1;      // in mm, from TFLuna1
     uint32_t sum1=0;
@@ -660,6 +649,8 @@ void Robot(void){
       }
     }
 
+    
+    
     // Speed Vector Generation
     if (LunaCenter > 5000) {
       speed = fast; 
@@ -676,11 +667,7 @@ void Robot(void){
     OS_MailBox_Send(1);
     
     /* END CONTROL ALGORITHM */
-
   }
-  // EndFileDump();
-  // UART_OutString("done.\n\r>");
-  // FileName[5] = (FileName[5]+1)&0xF7; // 0 to 7
   Running = 0;             // robot no longer running
   OS_Kill();
 }
@@ -691,7 +678,8 @@ void Robot(void){
 void S2Push(void){
   if(Running==0){
     Running = 1;  // prevents you from starting two test threads
-    // NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+    command.speed = slow;
+    command.direction = straight;
   }
 }
 //--------------end of Task 2-----------------------------
@@ -839,6 +827,11 @@ int realmain(void){     // realmain
   OS_InitSemaphore(&LCDFree, 1);
   OS_CAN_Init(1);
   OS_InitSemaphore(&CAN_Available, 0);
+  OS_Fifo_Init_Specific(32, &tfluna1_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna2_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna3_fifo);
+  OS_Fifo_Init_Specific(32, &ir1_fifo);
+  OS_Fifo_Init_Specific(32, &ir2_fifo);
 
   // hardware init
   ADC_InitDual(ADC0, 3, 7, ADCVREF_VDDA);
@@ -846,15 +839,14 @@ int realmain(void){     // realmain
   // attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
-  OS_AddPeriodicThread(&DAS1,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
-  OS_AddPeriodicThread(&DAS2,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_7
-  // OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
+  OS_AddPeriodicThread(&DAS1,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3 IRLEFT
+  OS_AddPeriodicThread(&DAS2,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_7 IRRIGHT
   
   // create initial foreground threads
   NumCreated = 0;
-  NumCreated += OS_AddThread(&Robot,256,1);  // test eDisk
-  // NumCreated += OS_AddThread(&Interpreter,128,1); 
+  NumCreated += OS_AddThread(&Robot,256,1);
   NumCreated += OS_AddThread(&VirusDetector,256,2);
+  NumCreated += OS_AddThread(&Display,256,0); 
  
   LPF_Init7(500,7);
   TFLuna1_Init(&Producer1);
@@ -874,10 +866,7 @@ int realmain(void){     // realmain
   TFLuna3_Frame_Rate();         // 100 samples/sec
   TFLuna3_SaveSettings();  // save format and rate
   TFLuna3_System_Reset();  // start measurements
-
-  // if(eFile_Init())              diskError("eFile_Init",0); 
-  // if(eFile_Format())            diskError("eFile_Format",0); 
-  // if(eFile_Mount())             diskError("eFile_Mount",0);
+  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
