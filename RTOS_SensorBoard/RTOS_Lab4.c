@@ -91,6 +91,16 @@ typedef struct point {
 
 command_t command;
 
+typedef struct {
+    int32_t Kp;
+    int32_t Ki;
+    int32_t Kd;
+
+    int32_t prev_error;
+    int32_t integral;
+    int32_t scale;
+} PID_t;
+
 //---------------------User debugging-----------------------
 
 // Unused sensor board pins, made outputs for debugging
@@ -480,6 +490,25 @@ void print_header(void) {
   UART_OutString("\r\n--------+----------+----------+-------+--------+--------+---------+");
 }
 
+// Compute PID for 1 step
+// All parameters should be in same fixed point scale as pid->scale
+int32_t PID_Compute(PID_t *pid, int32_t desired, int32_t measured, int32_t dt)
+{
+  int32_t error = desired - measured;
+  int32_t p = pid->Kp * error / pid->scale;
+  
+  pid->integral += error * dt / pid->scale;
+  int32_t i = pid->Ki * pid->integral / pid->scale;
+
+  int32_t derivative = (error - pid->prev_error) / dt / pid->scale;
+  int32_t d = pid->Kd * derivative / pid->scale;
+
+  // Save error for next step
+  pid->prev_error = error;
+
+  return p + i + d;
+}
+
 //******** Robot *************** 
 // foreground Consumer thread, accepts data from producer
 // inputs:  none
@@ -491,20 +520,24 @@ static tfluna_mail_t tfluna_mail_buffer;
 
 int slopeFrontLeft;
 int slopeFrontRight;
+int slopeLeft;
+int slopeRight;
+int averageFrontSlope;
+int averageSlope;
 
 #include <stdint.h>
 #define SCALE 1000
 #define SIN50_FIXED 766
 #define COS50_FIXED 643
 
-int calculate_slope(int32_t dist1, int32_t dist2) {
+int calculate_slope(int32_t distL, int32_t distR) {
     point_t left;
     point_t right;
     left.x = -(distL * SIN50_FIXED); 
     left.y = (distL * COS50_FIXED);
 
     right.x = 0;
-    right.y = distC * SCALE;
+    right.y = distR * SCALE;
 
     // slope components
     int32_t vLx = right.x - left.x;
@@ -512,6 +545,8 @@ int calculate_slope(int32_t dist1, int32_t dist2) {
 
     return (vLy * SCALE) / vLx; // slope
 }
+
+
 
 void Robot(void){   
 
@@ -536,8 +571,18 @@ void Robot(void){
   UART_OutString("Robot running...");
   print_header();
   LastHeaderPrint = OS_MsTime();
+
+  PID_t pid;
+  pid.scale = 100;
+  pid.Kp = 1 * pid.scale;
+  pid.Ki = 0 * pid.scale;
+  pid.Kd = 0 * pid.scale;
+  pid.integral = 0;
+  pid.prev_error = 0;
+
   // StartFileDump(FileName);
   /* END INIT */
+
 
   while (true) {
     /* DATA COLLECTION */
@@ -581,29 +626,67 @@ void Robot(void){
 
     /* END DATA COLLECTION */
 
-    int slopeFrontLeft = calculate_slope(LunaLeft, LunaCenter);
-    int slopeFrontRight = calculate_slope(LunaCenter, LunaRight);
+    slopeFrontLeft = calculate_slope(LunaCenter, LunaLeft);
+    slopeFrontRight = calculate_slope(LunaCenter, LunaRight);
+    slopeLeft = calculate_slope(LunaLeft, IRDistanceLeft);
+    slopeRight = calculate_slope(LunaRight, IRDistanceRight);
+    averageSlope = (slopeLeft + slopeRight) / 2;
+    averageFrontSlope = (slopeFrontLeft + slopeFrontRight) / 2;
     
     /* CONTROL ALGORITHM */
     // TODO
-    if ((LunaCenter < 2000 || (IRDistanceLeft < 100) || (IRDistanceRight < 100))) {
-      if (IRDistanceRight > IRDistanceLeft) {
-        int difference = IRDistanceRight - IRDistanceLeft;
-        if (difference > 500) {
-          direction = strong_right;
-        } else if (difference > 100) {
-          direction = weak_right;
-        }
-      } else if (IRDistanceRight <= IRDistanceLeft) {
-        int difference = IRDistanceLeft - IRDistanceRight;
-        if (difference > 500) {
-          direction = strong_left;
-        } else if (difference > 100) {
-          direction = weak_left;
-        }
-      } 
-    } else {
-      direction = straight;
+    // Handle near collision cases
+    if (IRDistanceLeft < 100) {
+      direction = strong_right;
+    }
+    else if (IRDistanceLeft < 500)
+    {
+      direction = weak_right;
+    }
+    else if (IRDistanceRight < 100)
+    {
+      direction = strong_left;
+    }
+    else if (IRDistanceLeft < 500)
+    {
+      direction = weak_right;
+    }
+    // Handle turning
+    else if (LunaCenter < 2000)
+    {
+      if (averageFrontSlope > 500)
+      {
+        direction = strong_right;
+      }
+      else if (averageFrontSlope > 0)
+      {
+        direction = weak_right;
+      }
+      else if (averageFrontSlope > 500)
+      {
+        direction = strong_left;
+      }
+      else
+      {
+        direction = weak_left;
+      }
+    }
+    // Straight path
+    // Use left and right slopes to adjust
+    else {
+      //PID_Compute(&pid, 0, averageSlope, 1);
+      if (averageSlope > 0)
+      {
+        direction = weak_right;
+      }
+      else if (averageSlope < 0)
+      {
+        direction = weak_left;
+      }
+      else
+      {
+        direction = straight;
+      }
     }
 
     if (LunaCenter > 5000) {
@@ -655,6 +738,9 @@ void Debug_Print() {
   UART_OutUDec5(LunaLeft); UART_OutString(" | ");
   UART_OutUDec5(LunaCenter); UART_OutString(" | ");
   UART_OutUDec5(LunaRight); UART_OutString(" | ");
+  UART_OutSDec(slopeLeft); UART_OutString(" | ");
+  UART_OutSDec(slopeRight); UART_OutString(" | ");
+  UART_OutSDec(averageSlope); UART_OutString(" | ");
   
   switch (command.direction) {
     case weak_left:
