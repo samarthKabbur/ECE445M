@@ -363,8 +363,8 @@ int CAN_Send(uint32_t id, uint32_t dlc, uint8_t *data){
   uint16_t count;
   uint32_t regVal, loopCnt;
   uint32_t elemAddr;
-  if(id > 2047) return 1;
-  if(dlc > 8) return 1;
+  if(id > 2047) return 0;
+  if(dlc > 8) return 0;
 
   OSCRITICAL_ENTER(sr);
 
@@ -605,17 +605,23 @@ uint32_t CAN_Get(uint32_t *data)
   return 0;
 }
 
-uint32_t CAN_Get_ID(uint32_t *data, uint32_t *id)
+uint32_t CAN_Put(uint32_t id, uint32_t data)
+{
+  return CAN_Send(id, 4, (uint8_t*)&data);
+}
+
+uint32_t CAN_GetCommand(command_t *command)
 {
   long sr;
+  uint32_t id;
   uint32_t dlc;
+  uint8_t* cmdBuffer = (uint8_t*)command;
   OSCRITICAL_ENTER(sr);
   if(CANGetI != CANPutI){
-    *id  = CANFIFO[CANGetI].id;
+    id  = CANFIFO[CANGetI].id;
     dlc = CANFIFO[CANGetI].dlc;
-    *data = 0;
     for(int i=0; i<dlc; i++){
-      *data += CANFIFO[CANGetI].data[i] << (i * 8);
+      *cmdBuffer = CANFIFO[CANGetI].data[i];
     }
     CANGetI = (CANGetI+1)&(CANFIFOSIZE-1);
     OSCRITICAL_EXIT(sr);
@@ -625,7 +631,7 @@ uint32_t CAN_Get_ID(uint32_t *data, uint32_t *id)
   return 0;
 }
 
-uint32_t CAN_Put(uint32_t id, uint32_t data)
+uint32_t CAN_PutCommand(command_t command)
 {
-  return CAN_Send(id, 4, (uint8_t*)&data);
+  return CAN_Send(0, 8, (uint8_t*)&command);
 }

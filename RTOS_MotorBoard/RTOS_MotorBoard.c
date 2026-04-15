@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 
+/* MOVED TO CAN.h
 typedef enum direction {
   weak_left = 0,
   strong_left,  //1
@@ -49,7 +50,7 @@ typedef struct command {
   direction_t direction;
   speed_t speed;
 } command_t;
-
+*/
 
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
@@ -604,7 +605,7 @@ int TestmainCAN(void)
 #define SERVO_RIGHT  3450
 
 
-void ExecuteCommand(command_t cmd, int id){
+void ExecuteCommand(command_t cmd){
 
   uint32_t leftDuty;
   uint32_t rightDuty;
@@ -741,30 +742,21 @@ switch(cmd.direction){
 void MotorCANThread(void)
 {
   command_t cmd = { straight, stop };
-  uint32_t id;
   while(1){
     if (!StoppedFlag)
     {
       OS_Wait(&CAN_Available);
       
-      while(!CAN_Get_ID(&CANData, &id)){
+      while(!CAN_GetCommand(&cmd)){
         OS_Sleep(1);
       }
-      if (id == 0)
-      {
-        cmd.direction = (direction_t)CANData;
-      }
-      else if (id == 1)
-      {
-        cmd.speed = (speed_t)CANData;
-      }      
 
-      ExecuteCommand(cmd, id);
+      ExecuteCommand(cmd);
     }
     else
     {
       command_t stop_cmd = { straight, stop };
-      ExecuteCommand(stop_cmd, 0);
+      ExecuteCommand(stop_cmd);
     }
   }
 }
