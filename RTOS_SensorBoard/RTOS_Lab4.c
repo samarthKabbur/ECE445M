@@ -51,10 +51,12 @@
 //UART3 is shared between LD19 and TFLuna3 (can have either but not both)
 
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
-typedef struct command {
+
+// MOVED TO CAN.h
+/*typedef struct command {
   int direction;
   int  speed;
-} command_t;
+} command_t;*/
 
 typedef struct point {
   int x;
@@ -530,6 +532,11 @@ int map(int x, int in_min, int in_max, int out_min, int out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+void print_header(void) {
+  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
+  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
+}
+
 void Robot(void){   
 
   /* INIT */
@@ -652,11 +659,6 @@ void S2Push(void){
   }
 }
 
-void print_header(void) {
-  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
-  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
-}
-
 void Debug_Print() {
   
   if((OS_MsTime() - LastHeaderPrint) >= 5000){
@@ -735,8 +737,7 @@ void Display(void){
   
     Debug_Print();
 
-    while (!CAN_Put(0, command.direction)) { }
-    while (!CAN_Put(1, command.speed)) { }
+    while (!CAN_PutCommand(command)) { }
     
     TogglePB1();        // toggle PB1
  } 

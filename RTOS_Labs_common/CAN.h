@@ -64,6 +64,7 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data);
 // Returns 1 if successful
 // Returns 0 if failed
 uint32_t CAN_Get(uint32_t *data);
+uint32_t CAN_Get_ID(uint32_t *data, uint32_t *id);
 
 // Puts a value into the send FIFO
 // Returns 1 if successful
@@ -85,5 +86,28 @@ CAN_Fifo_t CAN_ReceiveFifo;
 
 Sema4_t CAN_Available;
 
-#endif //  __CAN_H__
+typedef enum direction {
+  weak_left = 0,
+  strong_left,  //1
+  straight, //2 
+  strong_right, //3
+  weak_right  // 4
+} direction_t;
 
+typedef enum speed {
+  stop = 0,
+  slow, // 1
+  medium, // 2
+  fast  // 3
+} speed_t;
+
+typedef struct command {
+  direction_t direction;
+  speed_t speed;
+} command_t;
+
+// Functions to send and get commands
+uint32_t CAN_GetCommand(command_t *command);
+uint32_t CAN_PutCommand(command_t command);
+
+#endif //  __CAN_H__
