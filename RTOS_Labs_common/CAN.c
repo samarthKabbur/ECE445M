@@ -631,7 +631,7 @@ uint32_t CAN_GetCommand(command_t *command)
   return 0;
 }
 
-uint32_t CAN_PutCommand(command_t command)
+uint32_t CAN_PutCommand(uint32_t id, command_t command)
 {
-  return CAN_Send(0, 8, (uint8_t*)&command);
+  return CAN_Send(id, 8, (uint8_t*)&command);
 }
