@@ -107,7 +107,7 @@ int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
 button_task_t pa28_button_threads[MAX_BUTTON_THREADS];
-
+button_task_t pa27_button_threads[MAX_BUTTON_THREADS]; 
 /* GLOBAL MAILBOX */
 
 typedef struct mailbox {
@@ -337,7 +337,7 @@ void OS_Init(void){
     s2_button_threads[i].Status = Free;
     s1_button_threads[i].Status = Free;
     pa28_button_threads[i].Status = Free;  
-      
+    pa27_button_threads[i].Status = Free;    
     }
   
   //_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
@@ -891,6 +891,15 @@ void GROUP1_IRQHandler(void){
     }
   }
 
+  if(GPIOA->CPU_INT.RIS&(1<<27)){ // PA27
+    GPIOA->CPU_INT.ICLR = 1<<27;
+    for (int i = 0; i < MAX_BUTTON_THREADS ; i++) {
+      if (pa27_button_threads[i].Status == Active) {
+        (*pa27_button_threads[i].task)(); // run the background thread
+      }
+    }
+  }
+
   if(GPIOB->CPU_INT.RIS&(1<<21)){ // PB21
     GPIOB->CPU_INT.ICLR = 1<<21;  // this acknowledges interrupt
     // check all available button threads
@@ -1040,6 +1049,42 @@ int OS_AddPA28Task(void(*task)(void), uint32_t priority){
   return 1; // successfully added task
 };
 
+int OS_AddPA27Task(void(*task)(void), uint32_t priority){
+
+  //need to implement priority here 
+  long sr;
+
+  int i;
+  for (i = 0; i < MAX_BUTTON_THREADS; i++) {
+    if (pa27_button_threads[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAX_BUTTON_THREADS) {
+    return 0;
+  }
+
+  int j = i;
+  OSCRITICAL_ENTER(sr);
+
+  while (j > 0 &&
+         pa27_button_threads[j-1].Status == Active &&
+         pa27_button_threads[j-1].priority > priority) {
+          
+    pa27_button_threads[j] = pa27_button_threads[j-1];
+    j--;
+  }
+  
+  // init background thread
+  pa27_button_threads[i].task = task;
+  pa27_button_threads[i].priority = priority;
+  pa27_button_threads[i].Status = Active;
+  NumButtonThreads++;
+  OSCRITICAL_EXIT(sr);
+  
+  return 1; // successfully added task
+};
 
 
 // ******** OS_Sleep ************
