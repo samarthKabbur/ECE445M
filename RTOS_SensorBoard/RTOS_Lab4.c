@@ -51,6 +51,26 @@
 //UART3 is shared between LD19 and TFLuna3 (can have either but not both)
 
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
+typedef struct command {
+  int direction;
+  int  speed;
+} command_t;
+
+typedef struct point {
+  int x;
+  int y;
+} point_t;
+
+typedef struct {
+    int32_t Kp;
+    int32_t Ki;
+    int32_t Kd;
+
+    int32_t prev_error;
+    int32_t integral;
+    int32_t scale;
+} PID_t;
+
 uint32_t Running;           // true while robot is running
 uint32_t NumCreated;   // number of foreground threads created
 
@@ -64,42 +84,7 @@ Median5_data_t tfluna1_median_data;
 Median5_data_t tfluna2_median_data;
 Median5_data_t tfluna3_median_data;
 
-typedef enum direction {
-  weak_left = 0,
-  strong_left,  //1
-  straight, //2 
-  strong_right, //3
-  weak_right  // 4
-} direction_t;
-
-typedef enum speed {
-  stop = 0,
-  slow, // 1
-  medium, // 2
-  fast  // 3
-} speed_t;
-
-typedef struct command {
-  direction_t direction;
-  speed_t speed;
-} command_t;
-
-typedef struct point {
-  int x;
-  int y;
-} point_t;
-
 command_t command;
-
-typedef struct {
-    int32_t Kp;
-    int32_t Ki;
-    int32_t Kd;
-
-    int32_t prev_error;
-    int32_t integral;
-    int32_t scale;
-} PID_t;
 
 //---------------------User debugging-----------------------
 
@@ -140,7 +125,6 @@ uint32_t ChecksWork; // number of checks in 10 second
 #define RUNLENGTH (10000)     // display results and quit when FilterWork==RUNLENGTH
 Sema4_t LCDFree;  // SDC and LCD sharing
 uint32_t FilterWork;
-
 
 uint32_t MaxJitter3;  
 #define JITTERSIZE3 512
@@ -485,11 +469,6 @@ void FileDump(uint32_t data, uint32_t data2){
   ClrPB4();
 }
 
-void print_header(void) {
-  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
-  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
-}
-
 // Compute PID for 1 step
 // All parameters should be in same fixed point scale as pid->scale
 int32_t PID_Compute(PID_t *pid, int32_t desired, int32_t measured, int32_t dt)
@@ -523,9 +502,8 @@ int slopeFrontRight;
 int slopeLeft;
 int slopeRight;
 int averageFrontSlope;
-int averageSlope;
+int averageSideSlope;
 
-#include <stdint.h>
 #define SCALE 1000
 #define SIN50_FIXED 766
 #define COS50_FIXED 643
@@ -546,28 +524,23 @@ int calculate_slope(int32_t distL, int32_t distR) {
     return (vLy * SCALE) / vLx; // slope
 }
 
-
+// Arduino map function
+int map(int x, int in_min, int in_max, int out_min, int out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 void Robot(void){   
 
   /* INIT */
-  direction_t direction;
-  speed_t speed;
+  direction_t direction = straight;
+  speed_t speed = slow;
   
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
   Running = 1;
-  Jitter3_Init();
 
   OS_ClearMsTime();    
-  OS_Fifo_Init(256);
-  OS_Fifo_Init_Specific(32, &tfluna1_fifo);
-  OS_Fifo_Init_Specific(32, &tfluna2_fifo);
-  OS_Fifo_Init_Specific(32, &tfluna3_fifo);
-  OS_Fifo_Init_Specific(32, &ir1_fifo);
-  OS_Fifo_Init_Specific(32, &ir2_fifo);
-  
-  NumCreated += OS_AddThread(&Display,256,0); 
   UART_OutString("Robot running...");
   print_header();
   LastHeaderPrint = OS_MsTime();
@@ -579,12 +552,9 @@ void Robot(void){
   pid.Kd = 0 * pid.scale;
   pid.integral = 0;
   pid.prev_error = 0;
-
-  // StartFileDump(FileName);
   /* END INIT */
 
-
-  while (true) {
+  while (command.speed != stop) { // TODO: Attempt to reverse and restart on a stop using another thread
     /* DATA COLLECTION */
     uint32_t data1;      // in mm, from TFLuna1
     uint32_t sum1=0;
@@ -604,7 +574,6 @@ void Robot(void){
       data3 = OS_Fifo_Get_Specific(&tfluna3_fifo);    // get from producer, mm
       sum3 += data3;             // average
     }
-
     uint32_t dataDAS1;
     uint32_t sumDAS1=0;
     for (int t = 0; t < 16; t++) { // collect 16 IR samples 
@@ -623,64 +592,51 @@ void Robot(void){
     LunaCenter = sum3>>4;  // in mm
     IRDistanceRight = sumDAS1>>4;
     IRDistanceLeft = sumDAS2>>4;
-
     /* END DATA COLLECTION */
 
+    /* CONTROL ALGORITHM */
     slopeFrontLeft = calculate_slope(LunaCenter, LunaLeft);
     slopeFrontRight = calculate_slope(LunaCenter, LunaRight);
     slopeLeft = calculate_slope(LunaLeft, IRDistanceLeft);
     slopeRight = calculate_slope(LunaRight, IRDistanceRight);
-    averageSlope = (slopeLeft + slopeRight) / 2;
+    averageSideSlope = (slopeLeft + slopeRight) / 2;
     averageFrontSlope = (slopeFrontLeft + slopeFrontRight) / 2;
     
-    /* CONTROL ALGORITHM */
-    // TODO
+    // TODO:
+      // What is the max and min slope the sensor can see?
+
+    // Constant values in millimeters
+    #define FRONTMARGIN 3000  // You are allowed to get this close to the front wall before we start turning
+    #define LEFTTURN 2000
+    #define CENTER 2900
+    #define RIGHTTURN 3800
+    #define MINSPEED 0
+    #define MAXSPEED 100
+    #define MINFRONTSLOPE -10000 // Made up value
+    #define MAXFRONTSLOPE 10000  // Made up value
+    #define MINSIDESLOPE -10000 // Made up value
+    #define MAXSIDESLOPE 10000  // Made up value
+    #define TFLUNAMIN 0
+    #define TFLUNAMAX 8000
     
     // Direction Vector Generation
-    if (LunaCenter < 2000) {
-      // Turn strongly when close to front wall
-      if (averageFrontSlope > 500) {
-        direction = strong_right;
-      } else if (averageFrontSlope > 0) {
-        direction = weak_right;
-      } else if (averageFrontSlope < 500) {
-        direction = strong_left;
-      } else if (averageFrontSlope < 0) {
-        direction = weak_left;
-      }
-    } else if (LunaCenter > 2000) {
-      // Turn weakly on straight path
-      //PID_Compute(&pid, 0, averageSlope, 1);
-      if (averageSlope > 100) {
-        direction = weak_right;
-      } else if (averageSlope < 100) {
-        direction = weak_left;
-      } else {
-        direction = straight;
-      }
+    if (LunaCenter < FRONTMARGIN) { // When close to front wall
+      direction = map(averageFrontSlope, MINFRONTSLOPE, MAXFRONTSLOPE, LEFTTURN, RIGHTTURN);
+    } else if (LunaCenter > FRONTMARGIN) { // When far from front wall
+      //PID_Compute(&pid, 0, averageSideSlope, 1);
+      direction = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTTURN, RIGHTTURN);
     }
 
     // Speed Vector Generation
-    if (LunaCenter > 5000) {
-      speed = fast; 
-    } else if (LunaCenter > 3000) {
-      speed = medium;
-    } else if (LunaCenter > 500) {
-      speed = slow;
-    } else {
-      speed = stop;
-    }
+    speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEED, MAXSPEED);
     
+    // Send data to display/motorboard
     command.direction = direction;
     command.speed = speed;
     OS_MailBox_Send(1);
     
     /* END CONTROL ALGORITHM */
-
   }
-  // EndFileDump();
-  // UART_OutString("done.\n\r>");
-  // FileName[5] = (FileName[5]+1)&0xF7; // 0 to 7
   Running = 0;             // robot no longer running
   OS_Kill();
 }
@@ -691,10 +647,16 @@ void Robot(void){
 void S2Push(void){
   if(Running==0){
     Running = 1;  // prevents you from starting two test threads
-    // NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+    command.speed = slow;
+    command.direction = straight;
   }
 }
-//--------------end of Task 2-----------------------------
+
+void print_header(void) {
+  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
+  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
+}
+
 void Debug_Print() {
   
   if((OS_MsTime() - LastHeaderPrint) >= 5000){
@@ -710,7 +672,7 @@ void Debug_Print() {
   UART_OutUDec5(LunaLeft); UART_OutString(" | ");
   UART_OutUDec5(LunaCenter); UART_OutString(" | ");
   UART_OutUDec5(LunaRight); UART_OutString(" | ");
-  UART_OutSDec(averageSlope); UART_OutString("       | ");
+  UART_OutSDec(averageSideSlope); UART_OutString("       | ");
   UART_OutSDec(averageFrontSlope); UART_OutString("       | ");
   
   switch (command.direction) {
@@ -781,10 +743,6 @@ void Display(void){
   OS_Kill();  // done
 } 
 
-//--------------end of Task 3-----------------------------
-
-//------------------Task 4--------------------------------
-
 //******** Virus Detector *************** 
 uint32_t Check(uint32_t start, uint32_t end){
   uint32_t sum=0;
@@ -815,18 +773,12 @@ void VirusDetector(void){
   }
 }
 
-//--------------end of Task 4-----------------------------
-
-//------------------Task 5--------------------------------
 //******** Interpreter *************** 
 void Interpreter(void);    // just a prototype, link to your interpreter
 void Lab4(void){}
 void DFT(void){}
 
-//--------------end of Task 5-----------------------------
-
-//*******************final user main DEMONTRATE THIS TO TA**********
-int realmain(void){     // realmain
+int realmain(void){
   OS_Init();        // initialize, disable interrupts
 
   Logic_Init();
@@ -839,22 +791,30 @@ int realmain(void){     // realmain
   OS_InitSemaphore(&LCDFree, 1);
   OS_CAN_Init(1);
   OS_InitSemaphore(&CAN_Available, 0);
+  OS_Fifo_Init_Specific(32, &tfluna1_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna2_fifo);
+  OS_Fifo_Init_Specific(32, &tfluna3_fifo);
+  OS_Fifo_Init_Specific(32, &ir1_fifo);
+  OS_Fifo_Init_Specific(32, &ir2_fifo);
 
   // hardware init
   ADC_InitDual(ADC0, 3, 7, ADCVREF_VDDA);
 
+  // TODO: 
+    // Put disk timer proc background thread back
+    // Put filesystem init back
+
   // attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
   OS_AddPA28Task(&PA28Push,1);  // fall of PA28
-  OS_AddPeriodicThread(&DAS1,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
-  OS_AddPeriodicThread(&DAS2,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_7
-  // OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
+  OS_AddPeriodicThread(&DAS1,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3 IRLEFT
+  OS_AddPeriodicThread(&DAS2,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_7 IRRIGHT
   
   // create initial foreground threads
   NumCreated = 0;
-  NumCreated += OS_AddThread(&Robot,256,1);  // test eDisk
-  // NumCreated += OS_AddThread(&Interpreter,128,1); 
+  NumCreated += OS_AddThread(&Robot,256,1);
   NumCreated += OS_AddThread(&VirusDetector,256,2);
+  NumCreated += OS_AddThread(&Display,256,0); 
  
   LPF_Init7(500,7);
   TFLuna1_Init(&Producer1);
@@ -874,10 +834,7 @@ int realmain(void){     // realmain
   TFLuna3_Frame_Rate();         // 100 samples/sec
   TFLuna3_SaveSettings();  // save format and rate
   TFLuna3_System_Reset();  // start measurements
-
-  // if(eFile_Init())              diskError("eFile_Init",0); 
-  // if(eFile_Format())            diskError("eFile_Format",0); 
-  // if(eFile_Mount())             diskError("eFile_Mount",0);
+  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
