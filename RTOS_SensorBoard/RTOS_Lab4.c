@@ -51,11 +51,12 @@
 //UART3 is shared between LD19 and TFLuna3 (can have either but not both)
 
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
-typedef struct command {
-  int steering;
-  int differential;
+
+// MOVED TO CAN.h
+/*typedef struct command {
+  int direction;
   int  speed;
-} command_t;
+} command_t;*/
 
 typedef struct point {
   int x;
@@ -563,18 +564,20 @@ int calculate_side_slope_left(int32_t distSideL, int32_t distFrontL) {
     vLx = side_left.x - front_left.x;
     vLy = side_left.y - front_left.y;
   }
+
+  return (vLy * SCALE) / vLx; // slope = rise / run
 }
 
 // Returns slope between the front-right and side-right ultrasound sensors
-int calculate_side_slope_right(int32_t distSideR, int32_t distFrontL) {
+int calculate_side_slope_right(int32_t distSideR, int32_t distFrontR) {
   point_t side_right;
   point_t front_right;
 
   side_right.x = distSideR * SCALE;
   side_right.y = -IR_Y_OFFSET_MM * SCALE;
 
-  front_right.x = (distR * SIN50_FIXED);  // sin and cos 50 are defined with scale, so no need to rescale
-  front_right.y = (distR * COS50_FIXED);
+  front_right.x = (distFrontR * SIN50_FIXED);  // sin and cos 50 are defined with scale, so no need to rescale
+  front_right.y = (distFrontR * COS50_FIXED);
 
   // slope components
   int32_t vLx = front_right.x - side_right.x;
@@ -583,12 +586,19 @@ int calculate_side_slope_right(int32_t distSideR, int32_t distFrontL) {
     vLx = side_right.x - front_right.x;
     vLy = side_right.y - front_right.y;
   }
+
+  return (vLy * SCALE) / vLx; // slope = rise / run
 }
 
 // Arduino map function
 int map(int x, int in_min, int in_max, int out_min, int out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void print_header(void) {
+  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
+  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
 }
 
 void Robot(void){   
@@ -719,11 +729,6 @@ void S2Push(void){
   }
 }
 
-void print_header(void) {
-  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
-  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
-}
-
 void Debug_Print() {
   
   if((OS_MsTime() - LastHeaderPrint) >= 5000){
@@ -760,8 +765,7 @@ void Display(void){
   
     Debug_Print();
 
-    CAN_Put(0, command.steering);
-    CAN_Put(1, command.speed);
+    while (!CAN_PutCommand(command)) { }  // Is this while loop safe?
     
     TogglePB1();        // toggle PB1
  } 
