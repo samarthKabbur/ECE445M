@@ -52,7 +52,8 @@
 
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
 typedef struct command {
-  int direction;
+  int steering;
+  int differential;
   int  speed;
 } command_t;
 
@@ -113,6 +114,7 @@ void Logic_Init(void){
 #define ClrPB4() (GPIOB->DOUTCLR31_0 = (1<<4))
 #define TogglePB1() (GPIOB->DOUTTGL31_0 = (1<<1))
 #define TogglePB20() (GPIOB->DOUTTGL31_0 = (1<<20))
+#define TogglePB22() (GPIOB->DOUTTGL31_0 = (1<<22))
 
 uint32_t Checks; // number of times virus checking has run
 uint32_t ChecksWork; // number of checks in 10 second
@@ -508,20 +510,79 @@ int averageSideSlope;
 #define SIN50_FIXED 766
 #define COS50_FIXED 643
 
-int calculate_slope(int32_t distL, int32_t distR) {
+// Returns slope between the front-left and front-center ultrasound sensors
+int calculate_slope_LC(int32_t distL, int32_t distC) {
     point_t left;
-    point_t right;
-    left.x = -(distL * SIN50_FIXED); 
+    point_t center;
+    
+    left.x = -(distL * SIN50_FIXED); // sin and cos 50 are defined with scale, so no need to rescale
     left.y = (distL * COS50_FIXED);
 
-    right.x = 0;
-    right.y = distR * SCALE;
+    center.x = 0 * SCALE;
+    center.y = distC * SCALE;
 
     // slope components
-    int32_t vLx = right.x - left.x;
-    int32_t vLy = right.y - left.y;
+    int32_t vLx = center.x - left.x;
+    int32_t vLy = center.y - left.y;
+    return (vLy * SCALE) / vLx; // slope = rise / run
+}
 
-    return (vLy * SCALE) / vLx; // slope
+// Returns slope between the front-right and front-center ultrasound sensors
+int calculate_slope_RC(int32_t distR, int32_t distC) {
+  point_t right;
+  point_t center;
+
+  right.x = (distR * SIN50_FIXED);
+  right.y = (distR * COS50_FIXED);
+
+  center.x = 0 * SCALE;
+  center.y = distC;
+
+  // slope components
+  int32_t vLx = right.x - center.x;
+  int32_t vLy = right.y - center.y;
+  return (vLy * SCALE) / vLx; // slope = rise / run
+}
+
+#define IR_Y_OFFSET_MM 30 // TODO: Figure out this distance, currently an estimate
+// Returns slope between the front-left and side-left ultrasound sensors
+int calculate_side_slope_left(int32_t distSideL, int32_t distFrontL) {
+  point_t side_left;
+  point_t front_left;
+
+  side_left.x = -distSideL * SCALE;
+  side_left.y = -IR_Y_OFFSET_MM * SCALE;
+
+  front_left.x = -(distFrontL * SIN50_FIXED); // sin and cos 50 are defined with scale, so no need to rescale
+  front_left.y = (distFrontL * COS50_FIXED);
+
+  // slope components
+  int32_t vLx = front_left.x - side_left.x;
+  int32_t vLy = front_left.y - side_left.y;
+  if (vLx < 0) {  // The relative x position of the front and side sensor distances are unknown
+    vLx = side_left.x - front_left.x;
+    vLy = side_left.y - front_left.y;
+  }
+}
+
+// Returns slope between the front-right and side-right ultrasound sensors
+int calculate_side_slope_right(int32_t distSideR, int32_t distFrontL) {
+  point_t side_right;
+  point_t front_right;
+
+  side_right.x = distSideR * SCALE;
+  side_right.y = -IR_Y_OFFSET_MM * SCALE;
+
+  front_right.x = (distR * SIN50_FIXED);  // sin and cos 50 are defined with scale, so no need to rescale
+  front_right.y = (distR * COS50_FIXED);
+
+  // slope components
+  int32_t vLx = front_right.x - side_right.x;
+  int32_t vLy = front_right.y - side_right.y;
+  if (vLx < 0) {  // The relative x position of the front and side sensor distances are unknown
+    vLx = side_right.x - front_right.x;
+    vLy = side_right.y - front_right.y;
+  }
 }
 
 // Arduino map function
@@ -533,8 +594,9 @@ int map(int x, int in_min, int in_max, int out_min, int out_max)
 void Robot(void){   
 
   /* INIT */
-  direction_t direction = straight;
-  speed_t speed = slow;
+  int steering;
+  int differential;
+  int speed;
   
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
@@ -595,18 +657,19 @@ void Robot(void){
     /* END DATA COLLECTION */
 
     /* CONTROL ALGORITHM */
-    slopeFrontLeft = calculate_slope(LunaCenter, LunaLeft);
-    slopeFrontRight = calculate_slope(LunaCenter, LunaRight);
-    slopeLeft = calculate_slope(LunaLeft, IRDistanceLeft);
-    slopeRight = calculate_slope(LunaRight, IRDistanceRight);
+    slopeFrontLeft = calculate_slope_LC(LunaLeft, LunaCenter);
+    slopeFrontRight = calculate_slope_RC(LunaRight, LunaCenter);
+    slopeLeft = calculate_side_slope_left(IRDistanceLeft, LunaLeft);
+    slopeRight = calculate_side_slope_right(IRDistanceRight, LunaRight);
     averageSideSlope = (slopeLeft + slopeRight) / 2;
     averageFrontSlope = (slopeFrontLeft + slopeFrontRight) / 2;
     
     // TODO:
       // What is the max and min slope the sensor can see?
-
+      // Update the made up values below
+      
     // Constant values in millimeters
-    #define FRONTMARGIN 3000  // You are allowed to get this close to the front wall before we start turning
+    #define FRONTMARGIN 3000  // You are allowed to get this close to the front wall before we start turning.
     #define LEFTTURN 2000
     #define CENTER 2900
     #define RIGHTTURN 3800
@@ -616,22 +679,28 @@ void Robot(void){
     #define MAXFRONTSLOPE 10000  // Made up value
     #define MINSIDESLOPE -10000 // Made up value
     #define MAXSIDESLOPE 10000  // Made up value
+    #define LEFTDIFFERENTIAL -100 // Made up value
+    #define CENTERDIFFERENTIAL 0 // Made up value
+    #define RIGHTDIFFERENTIAL 100 // Made up value
     #define TFLUNAMIN 0
-    #define TFLUNAMAX 8000
+    #define TFLUNAMAX 8000  // TODO: Check again
     
-    // Direction Vector Generation
+    // Steering and Differential Vector Generation
     if (LunaCenter < FRONTMARGIN) { // When close to front wall
-      direction = map(averageFrontSlope, MINFRONTSLOPE, MAXFRONTSLOPE, LEFTTURN, RIGHTTURN);
+      steering = map(averageFrontSlope, MINFRONTSLOPE, MAXFRONTSLOPE, LEFTTURN, RIGHTTURN);
+      differential = map(averageFrontSlope, MINFRONTSLOPE, MAXFRONTSLOPE, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
     } else if (LunaCenter > FRONTMARGIN) { // When far from front wall
-      //PID_Compute(&pid, 0, averageSideSlope, 1);
-      direction = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTTURN, RIGHTTURN);
+      // PID_Compute(&pid, 0, averageSideSlope, 1);
+      steering = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTTURN, RIGHTTURN);
+      differential = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
     }
 
     // Speed Vector Generation
     speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEED, MAXSPEED);
     
     // Send data to display/motorboard
-    command.direction = direction;
+    command.steering = steering;
+    command.differential = differential;
     command.speed = speed;
     OS_MailBox_Send(1);
     
@@ -642,13 +711,11 @@ void Robot(void){
 }
  //************S2Push*************
 // Called when S2 Button pushed, fall of PB21
-// Adds another Robot foreground task
+// Adds another Robot foreground task, restarts robot upon crash
 // background threads execute once and return
 void S2Push(void){
   if(Running==0){
     Running = 1;  // prevents you from starting two test threads
-    command.speed = slow;
-    command.direction = straight;
   }
 }
 
@@ -674,48 +741,6 @@ void Debug_Print() {
   UART_OutUDec5(LunaRight); UART_OutString(" | ");
   UART_OutSDec(averageSideSlope); UART_OutString("       | ");
   UART_OutSDec(averageFrontSlope); UART_OutString("       | ");
-  
-  switch (command.direction) {
-    case weak_left:
-      UART_OutString(" Weak Left "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Weak Left", command.direction); 
-      break;
-    case strong_left:
-      UART_OutString(" Strong Left "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Strong Left", command.direction); 
-      break;
-    case straight:
-      UART_OutString(" Straight "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Straight", command.direction); 
-      break;
-    case strong_right:
-      UART_OutString(" Strong Right "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Strong Right", command.direction);
-      break;
-    case weak_right:
-      UART_OutString(" Weak Right "); UART_OutString(" | ");
-      ST7735_Message(0,4,"Weak Right", command.direction);
-      break;
-  }
-
-  switch (command.speed) {
-    case stop:
-      UART_OutString(" Stop "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Stop", command.speed);
-      break;
-    case slow:
-      UART_OutString(" Slow "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Slow", command.speed);
-      break;
-    case medium:
-      UART_OutString(" Medium "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Medium", command.speed);
-      break;
-    case fast:
-      UART_OutString(" Fast "); UART_OutString(" | ");
-      ST7735_Message(0,5,"Fast", command.speed);
-      break;
-  }
 }
  
 //******** Display *************** 
@@ -735,7 +760,7 @@ void Display(void){
   
     Debug_Print();
 
-    CAN_Put(0, command.direction);
+    CAN_Put(0, command.steering);
     CAN_Put(1, command.speed);
     
     TogglePB1();        // toggle PB1
