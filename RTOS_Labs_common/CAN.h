@@ -86,6 +86,7 @@ CAN_Fifo_t CAN_ReceiveFifo;
 
 Sema4_t CAN_Available;
 
+// TODO: Deprecate enum direction and enum speed
 typedef enum direction {
   weak_left = 0,
   strong_left,  //1
@@ -104,7 +105,7 @@ typedef enum speed {
 typedef struct command {
   int steering;
   int differential;
-  int  speed;
+  int speed;
 } command_t;
 
 // Functions to send and get commands
