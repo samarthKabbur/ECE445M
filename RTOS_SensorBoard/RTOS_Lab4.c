@@ -761,7 +761,8 @@ void Display(void){
   
     Debug_Print();
 
-    while (!CAN_PutCommand(command)) { }  // Is this while loop safe?
+    // id = 1 because lower priority than motor board messages
+    while (!CAN_PutCommand(1, command)) { }
     
     TogglePB1();        // toggle PB1
  } 

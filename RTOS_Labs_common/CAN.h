@@ -110,6 +110,6 @@ typedef struct command {
 
 // Functions to send and get commands
 uint32_t CAN_GetCommand(command_t *command);
-uint32_t CAN_PutCommand(command_t command);
+uint32_t CAN_PutCommand(uint32_t id, command_t command);
 
 #endif //  __CAN_H__
