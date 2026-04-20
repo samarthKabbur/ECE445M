@@ -103,9 +103,9 @@ typedef enum speed {
 } speed_t;
 
 typedef struct command {
-  int steering;
-  int differential;
-  int speed;
+  int16_t steering;
+  int16_t differential;
+  int16_t speed;
 } command_t;
 
 // Functions to send and get commands
