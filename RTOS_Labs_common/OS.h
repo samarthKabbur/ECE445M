@@ -61,7 +61,7 @@ typedef struct tcb {
 } tcb_t;
 
 /* GLOBAL FIFO */
-#define FIFOSIZE 64 // can be any size
+#define FIFOSIZE 256 // can be any size
 typedef struct fifo {
   uint32_t volatile PutI; // put index
   uint32_t volatile GetI; // get index

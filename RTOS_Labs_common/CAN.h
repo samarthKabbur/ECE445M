@@ -63,8 +63,21 @@ void CAN_GetMail(uint32_t *id, uint32_t *dlc, uint8_t *data);
 // Gets value from receive FIFO
 // Returns 1 if successful
 // Returns 0 if failed
-uint32_t CAN_Get(uint32_t *data);
-uint32_t CAN_Get_ID(uint32_t *data, uint32_t *id);
+// uint32_t CAN_Get(uint32_t *data);
+
+typedef struct command {
+  int steering;
+  int16_t differentials;
+  int16_t speed;
+} command_t;
+
+
+uint32_t CAN_Get(uint32_t * data, uint32_t * id);
+
+uint32_t CAN_GetCommand(command_t *command);
+uint32_t CAN_PutCommand(command_t command);
+
+
 
 // Puts a value into the send FIFO
 // Returns 1 if successful

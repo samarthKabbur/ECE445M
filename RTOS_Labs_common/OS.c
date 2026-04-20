@@ -21,6 +21,9 @@
 #include "../RTOS_Labs_common/ST7735_SDC.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/heap.h"
+#include "../RTOS_Labs_common/PWMA0.h"
+#include "../RTOS_Labs_common/PWMA1.h"
+#include "../RTOS_Labs_common/PWMG6.h"
 #include "../RTOS_Labs_common/CAN.h"
 
 // Hardware interrupt priorities
@@ -39,6 +42,19 @@
 // Use TimerA0 for PWM outputs to motors
 // Use TimerA1 for PWM outputs to motors
 // Use TimerG6 for Lab 1 and then for PWM to servo steering
+extern bool StoppedFlag;
+uint32_t Duty;
+#define MOTORPERIOD 10000 // 200Hz
+#define MOTORCHANGE 1000  // 10%
+#define MOTORMIN 1000     // 10%
+#define MOTORMAX 9000     // 90%
+uint32_t ServoDuty; // 2000,2250,2500,2750,3000,3250,3500,3750,4000
+#define SERVOMIN 2000      // 1ms
+#define SERVOMAX 4000      // 2ms
+#define SERVOINIT 2900     // 1.5ms
+#define SERVOPERIOD 40000  // 20ms
+#define SERVOCHANGE 250    // 0.125ms
+
 
 //for debugging 
 #define TogglePA8() (GPIOA->DOUTTGL31_0 = (1<<8))
@@ -58,15 +74,15 @@ void EndCritical(long);
 void SetInitialStack(int i, uint32_t stackSize);
 #define  OSCRITICAL_ENTER(sr) { sr=StartCritical(); }
 #define  OSCRITICAL_EXIT(sr)  { EndCritical(sr); }
-uint32_t SysTickStart,SysTickElapsed;
-uint32_t AddThreadStart,AddThreadElapsed;
 
 volatile uint32_t TimeMs;
 volatile uint32_t TimeMsG8; // in ms
 volatile uint32_t TimeMsG7;
 volatile uint32_t TimeUs; // in microseconds
+uint32_t SysTickStart,SysTickElapsed;
+uint32_t AddThreadStart,AddThreadElapsed;
 
-#define MAXTHREADS 8  // maximum number of threads
+#define MAXTHREADS 7  // maximum number of threads
 #define STACKSIZE 512 // maximum of 32-bit words on the stack 
                       // (STACKSIZE * NUMTHREADS bytes per stack)
 
@@ -88,7 +104,7 @@ typedef struct periodic_task {
   int priority;
 } periodic_task_t;
 
-#define MAX_PERIODIC_THREADS 16
+#define MAX_PERIODIC_THREADS 64
 int NumPeriodic; //for allocated periodic threads
 
 periodic_task_t periodic_threads[MAX_PERIODIC_THREADS];
@@ -102,11 +118,14 @@ typedef struct button_task {
   int priority; 
 } button_task_t;
 
-#define MAX_BUTTON_THREADS 16  // arbritrary value, TODO change if needed
+#define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
 button_task_t pa28_button_threads[MAX_BUTTON_THREADS];
+
+button_task_t pa27_button_threads[MAX_BUTTON_THREADS]; 
+
 
 /* GLOBAL MAILBOX */
 
@@ -118,12 +137,21 @@ typedef struct mailbox {
 
 mailbox_t mailbox;
 
+/* GLOBAL FIFO */
+// #define FIFOSIZE 256 // can be any size
+
+// typedef struct fifo {
+//   uint32_t volatile PutI; // put index
+//   uint32_t volatile GetI; // get index
+//   uint32_t data[FIFOSIZE];
+//   Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
+//   Sema4_t mutex; // 1 means available, 0 means busy
+//   Sema4_t room_left;
+//   uint32_t size;
+//   uint32_t lost_data;
+// } fifo_t;
+
 fifo_t fifo;
-fifo_t tfluna1_fifo;
-fifo_t tfluna2_fifo;
-fifo_t tfluna3_fifo;
-fifo_t ir1_fifo;
-fifo_t ir2_fifo;
 
 // ******** OS_ClearMsTime ************
 // sets the system time to zero (solve for Lab 1), and start a periodic interrupt
@@ -168,7 +196,8 @@ void SysTick_Handler(void) {
    SysTickStart = TIMG12->COUNTERREGS.CTR;
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // cause pendsv exception
                                       // which causes context switch
-  SysTickElapsed = SysTickStart-TIMG12->COUNTERREGS.CTR;                                    
+  SysTickElapsed = SysTickStart-TIMG12->COUNTERREGS.CTR;   
+                                      
 } // end SysTick_Handler
 
 /*
@@ -338,6 +367,8 @@ void OS_Init(void){
     s1_button_threads[i].Status = Free;
     pa28_button_threads[i].Status = Free;  
       
+
+    pa27_button_threads[i].Status = Free;  
     }
   
   //_IntArm(1000, 80, 2);  // 1ms period, priority 2: used for TimeMs
@@ -346,6 +377,12 @@ void OS_Init(void){
   TimerG12_Init();
   EdgeTriggered_Init(); // initialize edge triggered button presses
 
+
+  PWMA1_Init(PWMUSEBUSCLK,39,MOTORPERIOD,0,0); // 200Hz
+  PWMA1_Break();
+  PWMA0_Init(PWMUSEBUSCLK,39,MOTORPERIOD,0,0); // 200Hz
+  PWMA0_Break();
+  //PWMG6_Init(PWMUSEBUSCLK,39,SERVOPERIOD,SERVOINIT); // 50Hz, 1.5ms
     //comment out for test 1
 
    UART_Init(1); // hardware priority 1
@@ -492,10 +529,13 @@ void OS_Wait(Sema4_t *semaPt){
     // 3a. set status of this thread to blocked. Scheduler will remove it from main TCB pool
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
-    // Re-enable interrupts before context switch to avoid deadlock.
-    OSCRITICAL_EXIT(sr);
+    
+    //OSCRITICAL_EXIT(sr);
     OS_Suspend();
-    return;
+
+    // 4. restore i bit to its previous value
+   // OSCRITICAL_EXIT(sr);
+    //return;
   }
   
   OSCRITICAL_EXIT(sr);
@@ -532,9 +572,9 @@ void OS_Signal(Sema4_t *semaPt) {
       // get ipsr = 0 means we're not inside an ISR
       // prevents suspending a background thread
       if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
-        OSCRITICAL_EXIT(sr);
+       // OSCRITICAL_EXIT(sr);
         OS_Suspend(); // preempt the current thread
-        return;
+       // return;
       }
     }
   }
@@ -563,10 +603,11 @@ void OS_bWait(Sema4_t *semaPt) {
     RunPt->Status = Blocked;
     RunPt->blocked_ptr = semaPt; 
 
-    // Re-enable interrupts before context switch to avoid deadlock.
-    OSCRITICAL_EXIT(sr);
+    
+   // OSCRITICAL_EXIT(sr);
     OS_Suspend();
-    return;
+    
+   // OSCRITICAL_ENTER(sr); 
   }
   else{
   semaPt->Value = 0;
@@ -594,9 +635,7 @@ void OS_bSignal(Sema4_t *semaPt) {
     wokenThread->Status = Active;
 
     if ((wokenThread->priority < RunPt->priority) && (__get_IPSR() == 0)) {
-      OSCRITICAL_EXIT(sr);
       OS_Suspend();
-      return;
     }
   } else {
     semaPt->Value = 1;
@@ -626,7 +665,7 @@ int OS_AddProcessThread(void(*task)(void),
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){ 
   long sr;
    OSCRITICAL_ENTER(sr);
-  AddThreadStart = TIMG12->COUNTERREGS.CTR; // down count
+   AddThreadStart = TIMG12->COUNTERREGS.CTR; // down count
   // find a thread that is free
   int i;
   for (i = 0; i < MAXTHREADS; i++) {
@@ -823,6 +862,7 @@ int OS_AddPeriodicThread(void(*task)(void),
   return 1;
 }
 
+
 /* TIMG8 locks or unlocks periodic threads */
 void TIMG8_IRQHandler(void){
   //TogglePB20();
@@ -843,7 +883,7 @@ void TIMG8_IRQHandler(void){
   }
 }
 
-/* 
+/*
 TIMG7 handles the millisecond clock 
 and decrements sleeping threads
 */
@@ -862,6 +902,53 @@ void TIMG7_IRQHandler(void){
   }
 }
 
+/*
+
+void TIMA1_IRQHandler(void){
+  if((TIMA1->CPU_INT.IIDX) == 1){ // this will acknowledge
+    if (!StoppedFlag) {
+    Duty = Duty+MOTORCHANGE;
+      if(Duty > MOTORMAX){
+        Duty = MOTORMIN;
+      }
+    PWMA1_Forward(Duty);
+    }
+    else {
+      PWMA1_Forward(0);
+    }
+  }
+}
+
+void TIMA0_IRQHandler(void){
+  if((TIMA0->CPU_INT.IIDX) == 1){ // this will acknowledge
+    if (!StoppedFlag) {
+    Duty = Duty+MOTORCHANGE;
+      if(Duty > MOTORMAX){
+        Duty = MOTORMIN;
+      }
+    PWMA0_Backward(Duty);
+    }
+    else {
+      PWMA0_Backward(0);
+    }
+  }
+}
+
+
+uint32_t Array[20] = {2750, 2800, 2850, 2900, 2950, 3000, 3050, 3100, 3150, 3200, 
+3250, 3200, 3150, 3100, 3050, 3000, 2950, 2900, 2850, 2800};
+uint8_t count = 0;
+
+void TIMG6_IRQHandler(void){ 
+  if((TIMG6->CPU_INT.IIDX) == 1){ // this will acknowledge
+  if (!StoppedFlag) {
+      count = (count + 1) % 20;
+    }
+    PWMG6_SetDuty(Array[count]);
+  }
+}
+
+*/
 //----------------------------------------------------------------------------
 //  Edge triggered Interrupt Handler
 //  Rising edge of PA18 (S1) 
@@ -883,10 +970,21 @@ void GROUP1_IRQHandler(void){
   }
   
   if(GPIOA->CPU_INT.RIS&(1<<28)){ // PA28
+    TogglePA8();
     GPIOA->CPU_INT.ICLR = 1<<28;
     for (int i = 0; i < MAX_BUTTON_THREADS ; i++) {
       if (pa28_button_threads[i].Status == Active) {
         (*pa28_button_threads[i].task)(); // run the background thread
+      }
+    }
+  }
+
+   if(GPIOA->CPU_INT.RIS&(1<<27)){ // PA27
+
+    GPIOA->CPU_INT.ICLR = 1<<27;
+    for (int i = 0; i < MAX_BUTTON_THREADS ; i++) {
+      if (pa27_button_threads[i].Status == Active) {
+        (*pa27_button_threads[i].task)(); // run the background thread
       }
     }
   }
@@ -1042,6 +1140,43 @@ int OS_AddPA28Task(void(*task)(void), uint32_t priority){
 
 
 
+int OS_AddPA27Task(void(*task)(void), uint32_t priority){
+
+  //need to implement priority here 
+  long sr;
+
+  int i;
+  for (i = 0; i < MAX_BUTTON_THREADS; i++) {
+    if (pa27_button_threads[i].Status == Free) {
+      break;
+    }
+  }
+
+  if (i == MAX_BUTTON_THREADS) {
+    return 0;
+  }
+
+  int j = i;
+  OSCRITICAL_ENTER(sr);
+
+  while (j > 0 &&
+         pa27_button_threads[j-1].Status == Active &&
+         pa27_button_threads[j-1].priority > priority) {
+          
+    pa27_button_threads[j] = pa27_button_threads[j-1];
+    j--;
+  }
+  
+  // init background thread
+  pa27_button_threads[i].task = task;
+  pa27_button_threads[i].priority = priority;
+  pa27_button_threads[i].Status = Active;
+  NumButtonThreads++;
+  OSCRITICAL_EXIT(sr);
+  
+  return 1; // successfully added task
+};
+
 // ******** OS_Sleep ************
 // place this thread into a dormant state
 // input:  number of msec to sleep
@@ -1093,6 +1228,7 @@ void OS_Suspend(void){
   SysTick->VAL = 0; // reset counter
   SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; // trigger SysTick
 };
+
   
 // ******** OS_CAN_Init *************
 // Initialize CAN fifo
@@ -1100,11 +1236,10 @@ void OS_CAN_Init(uint32_t priority)
 {
   CAN_Init(priority);
   CAN_EnableInterrupts(priority);
-  CAN_ReceiveFifo.PutI = 0;
-  CAN_ReceiveFifo.GetI = 0;
   OS_InitSemaphore(&CAN_Available, 0);
 }
 
+  
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
 // Inputs: size
@@ -1127,19 +1262,6 @@ void OS_Fifo_Init(uint32_t size){
   fifo.size = size;
 }
 
-void OS_Fifo_Init_Specific(uint32_t size, fifo_t* fifo){
-  fifo->GetI = 0; // empty
-  fifo->PutI = 0; // empty
-  fifo->lost_data = 0; // no data lost yet
-  if(size >FIFOSIZE){
-    return;
-  }
-  OS_InitSemaphore(&fifo->current_size, 0);
-  OS_InitSemaphore(&fifo->room_left, size);
-  OS_InitSemaphore(&fifo->mutex, 1);
-  fifo->size = size;
-}
-
 // ******** OS_Fifo_Put ************
 // Enter one data sample into the Fifo
 // Called from the background, so no waiting 
@@ -1148,13 +1270,31 @@ void OS_Fifo_Init_Specific(uint32_t size, fifo_t* fifo){
 //          false if data not saved, because it was full
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
+// int OS_Fifo_Put(uint32_t data){
+//   // put Lab 2 (and beyond) solution here
+//   if (fifo.current_size.Value == FIFOSIZE ) {
+//     fifo.lost_data++;
+//     return 0; // fail if fifo is full
+//   }
+//   // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
+//   //     return 0;
+//   //   }
+//   *(fifo.putPt) = data;
+//   fifo.putPt++;
+
+//   if (fifo.putPt == &fifo.data[FIFOSIZE]) {
+//     fifo.putPt = &fifo.data[0]; // wrap
+//   }
+
+//   OS_Signal(&fifo.current_size);
+//   return 1;
+// }
 int OS_Fifo_Put(uint32_t data){
   long sr;
   OSCRITICAL_ENTER(sr);
   uint32_t newPutI = (fifo.PutI+1)&(fifo.size-1);
   if (newPutI == fifo.GetI){ // FIFO Full 
     fifo.lost_data++;
-    OSCRITICAL_EXIT(sr);
     return 0;
     
   } else {
@@ -1166,31 +1306,29 @@ int OS_Fifo_Put(uint32_t data){
   return 1; 
 }
 
-int OS_Fifo_Put_Specific(uint32_t data, fifo_t* fifo){
-    long sr;
-  OSCRITICAL_ENTER(sr);
-  uint32_t newPutI = (fifo->PutI+1)&(fifo->size-1);
-  if (newPutI == fifo->GetI){ // FIFO Full 
-    fifo->lost_data++;
-    OSCRITICAL_EXIT(sr);
-    return 0;
-    
-  } else {
-    fifo->data[(fifo->PutI & (fifo->size - 1))] = data; // put in FIFO
-    fifo->PutI = newPutI;
-  }
- OSCRITICAL_EXIT(sr);
- OS_Signal(&fifo->current_size);
-  return 1; 
-}
-
 // ******** OS_Fifo_Get ************
 // Remove one data sample from the Fifo
 // Called in foreground, will spin/block if empty
 // Inputs:  none
 // Outputs: data 
-uint32_t OS_Fifo_Get(void){
-  long sr;
+// uint32_t OS_Fifo_Get(void){
+//   // put Lab 2 (and beyond) solution here
+//   //if (fifo.getPt == fifo.putPt){}
+//   OS_Wait(&fifo.current_size);  // block if empty
+  
+//   OS_Wait(&fifo.mutex); // block if busy
+
+//   uint32_t data = *(fifo.getPt);
+//   fifo.getPt++;
+
+//   if (fifo.getPt == &fifo.data[FIFOSIZE]) {
+//     fifo.getPt = &fifo.data[0]; // wrap
+//   }
+
+//   OS_Signal(&fifo.mutex);
+//   return data;
+// }
+uint32_t OS_Fifo_Get(void){long sr;
   
   OS_Wait(&fifo.current_size);// block if empty
   OS_Wait(&fifo.mutex); // block if busy
@@ -1208,25 +1346,6 @@ uint32_t OS_Fifo_Get(void){
   return data;
 }
 
-uint32_t OS_Fifo_Get_Specific(fifo_t* fifo){
-  long sr;
-  
-  OS_Wait(&fifo->current_size);// block if empty
-  OS_Wait(&fifo->mutex); // block if busy
-  OSCRITICAL_ENTER(sr);
-  uint32_t data;
-  if (fifo->PutI == fifo->GetI){ // FIFO is empty, this should never run cause we would block if empty
-    return 0;
-  } else {
-    data  = fifo->data[(fifo->GetI & (fifo->size - 1))];
-    fifo->GetI = (fifo->GetI+1) & (fifo->size - 1);
-  }
-  OSCRITICAL_EXIT(sr);
-  OS_Signal(&fifo->mutex);
-  OS_Signal(&fifo->room_left);
-  return data;
-}
-
 // ******** OS_Fifo_Size ************
 // Check the status of the Fifo
 // Inputs: none
@@ -1235,13 +1354,10 @@ uint32_t OS_Fifo_Get_Specific(fifo_t* fifo){
 //          zero or less than zero if the Fifo is empty 
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
- return fifo.PutI - fifo.GetI;
+  // put Lab 2 (and beyond) solution here
+ return fifo.PutI - fifo.GetI;// replace this line with solution
+  //return 0;
 }
-
-int32_t OS_Fifo_Size_Specific(fifo_t* fifo){
-  return fifo->PutI - fifo->GetI;
-}
-
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
 // Inputs:  none

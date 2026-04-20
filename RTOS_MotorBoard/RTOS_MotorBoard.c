@@ -31,7 +31,6 @@
 #include <string.h>
 
 typedef enum direction {
-typedef enum command {
   weak_left = 0,
   strong_left,  //1
   straight, //2 
@@ -46,14 +45,7 @@ typedef enum speed {
   fast  // 3
 } speed_t;
 
-typedef struct command {
-  direction_t direction;
-  speed_t speed;
-  strong_left,
-  straight,
-  strong_right,
-  weak_right
-} command_t;
+
 
 
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
@@ -121,23 +113,12 @@ Sema4_t LCDFree;  // SDC and LCD sharing
 
 
 // ***********PA28Push*************
-int ArmCrash=1;
+int Crash=0;
 void HandleCrash(void){
-  TogglePA9();
-  TogglePA9();
-  uint32_t myId = OS_Id(); 
-  ST7735_Message(1,0,"myID        =",myId); 
-  ST7735_Message(1,1,"*Crash*,  t= ",OS_MsTime());
-  ArmCrash=1;
-  TogglePA9();
+  Crash = 1;
   OS_Kill();
 } 
-void PA28Push(void){ // real time task
-  if(ArmCrash){
-    ArmCrash = 0; // debounce
-    NumCreated += OS_AddThread(&HandleCrash,128,1);  // test robot crash
-  }
-} 
+
 
 
  //************S2Push*************
@@ -269,14 +250,6 @@ void StartRobot(void){
 
 
 
-bool StoppedFlag = false;
-
-void StartRobot(void) {
-  StoppedFlag = false;
-}
-void StopRobot(void) {
-    StoppedFlag = true;
-}
 
 void WiFiThread(void){
   char *s;
@@ -387,7 +360,7 @@ int mainWifi(void){
 
   // 3. Add WiFi thread (globals-only version)
   NumCreated += OS_AddThread(&WiFiThread, 512, 1);
-  NumCreated += OS_AddThread(&WiFiThread, 512, 2);
+
   NumCreated += OS_AddThread(&VirusDetector,128,2);
 
 
@@ -483,7 +456,7 @@ uint32_t Duty;
 uint32_t ServoDuty; // 2000,2250,2500,2750,3000,3250,3500,3750,4000
 #define SERVOMIN 2000      // 1ms
 #define SERVOMAX 4000      // 2ms
-#define SERVOINIT 3000     // 1.5ms
+#define SERVOINIT 2900     // 1.5ms
 #define SERVOPERIOD 40000  // 20ms
 #define SERVOCHANGE 250    // 0.125ms
 
@@ -617,38 +590,38 @@ int mainMotor(void) {
 uint32_t CANData;
 uint32_t id;
 uint32_t failures;
-void ReceiveCAN(void)
-{
-  while (true)
-  {
-    OS_Wait(&CAN_Available);
-    // while (!CAN_Get_ID(&CANData, &id)) { 
-    while (!CAN_Get(&CANData)) { 
-      OS_Sleep(1000);
-    }
-    TogglePB4();
-    SSD1306_SetCursor(0,0);
-    SSD1306_OutString("CAN Received");
-    SSD1306_SetCursor(0,1);
-    SSD1306_OutUDec(CANData);
-  }
-}
+// void ReceiveCAN(void)
+// {
+//   while (true)
+//   {
+//     OS_Wait(&CAN_Available);
+//     // while (!CAN_Get_ID(&CANData, &id)) { 
+//     while (!CAN_Get(&CANData)) { 
+//       OS_Sleep(1000);
+//     }
+//     TogglePB4();
+//     SSD1306_SetCursor(0,0);
+//     SSD1306_OutString("CAN Received");
+//     SSD1306_SetCursor(0,1);
+//     SSD1306_OutUDec(CANData);
+//   }
+// }
 
-int TestmainCAN(void)
-{
-  OS_Init();  
-  Logic_Init();
-  OS_CAN_Init(1);
-  OS_InitSemaphore(&CAN_Available, 0);
-  SSD1306_Init(SSD1306_SWITCHCAPVCC);
+// int TestmainCAN(void)
+// {
+//   OS_Init();  
+//   Logic_Init();
+//   OS_CAN_Init(1);
+//   OS_InitSemaphore(&CAN_Available, 0);
+//   SSD1306_Init(SSD1306_SWITCHCAPVCC);
 
-  NumCreated = 0;
-  NumCreated += OS_AddThread(&ReceiveCAN, 128, 1);
-  NumCreated += OS_AddThread(&VirusDetector, 128, 2);
+//   NumCreated = 0;
+//   NumCreated += OS_AddThread(&ReceiveCAN, 128, 1);
+//   NumCreated += OS_AddThread(&VirusDetector, 128, 2);
 
-  OS_Launch(TIME_2MS);
-  return 0;
-}
+//   OS_Launch(TIME_2MS);
+//   return 0;
+// }
 
 //*************** Can and Motor Test ****************/
 
@@ -662,145 +635,142 @@ int TestmainCAN(void)
  #define SERVO_CENTER 2900
 #define SERVO_STRONG_LEFT   2450
 #define SERVO_STRONG_RIGHT  3450
+//  A0 is right
+//    A1 is left
 
-
-void ExecuteCommand(command_t cmd, int id){
-
-  uint32_t leftDuty;
-  uint32_t rightDuty;
-  uint32_t ServoDuty;
-
-  switch(cmd.direction){
-
-    case weak_left:
-      leftDuty  = BASE_SPEED - WEAK_DELTA;
-      rightDuty = BASE_SPEED + WEAK_DELTA;
-      // PWMA0_Backward(leftDuty);
-      // PWMA1_Forward(rightDuty);
-        ServoDuty = SERVO_CENTER;
-      PWMA0_Backward(rightDuty);
-      PWMA1_Forward(leftDuty);
-       PWMG6_SetDuty(ServoDuty);
-      break;
-
-    case strong_left:
-      leftDuty  = BASE_SPEED - STRONG_DELTA;
-      rightDuty = BASE_SPEED + STRONG_DELTA;
-      ServoDuty = SERVO_STRONG_LEFT;
-      // PWMA0_Backward(leftDuty);
-      // PWMA1_Forward(rightDuty);
-       PWMA0_Backward(rightDuty);
-      PWMA1_Forward(leftDuty);
-      PWMG6_SetDuty(ServoDuty);
-      break;
-
-    case straight:
-      leftDuty  = BASE_SPEED;
-      rightDuty = BASE_SPEED;
-      // PWMA0_Backward(leftDuty);
-      // PWMA1_Forward(rightDuty);
-      ServoDuty = SERVO_CENTER;
-      PWMA0_Backward(rightDuty);
-      PWMA1_Forward(leftDuty);
-      PWMG6_SetDuty(ServoDuty);
-
-      switch (cmd.speed)
-      {
-        case stop:
-          PWMA0_Backward(0);
-          PWMA1_Forward(0);
-          break;
-        case slow:
-          PWMA0_Backward(BASE_SPEED - WEAK_DELTA);
-          PWMA1_Forward(BASE_SPEED - WEAK_DELTA);
-          break;
-        case medium:
-          PWMA0_Backward(BASE_SPEED);
-          PWMA1_Forward(BASE_SPEED);
-          break;
-        case fast:
-          PWMA0_Backward(BASE_SPEED + WEAK_DELTA);
-          PWMA1_Forward(BASE_SPEED + WEAK_DELTA);
-          break;
-      }
-      break;
-
-    case strong_right:
-      leftDuty  = BASE_SPEED + STRONG_DELTA;
-      rightDuty = BASE_SPEED - STRONG_DELTA;
-      // PWMA0_Backward(leftDuty);
-      // PWMA1_Forward(rightDuty);
-      ServoDuty = SERVO_STRONG_RIGHT;
-      PWMA0_Backward(rightDuty);
-      PWMA1_Forward(leftDuty);
-      PWMG6_SetDuty(ServoDuty);
-      break;
-
-    case weak_right:
-      leftDuty  = BASE_SPEED + WEAK_DELTA;
-      rightDuty = BASE_SPEED - WEAK_DELTA;
-      // PWMA0_Backward(leftDuty);
-      // PWMA1_Forward(rightDuty);
-       ServoDuty = SERVO_CENTER;
-       PWMA0_Backward(rightDuty);
-      PWMA1_Forward(leftDuty);
-       PWMG6_SetDuty(ServoDuty);
-      break;
-
-    default:
-     leftDuty  = BASE_SPEED;
-      rightDuty = BASE_SPEED;
-      // PWMA0_Backward(leftDuty);
-      // PWMA1_Forward(rightDuty);
-      PWMA0_Backward(rightDuty);
-      PWMA1_Forward(leftDuty);
-      // PWMA0_Forward(0);
-      // PWMA1_Backward(0);
-      break;
+void ExecuteCommand(command_t cmd){
+  PWMG6_SetDuty(cmd.steering);
+  if(Crash>0 && Crash < 50){
+    cmd.speed = 300; //slow edit this 
+    Crash++;
+    
   }
-
-  if (cmd.speed == stop)
-  {
+  else{
+  if(cmd.speed <30){
     PWMA0_Backward(0);
     PWMA1_Forward(0);
   }
+  
+  int minus = cmd.speed-cmd.differentials;
+  int plus = cmd.speed+cmd.differentials;
+  if(minus<0){
+    minus = 0;
+    
+  }
+  if(plus<0){
+    plus = 0;
+  }
+  if(minus>10000){
+    minus = 10000;
+  }
+  if(plus>10000){
+    plus = 10000;
+  }
+  
+  PWMA0_Backward(minus);
+  PWMA1_Forward(plus);
+  
+  
+  
+  
+  
+  
 
-//  SSD1306_SetCursor(0,2);
-// SSD1306_OutString("CMD: ");
+  
 
-// switch(cmd){
+  //   case weak_left:
+  //     leftDuty  = BASE_SPEED - WEAK_DELTA;
+  //     rightDuty = BASE_SPEED + WEAK_DELTA;
+     
+  //       ServoDuty = SERVO_CENTER;
+      
+  //      PWMG6_SetDuty(ServoDuty);
+  //     break;
 
-//   case weak_left:
-//     SSD1306_OutString("weak_left   ");
-//     break;
+  //   case strong_left:
+  //     leftDuty  = BASE_SPEED - STRONG_DELTA;
+  //     rightDuty = BASE_SPEED + STRONG_DELTA;
+  //     ServoDuty = SERVO_STRONG_LEFT;
+      
+  //      PWMA0_Backward(rightDuty);
+  //     PWMA1_Forward(leftDuty);
+  //     PWMG6_SetDuty(ServoDuty);
+  //     break;
 
-//   case strong_left:
-//     SSD1306_OutString("strong_left ");
-//     break;
+  //   case straight:
+  //     leftDuty  = BASE_SPEED;
+  //     rightDuty = BASE_SPEED;
+      
+  //     ServoDuty = SERVO_CENTER;
+  //     PWMA0_Backward(rightDuty);
+  //     PWMA1_Forward(leftDuty);
+  //     PWMG6_SetDuty(ServoDuty);
 
-//   case straight:
-//     SSD1306_OutString("straight    ");
-//     break;
+  //     switch (cmd.speed)
+  //     {
+  //       case stop:
+  //         PWMA0_Backward(0);
+  //         PWMA1_Forward(0);
+  //         break;
+  //       case slow:
+  //         PWMA0_Backward(BASE_SPEED - WEAK_DELTA);
+  //         PWMA1_Forward(BASE_SPEED - WEAK_DELTA);
+  //         break;
+  //       case medium:
+  //         PWMA0_Backward(BASE_SPEED);
+  //         PWMA1_Forward(BASE_SPEED);
+  //         break;
+  //       case fast:
+  //         PWMA0_Backward(BASE_SPEED + WEAK_DELTA);
+  //         PWMA1_Forward(BASE_SPEED + WEAK_DELTA);
+  //         break;
+  //     }
+  //     break;
 
-//   case strong_right:
-//     SSD1306_OutString("strong_right");
-//     break;
+  //   case strong_right:
+  //     leftDuty  = BASE_SPEED + STRONG_DELTA;
+  //     rightDuty = BASE_SPEED - STRONG_DELTA;
+      
+  //     ServoDuty = SERVO_STRONG_RIGHT;
+  //     PWMA0_Backward(rightDuty);
+  //     PWMA1_Forward(leftDuty);
+  //     PWMG6_SetDuty(ServoDuty);
+  //     break;
 
-//   case weak_right:
-//     SSD1306_OutString("weak_right  ");
-//     break;
+  //   case weak_right:
+  //     leftDuty  = BASE_SPEED + WEAK_DELTA;
+  //     rightDuty = BASE_SPEED - WEAK_DELTA;
+      
+  //      ServoDuty = SERVO_CENTER;
+  //      PWMA0_Backward(rightDuty);
+  //     PWMA1_Forward(leftDuty);
+  //      PWMG6_SetDuty(ServoDuty);
+  //     break;
 
-//   default:
-//     SSD1306_OutString("straight    ");
-//     break;
-// }
+  //   default:
+  //    leftDuty  = BASE_SPEED;
+  //     rightDuty = BASE_SPEED;
+      
+  //     PWMA0_Backward(rightDuty);
+  //     PWMA1_Forward(leftDuty);
+      
+  //     break;
+  // }
+
+  // if (cmd.speed == stop)
+  // {
+  //   PWMA0_Backward(0);
+  //   PWMA1_Forward(0);
+  // }
+
+  }
 
 }
 
-
+command_t cmd;
 void MotorCANThread(void)
 {
-  command_t cmd = { straight, stop };
+  
   uint32_t id;
   while(1){
     if(StoppedFlag){
@@ -809,17 +779,20 @@ void MotorCANThread(void)
       PWMA1_Forward(0);
       
     }
+    else{
     OS_Wait(&CAN_Available);
     
 
-    while(!CAN_Get(&CANData, &id)){
+    while(!CAN_GetCommand(&cmd)){
       OS_Sleep(1);
     }
-
-     cmd = (command_t)CANData;
     
-    ExecuteCommand(cmd, id);
+    
+    
+    ExecuteCommand(cmd);
+    
 
+  }
   }
 }
 
@@ -839,7 +812,7 @@ int mainCAN_Motor(void){
 
   PWMG6_Init(PWMUSEBUSCLK,39,
               SERVOPERIOD,
-              SERVOINIT);
+           SERVOINIT);
 
     // 2. Initialize ESP8266
   if(!ESP8266_Init(true, false)){
@@ -850,19 +823,21 @@ int mainCAN_Motor(void){
   OS_CAN_Init(1);
   OS_InitSemaphore(&CAN_Available,0);
 
-  // Motor PWM setup
-  PWMA0_Init(PWMUSEBUSCLK,39,
-              MOTORPERIOD,
-              2500,7500);
-  PWMA0_Break();
+  // // Motor PWM setup
+  // PWMA0_Init(PWMUSEBUSCLK,39,
+  //             MOTORPERIOD,
+  //             0,0);
+  // PWMA0_Break();
 
-  PWMA1_Init(PWMUSEBUSCLK,39,
-              MOTORPERIOD,
-              2500,7500);
-  PWMA1_Break();
+  // PWMA1_Init(PWMUSEBUSCLK,39,
+  //             MOTORPERIOD,
+  //             0,0);
+  // PWMA1_Break();
 
   NumCreated = 0;
-
+  
+  NumCreated += OS_AddPA28Task(&HandleCrash, 0);
+  NumCreated += OS_AddPA27Task(&HandleCrash, 0);
   NumCreated +=
       OS_AddThread(&MotorCANThread,
                    128,1);
@@ -875,7 +850,6 @@ int mainCAN_Motor(void){
       OS_AddThread(&VirusDetector,
                    128,2);
 
-   NumCreated += OS_AddThread(&WiFiThread, 512, 1);
 
   OS_Launch(TIME_2MS);
 
@@ -896,7 +870,6 @@ int main(void) { 			// main
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
   
   
-  //mainWifi();
-  //mainMotor();
+  
   mainCAN_Motor();
 }
