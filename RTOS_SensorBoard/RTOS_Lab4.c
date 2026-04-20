@@ -508,16 +508,22 @@ int averageFrontSlope;
 int averageSideSlope;
 
 #define SCALE 1000
-#define SIN50_FIXED 766
-#define COS50_FIXED 643
+#define SIN45_FIXED 707
+#define COS45_FIXED 707
+#define LUNA_L 115  // in MM
+#define LUNA_R 115
+#define LUNA_Y 90
 
 // Returns slope between the front-left and front-center ultrasound sensors
 int calculate_slope_LC(int32_t distL, int32_t distC) {
     point_t left;
     point_t center;
+
+    distL = distL + LUNA_L;
+    distC = distC + LUNA_Y;
     
-    left.x = -(distL * SIN50_FIXED); // sin and cos 50 are defined with scale, so no need to rescale
-    left.y = (distL * COS50_FIXED);
+    left.x = -(distL * SIN45_FIXED); // sin and cos 50 are defined with scale, so no need to rescale
+    left.y = (distL * COS45_FIXED);
 
     center.x = 0 * SCALE;
     center.y = distC * SCALE;
@@ -533,8 +539,11 @@ int calculate_slope_RC(int32_t distR, int32_t distC) {
   point_t right;
   point_t center;
 
-  right.x = (distR * SIN50_FIXED);
-  right.y = (distR * COS50_FIXED);
+  distR = distR + LUNA_R;
+  distC = distC + LUNA_Y;
+
+  right.x = (distR * SIN45_FIXED);
+  right.y = (distR * COS45_FIXED);
 
   center.x = 0 * SCALE;
   center.y = distC;
@@ -545,27 +554,29 @@ int calculate_slope_RC(int32_t distR, int32_t distC) {
   return (vLy * SCALE) / vLx; // slope = rise / run
 }
 
-#define IR_Y_OFFSET_MM 30 // TODO: Figure out this distance, currently an estimate
+#define IR_Y_OFFSET_MM 90
+#define IR_X_OFFSET_MM 90
+
 // Returns slope between the front-left and side-left ultrasound sensors
 int calculate_side_slope_left(int32_t distSideL, int32_t distFrontL) {
   point_t side_left;
   point_t front_left;
 
+  distFrontL = distFrontL + LUNA_L;
+  distSideL = distSideL + IR_X_OFFSET_MM;
+
   side_left.x = -distSideL * SCALE;
   side_left.y = -IR_Y_OFFSET_MM * SCALE;
 
-  front_left.x = -(distFrontL * SIN50_FIXED); // sin and cos 50 are defined with scale, so no need to rescale
-  front_left.y = (distFrontL * COS50_FIXED);
+  front_left.x = -(distFrontL * SIN45_FIXED); // sin and cos 50 are defined with scale, so no need to rescale
+  front_left.y = (distFrontL * COS45_FIXED);
 
   // slope components
   int32_t vLx = front_left.x - side_left.x;
   int32_t vLy = front_left.y - side_left.y;
-  if (vLx < 0) {  // The relative x position of the front and side sensor distances are unknown
-    vLx = side_left.x - front_left.x;
-    vLy = side_left.y - front_left.y;
-  }
-
-  return (vLy * SCALE) / vLx; // slope = rise / run
+  if (vLy == 0) vLy = 1; // Prevent div-by-zero in rare anomaly
+  
+  return (vLx * SCALE) / vLy; // Inverse slope: 0 means perfectly parallel
 }
 
 // Returns slope between the front-right and side-right ultrasound sensors
@@ -573,21 +584,22 @@ int calculate_side_slope_right(int32_t distSideR, int32_t distFrontR) {
   point_t side_right;
   point_t front_right;
 
+  distFrontR = distFrontR + LUNA_R;
+  distSideR = distSideR + IR_X_OFFSET_MM;
+
   side_right.x = distSideR * SCALE;
   side_right.y = -IR_Y_OFFSET_MM * SCALE;
 
-  front_right.x = (distFrontR * SIN50_FIXED);  // sin and cos 50 are defined with scale, so no need to rescale
-  front_right.y = (distFrontR * COS50_FIXED);
+  front_right.x = (distFrontR * SIN45_FIXED);  // sin and cos 50 are defined with scale, so no need to rescale
+  front_right.y = (distFrontR * COS45_FIXED);
 
   // slope components
   int32_t vLx = front_right.x - side_right.x;
   int32_t vLy = front_right.y - side_right.y;
-  if (vLx < 0) {  // The relative x position of the front and side sensor distances are unknown
-    vLx = side_right.x - front_right.x;
-    vLy = side_right.y - front_right.y;
-  }
 
-  return (vLy * SCALE) / vLx; // slope = rise / run
+  if (vLy == 0) vLy = 1; // Prevent div-by-zero in rare anomaly
+  
+  return (vLx * SCALE) / vLy; // Inverse slope: 0 means perfectly parallel
 }
 
 // Arduino map function
@@ -596,6 +608,12 @@ int map(int x, int in_min, int in_max, int out_min, int out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+void print_header(void) {
+  // UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope |");
+  // UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+");
+  UART_OutString("\r\nTime(s)| Luna Center | WallSlope | FrontSlope | Speed | Differential | Steering ");
+  UART_OutString("\r\n-------+-------------+-----------+------------+-------+--------------+-----------+");
+}
 
 void Robot(void){   
 
@@ -675,15 +693,18 @@ void Robot(void){
       
     // Constant values in millimeters
     #define FRONTMARGIN 3000  // You are allowed to get this close to the front wall before we start turning.
+    
     #define TFLUNAMIN 0
     #define TFLUNAMAX 8000  // TODO: Check again
+  
+    #define MINFRONTSLOPE -5000 
+    #define MAXFRONTSLOPE 5000
+    
+    #define MINSIDESLOPE -5000 // Made up value
+    #define MAXSIDESLOPE 5000  // Made up value
     
     #define MINSPEED 0
     #define MAXSPEED 100
-    #define MINFRONTSLOPE -10000 // Made up value
-    #define MAXFRONTSLOPE 10000  // Made up value
-    #define MINSIDESLOPE -10000 // Made up value
-    #define MAXSIDESLOPE 10000  // Made up value
     
     #define LEFTTURN 2000
     #define CENTER 2900
@@ -700,7 +721,8 @@ void Robot(void){
       differential = map(averageFrontSlope, MINFRONTSLOPE, MAXFRONTSLOPE, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
     } else if (LunaCenter > FRONTMARGIN) { // When far from front wall
       // PID_Compute(&pid, 0, averageSideSlope, 1);
-      steering = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTTURN, RIGHTTURN);
+      // steering = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTTURN, RIGHTTURN);
+      steering = CENTER;
       differential = map(averageSideSlope, MINSIDESLOPE, MAXSIDESLOPE, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
     }
 
@@ -728,13 +750,6 @@ void S2Push(void){
   }
 }
 
-void print_header(void) {
-  // UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope |");
-  // UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+");
-  UART_OutString("\r\nTime(s)| Luna Center | WallSlope | FrontSlope | Speed | Differential | Steering ");
-  UART_OutString("\r\n-------+-------------+-----------+------------+-------+--------------+-----------+");
-}
-
 void Debug_Print() {
   
   if((OS_MsTime() - LastHeaderPrint) >= 5000){
@@ -743,13 +758,13 @@ void Debug_Print() {
   }
 
   ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000); UART_OutString("\r\n");
-  UART_OutSDec(OS_MsTime() / 1000); UART_OutString("    | ");
-  UART_OutUDec5(LunaCenter); UART_OutString(" | ");
-  UART_OutUDec5(averageSideSlope); UART_OutString(" | ");
-  UART_OutUDec5(averageFrontSlope); UART_OutString(" | ");
-  UART_OutUDec5(command.speed); UART_OutString(" | ");
-  UART_OutUDec5(command.differential); UART_OutString(" | ");
-  UART_OutUDec5(command.steering); UART_OutString(" | ");
+  UART_OutSDec(OS_MsTime() / 1000); UART_OutString("     | ");
+  UART_OutSDec(LunaCenter); UART_OutString("           | ");
+  UART_OutSDec(averageSideSlope); UART_OutString("       | ");
+  UART_OutSDec(averageFrontSlope); UART_OutString("      | ");
+  UART_OutSDec(command.speed); UART_OutString("       | ");
+  UART_OutSDec(command.differential); UART_OutString("           | ");
+  UART_OutSDec(command.steering); UART_OutString("     | ");
   // UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
   // UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
   // UART_OutUDec5(LunaLeft); UART_OutString(" | ");
