@@ -596,10 +596,6 @@ int map(int x, int in_min, int in_max, int out_min, int out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void print_header(void) {
-  UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope | Command |");
-  UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+---------+");
-}
 
 void Robot(void){   
 
@@ -607,7 +603,6 @@ void Robot(void){
   int steering;
   int differential;
   int speed;
-  
   DataLost = 0;       // new run with no lost data 
   FilterWork = 0;
   Running = 1;
@@ -626,7 +621,7 @@ void Robot(void){
   pid.prev_error = 0;
   /* END INIT */
 
-  while (command.speed != stop) { // TODO: Attempt to reverse and restart on a stop using another thread
+  while (true) { // TODO: Attempt to reverse and restart on a stop using another thread
     /* DATA COLLECTION */
     uint32_t data1;      // in mm, from TFLuna1
     uint32_t sum1=0;
@@ -680,21 +675,25 @@ void Robot(void){
       
     // Constant values in millimeters
     #define FRONTMARGIN 3000  // You are allowed to get this close to the front wall before we start turning.
-    #define LEFTTURN 2000
-    #define CENTER 2900
-    #define RIGHTTURN 3800
+    #define TFLUNAMIN 0
+    #define TFLUNAMAX 8000  // TODO: Check again
+    
     #define MINSPEED 0
     #define MAXSPEED 100
     #define MINFRONTSLOPE -10000 // Made up value
     #define MAXFRONTSLOPE 10000  // Made up value
     #define MINSIDESLOPE -10000 // Made up value
     #define MAXSIDESLOPE 10000  // Made up value
+    
+    #define LEFTTURN 2000
+    #define CENTER 2900
+    #define RIGHTTURN 3800
+    
     #define LEFTDIFFERENTIAL -100 // Made up value
     #define CENTERDIFFERENTIAL 0 // Made up value
     #define RIGHTDIFFERENTIAL 100 // Made up value
-    #define TFLUNAMIN 0
-    #define TFLUNAMAX 8000  // TODO: Check again
     
+    // TODO: Implement PID
     // Steering and Differential Vector Generation
     if (LunaCenter < FRONTMARGIN) { // When close to front wall
       steering = map(averageFrontSlope, MINFRONTSLOPE, MAXFRONTSLOPE, LEFTTURN, RIGHTTURN);
@@ -729,6 +728,13 @@ void S2Push(void){
   }
 }
 
+void print_header(void) {
+  // UART_OutString("\r\nTime(s)|  IRLeft  |  IRRight |  TF2  |   TF3  |   TF1  | WallSlope | FrontSlope |");
+  // UART_OutString("\r\n--------+----------+----------+-------+--------+-------+-----------+------------+");
+  UART_OutString("\r\nTime(s)| Luna Center | WallSlope | FrontSlope | Speed | Differential | Steering ");
+  UART_OutString("\r\n-------+-------------+-----------+------------+-------+--------------+-----------+");
+}
+
 void Debug_Print() {
   
   if((OS_MsTime() - LastHeaderPrint) >= 5000){
@@ -736,16 +742,21 @@ void Debug_Print() {
     LastHeaderPrint = OS_MsTime();
   }
 
-  ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000);  
-  UART_OutString("\r\n");
+  ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000); UART_OutString("\r\n");
   UART_OutSDec(OS_MsTime() / 1000); UART_OutString("    | ");
-  UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
-  UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
-  UART_OutUDec5(LunaLeft); UART_OutString(" | ");
   UART_OutUDec5(LunaCenter); UART_OutString(" | ");
-  UART_OutUDec5(LunaRight); UART_OutString(" | ");
-  UART_OutSDec(averageSideSlope); UART_OutString("       | ");
-  UART_OutSDec(averageFrontSlope); UART_OutString("       | ");
+  UART_OutUDec5(averageSideSlope); UART_OutString(" | ");
+  UART_OutUDec5(averageFrontSlope); UART_OutString(" | ");
+  UART_OutUDec5(command.speed); UART_OutString(" | ");
+  UART_OutUDec5(command.differential); UART_OutString(" | ");
+  UART_OutUDec5(command.steering); UART_OutString(" | ");
+  // UART_OutUDec5(IRDistanceLeft); UART_OutString(" |   ");
+  // UART_OutUDec5(IRDistanceRight); UART_OutString(" |   ");
+  // UART_OutUDec5(LunaLeft); UART_OutString(" | ");
+  // UART_OutUDec5(LunaCenter); UART_OutString(" | ");
+  // UART_OutUDec5(LunaRight); UART_OutString(" | ");
+  // UART_OutSDec(averageSideSlope); UART_OutString("       | ");
+  // UART_OutSDec(averageFrontSlope); UART_OutString("       | ");
 }
  
 //******** Display *************** 
@@ -828,10 +839,6 @@ int realmain(void){
 
   // hardware init
   ADC_InitDual(ADC0, 3, 7, ADCVREF_VDDA);
-
-  // TODO: 
-    // Put disk timer proc background thread back
-    // Put filesystem init back
 
   // attach background tasks
   OS_AddS2Task(&S2Push,1);      // fall of PB21
