@@ -103,7 +103,7 @@ typedef enum speed {
 } speed_t;
 
 typedef struct command {
-  int16_t steering;
+  int steering;
   int16_t differential;
   int16_t speed;
 } command_t;

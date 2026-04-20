@@ -289,16 +289,32 @@ void HandleCrash(void){
   ST7735_Message(1,0,"myID        =",myId); 
   ST7735_Message(1,1,"*Crash*,  t= ",OS_MsTime());
   ArmCrash=1;
+  Running = 0;
   TogglePB23();
   OS_Kill();
 } 
+
+void goBackward(void) {
+  return; // TODO: Send can command to go backward
+}
+
+void checkCAN(void) {
+  uint32_t data;
+  while (true) {
+    if(CAN_Get(&data)) {
+      if (data == 1) {
+        NumCreated += OS_AddThread(&HandleCrash,128,1);
+      }
+    }
+  }
+}
+
 void PA28Push(void){ // real time task
   if(ArmCrash){
     ArmCrash = 0; // debounce
     NumCreated += OS_AddThread(&HandleCrash,128,1);  // test robot crash
   }
 } 
-
 //------------------Task 3--------------------------------
 // hardware-triggered TFLuna distance sampling at 100Hz
 // Producer runs as part of UART2 ISR
@@ -497,11 +513,10 @@ int32_t PID_Compute(PID_t *pid, int32_t desired, int32_t measured, int32_t dt)
 // outputs: none
 char FileName[8]="robot0";
 
-// Global buffer for mailbox communication (persistent, valid memory)
 static tfluna_mail_t tfluna_mail_buffer;
 
 int frontError;
-int averageSideError;
+int crosstrackError;
 
 #define SCALE 1000
 #define SIN45_FIXED 707
@@ -511,30 +526,18 @@ int averageSideError;
 #define LUNA_Y 90
 #define IR_X_OFFSET_MM 90
 
-// Returns the heading error relative to the left wall
 // Positive error means pointing away from the wall; Negative means pointing towards it.
 int calculate_left_heading_error(int32_t distSideL, int32_t distFrontL) {
-    // 1. Calculate X distance to the wall from the front sensor
     // X = (Distance * sin(45)) + offset
     int32_t front_wall_x = ((distFrontL * SIN45_FIXED) / SCALE) + LUNA_L;
-
-    // 2. Calculate X distance to the wall from the side sensor
     int32_t side_wall_x = distSideL + IR_X_OFFSET_MM;
-
-    // 3. Return the difference
     return front_wall_x - side_wall_x; 
 }
 
 // Returns the heading error relative to the right wall
 int calculate_right_heading_error(int32_t distSideR, int32_t distFrontR) {
-    // 1. Calculate X distance to the wall from the front sensor
     int32_t front_wall_x = ((distFrontR * SIN45_FIXED) / SCALE) + LUNA_R;
-
-    // 2. Calculate X distance to the wall from the side sensor
     int32_t side_wall_x = distSideR + IR_X_OFFSET_MM;
-
-    // 3. Return the difference 
-    // (Notice the logic is mirrored for the right side)
     return side_wall_x - front_wall_x; 
 }
 
@@ -583,14 +586,13 @@ void Robot(void){
   uint32_t last_time = OS_MsTime();
   
   // Initialize PID parameters
-  PID_t steering_pid;
-  steering_pid.scale = 100;
-  // Note: These constants will need real-world tuning!
-  steering_pid.Kp = 5 * steering_pid.scale; 
-  steering_pid.Ki = 0 * steering_pid.scale;
-  steering_pid.Kd = 1 * steering_pid.scale;
-  steering_pid.integral = 0;
-  steering_pid.prev_error = 0;
+  PID_t steering_pid_front;
+  steering_pid_front.scale = 100;
+  steering_pid_front.Kp = 1 * steering_pid_front.scale / 2; 
+  steering_pid_front.Ki = 0 * steering_pid_front.scale;
+  steering_pid_front.Kd = 2 * steering_pid_front.scale;
+  steering_pid_front.integral = 0;
+  steering_pid_front.prev_error = 0;
   /* END INIT */
 
   while (true) { // TODO: Attempt to reverse and restart on a stop using another thread
@@ -642,23 +644,23 @@ void Robot(void){
     last_time = current_time;
 
     /* CONTROL ALGORITHM */ 
-    frontError = calculate_front_heading_error(LunaLeft, LunaRight);
-    int leftError = calculate_left_heading_error(IRDistanceLeft, LunaLeft);
-    int rightError = calculate_right_heading_error(IRDistanceRight, LunaRight);
-    averageSideError = (leftError + rightError) / 2;
+    // frontError = calculate_front_heading_error(LunaLeft, LunaRight);
+    // int leftError = calculate_left_heading_error(IRDistanceLeft, LunaLeft);
+    // int rightError = calculate_right_heading_error(IRDistanceRight, LunaRight);
+    // crosstrackError = (leftError + rightError) / 2;
       
     // Constant values in millimeters
     #define FRONTMARGIN 1000  // You are allowed to get this close to the front wall before we start turning.
-    
+
     #define TFLUNAMIN 0
     #define TFLUNAMAX 8000
     
-    #define MINSPEED 0
-    #define MAXSPEED 7000
+    #define MINSPEED 4000
+    #define MAXSPEED 10000
     
-    #define LEFTTURN 2450
+    #define LEFTTURN 2450 // 2450
     #define CENTER 2900
-    #define RIGHTTURN 3450
+    #define RIGHTTURN 3450 // 3450
     
     #define LEFTDIFFERENTIAL -1500
     #define CENTERDIFFERENTIAL 0
@@ -667,23 +669,30 @@ void Robot(void){
     #define MAX_ERROR_MM 200
     #define MIN_ERROR_MM -200
     
+    /* ERROR CALCULATION */
+    frontError = calculate_front_heading_error(LunaLeft, LunaRight);
+    
+    // New: Calculate how far off-center the car is
+    crosstrackError = IRDistanceLeft - IRDistanceRight; 
+
     /* PID & ACTUATION LOGIC */
     if (LunaCenter < FRONTMARGIN) { 
-      // Approaching front wall
+      // Approaching a corner: Use front sensors directly
       steering = map(frontError, MIN_ERROR_MM, MAX_ERROR_MM, LEFTTURN, RIGHTTURN);
+      
       differential = map(frontError, MIN_ERROR_MM, MAX_ERROR_MM, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
       
-      // Reset the PID integral
-      steering_pid.integral = 0; 
+      steering_pid_front.integral = 0; 
 
     } else { 
-      // Wall driving
-      int32_t pid_output = PID_Compute(&steering_pid, 0, averageSideError, dt);
+      int32_t pid_output = PID_Compute(&steering_pid_front, 0, crosstrackError, dt);
 
       steering = CENTER + pid_output;
+      
       differential = CENTERDIFFERENTIAL + pid_output;
     }
 
+    // Hardware protection limits
     steering = clamp(steering, LEFTTURN, RIGHTTURN);
     differential = clamp(differential, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
 
@@ -718,10 +727,13 @@ void Debug_Print() {
     LastHeaderPrint = OS_MsTime();
   }
 
-  ST7735_Message(0,3,"Time(s) =",OS_MsTime() / 1000); UART_OutString("\r\n");
+  ST7735_Message(0,1,"Time(s) =",OS_MsTime() / 1000); 
+  ST7735_Message(0,2,"Speed =",command.speed);
+  ST7735_Message(0,4,"Steer =",command.steering); 
+  UART_OutString("\r\n");
   UART_OutSDec(OS_MsTime() / 1000); UART_OutString("     | ");
   UART_OutSDec(LunaCenter); UART_OutString("           | ");
-  UART_OutSDec(averageSideError); UART_OutString("       | ");
+  UART_OutSDec(crosstrackError); UART_OutString("       | ");
   UART_OutSDec(frontError); UART_OutString("      | ");
   UART_OutSDec(command.speed); UART_OutString("       | ");
   UART_OutSDec(command.differential); UART_OutString("           | ");
@@ -741,9 +753,6 @@ void Debug_Print() {
 // inputs:  none                            
 // outputs: none
 void Display(void){ 
-  uint32_t myId = OS_Id();
-  ST7735_Message(0,1,"myId = ",myId);   // top half used for Display
-  ST7735_Message(0,2,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
   while(Running) { 
     TogglePB1();
     
