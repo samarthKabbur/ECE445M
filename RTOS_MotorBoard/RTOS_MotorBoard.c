@@ -31,6 +31,7 @@
 #include <string.h>
 
 typedef enum direction {
+typedef enum command {
   weak_left = 0,
   strong_left,  //1
   straight, //2 
@@ -48,6 +49,10 @@ typedef enum speed {
 typedef struct command {
   direction_t direction;
   speed_t speed;
+  strong_left,
+  straight,
+  strong_right,
+  weak_right
 } command_t;
 
 
@@ -249,6 +254,19 @@ char LOGDATA[256] =
   uint32_t StartTime,EndTime,ElapsedTime;
   extern uint32_t SysTickElapsed;
   extern uint32_t AddThreadElapsed;
+  uint32_t Time;
+
+  bool StoppedFlag = false;
+  bool PreviousFlag = false;
+
+void StopRobot(void) {
+    StoppedFlag = true;
+}
+void StartRobot(void){
+ 
+  StoppedFlag = false;
+}
+
 
 
 bool StoppedFlag = false;
@@ -286,11 +304,13 @@ void WiFiThread(void){
       Name, Bump, Steering, Right, Left,
       SysTickStr, AddThreadStr, JitterStr);
 
+    
+
     // Send to server
     if(ESP8266_MakeTCPConnection("embedded.ece.utexas.edu", 80, 0, false)){
       
        ESP8266_StartReceiveSearch("status=");
-       int StartTime = OS_MsTime();
+      
 
       if(ESP8266_Send(LOGDATA)){
 
@@ -300,14 +320,7 @@ void WiFiThread(void){
           timeout--;
         }while((s == 0) && timeout);
 
-        // End timing
-        EndTime = OS_MsTime();
-        if(StartTime>EndTime){
-        ElapsedTime = StartTime - EndTime;
-        }
-        else{
-          ElapsedTime = EndTime - StartTime;
-        }
+       
 
         if(s){
           int i = 0;
@@ -317,20 +330,32 @@ void WiFiThread(void){
             i++;
           }
           Status[i] = 0;
-         
-          if (strstr(Status, "green")) {
-            StartRobot();
-          }
-          else if (strstr(Status, "red")) {
-            StopRobot();
-          }
-          
 
+        
+          char *value = strchr(Status, '=');
+
+          if (value) {
+            value++;   // move past '='
+
+          if (strcmp(value, "Green") == 0 && PreviousFlag == false) {
+            StartRobot();
+            Time = OS_MsTime();
+            PreviousFlag = true;
+            }
+           
+           if ((strcmp(value, "Red") == 0 || (OS_MsTime()- Time >= (60000*3))) && PreviousFlag == true) {
+               StopRobot();
+               PreviousFlag = false;
+            }
+            }
+           
+         
+            ElapsedTime = (OS_MsTime() - Time)/1000;
           if(ElapsedTime > 999999){
           ElapsedTime = 999999;  // prevent overflow on screen
           }
           SSD1306_DrawString(0,44,Status,SSD1306_WHITE); 
-          SSD1306_DrawString(0,56,"Time(ms)      ",SSD1306_WHITE); 
+          SSD1306_DrawString(0,56,"Time(s)      ",SSD1306_WHITE); 
           SSD1306_DrawUDec(56,56,ElapsedTime,SSD1306_WHITE);   
           SSD1306_OutBuffer();
         }
@@ -339,7 +364,8 @@ void WiFiThread(void){
     ESP8266_CloseTCPConnection();
     }
 
-    OS_Sleep(1000);   // log every 1000 ms
+    OS_Sleep(1000);   // log every second
+  
   }
 }
 
@@ -361,6 +387,7 @@ int mainWifi(void){
 
   // 3. Add WiFi thread (globals-only version)
   NumCreated += OS_AddThread(&WiFiThread, 512, 1);
+  NumCreated += OS_AddThread(&WiFiThread, 512, 2);
   NumCreated += OS_AddThread(&VirusDetector,128,2);
 
 
@@ -369,9 +396,14 @@ int mainWifi(void){
   return 0;
 }
 
+
+
+
 //*******************final user main DEMONTRATE THIS TO TA**********
 int realmain(void){     // realmain
   //   OS_Init();
+  // OS_Init();        // initialize, disable interrupts
+
   // Logic_Init();
 
   // SSD1306_Init(SSD1306_SWITCHCAPVCC);
@@ -402,6 +434,23 @@ int realmain(void){     // realmain
   //   while(1);   // no WiFi adapter
   // }
 
+  // DataLost = 0;     // lost data between producer and consumer
+  // FilterWork = 0;
+  // Jitter3_Init();
+  // // initialize communication channels
+  // OS_MailBox_Init();
+  // OS_Fifo_Init(256);    // ***note*** 4 is not big enough*****
+
+  // // hardware init
+  // ADC0_Init(3,ADCVREF_VDDA);  // PA24 Center ADC0_3, sampling in DAS() 
+	// OS_InitSemaphore(&LCDFree, 1);
+  // //attach background tasks
+  // OS_AddS2Task(&S2Push,1);      // fall of PB21
+  // OS_AddPA28Task(&PA28Push,1);  // fall of PA28
+  // OS_AddPeriodicThread(&DAS,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
+  // OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
+  
+	// // create initial foreground threads
   // NumCreated = 0;
 
   // // CAN thread
@@ -410,13 +459,21 @@ int realmain(void){     // realmain
   // // 3. Add WiFi thread (globals-only version)
   // NumCreated += OS_AddThread(&WiFiThread, 128, 1);
   // NumCreated += OS_AddThread(&VirusDetector, 128, 2);
+  // NumCreated += OS_AddThread(&Interpreter,128,1); 
+  // NumCreated += OS_AddThread(&VirusDetector,128,2);
+ 
 
   // OS_Launch(TIME_2MS);
 
+  // OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
 
 // ********************* Motors  ******************//
+
+
+
+
 
 uint32_t Duty;
 #define MOTORPERIOD 10000 // 200Hz
@@ -595,13 +652,16 @@ int TestmainCAN(void)
 
 //*************** Can and Motor Test ****************/
 
-
+//max duty is 10000
+//steering from 2000 to 4000
 #define BASE_SPEED   3000
 #define WEAK_DELTA   800
 #define STRONG_DELTA 1600
+#define SERVO_WEAK_LEFT 2650
+#define SERVO_WEAK_RIGHT 3250
  #define SERVO_CENTER 2900
-#define SERVO_LEFT   2450
-#define SERVO_RIGHT  3450
+#define SERVO_STRONG_LEFT   2450
+#define SERVO_STRONG_RIGHT  3450
 
 
 void ExecuteCommand(command_t cmd, int id){
@@ -626,7 +686,7 @@ void ExecuteCommand(command_t cmd, int id){
     case strong_left:
       leftDuty  = BASE_SPEED - STRONG_DELTA;
       rightDuty = BASE_SPEED + STRONG_DELTA;
-      ServoDuty = SERVO_LEFT;
+      ServoDuty = SERVO_STRONG_LEFT;
       // PWMA0_Backward(leftDuty);
       // PWMA1_Forward(rightDuty);
        PWMA0_Backward(rightDuty);
@@ -670,7 +730,7 @@ void ExecuteCommand(command_t cmd, int id){
       rightDuty = BASE_SPEED - STRONG_DELTA;
       // PWMA0_Backward(leftDuty);
       // PWMA1_Forward(rightDuty);
-      ServoDuty = SERVO_RIGHT;
+      ServoDuty = SERVO_STRONG_RIGHT;
       PWMA0_Backward(rightDuty);
       PWMA1_Forward(leftDuty);
       PWMG6_SetDuty(ServoDuty);
@@ -705,35 +765,35 @@ void ExecuteCommand(command_t cmd, int id){
     PWMA1_Forward(0);
   }
 
- SSD1306_SetCursor(0,2);
-SSD1306_OutString("CMD: ");
+//  SSD1306_SetCursor(0,2);
+// SSD1306_OutString("CMD: ");
 
-switch(cmd.direction){
+// switch(cmd){
 
-  case weak_left:
-    SSD1306_OutString("weak_left   ");
-    break;
+//   case weak_left:
+//     SSD1306_OutString("weak_left   ");
+//     break;
 
-  case strong_left:
-    SSD1306_OutString("strong_left ");
-    break;
+//   case strong_left:
+//     SSD1306_OutString("strong_left ");
+//     break;
 
-  case straight:
-    SSD1306_OutString("straight    ");
-    break;
+//   case straight:
+//     SSD1306_OutString("straight    ");
+//     break;
 
-  case strong_right:
-    SSD1306_OutString("strong_right");
-    break;
+//   case strong_right:
+//     SSD1306_OutString("strong_right");
+//     break;
 
-  case weak_right:
-    SSD1306_OutString("weak_right  ");
-    break;
+//   case weak_right:
+//     SSD1306_OutString("weak_right  ");
+//     break;
 
-  default:
-    SSD1306_OutString("straight    ");
-    break;
-}
+//   default:
+//     SSD1306_OutString("straight    ");
+//     break;
+// }
 
 }
 
@@ -743,29 +803,23 @@ void MotorCANThread(void)
   command_t cmd = { straight, stop };
   uint32_t id;
   while(1){
-    if (!StoppedFlag)
-    {
-      OS_Wait(&CAN_Available);
+    if(StoppedFlag){
+    
+      PWMA0_Backward(0);
+      PWMA1_Forward(0);
       
-      while(!CAN_Get_ID(&CANData, &id)){
-        OS_Sleep(1);
-      }
-      if (id == 0)
-      {
-        cmd.direction = (direction_t)CANData;
-      }
-      else if (id == 1)
-      {
-        cmd.speed = (speed_t)CANData;
-      }      
+    }
+    OS_Wait(&CAN_Available);
+    
 
-      ExecuteCommand(cmd, id);
+    while(!CAN_Get(&CANData, &id)){
+      OS_Sleep(1);
     }
-    else
-    {
-      command_t stop_cmd = { straight, stop };
-      ExecuteCommand(stop_cmd, 0);
-    }
+
+     cmd = (command_t)CANData;
+    
+    ExecuteCommand(cmd, id);
+
   }
 }
 
@@ -774,6 +828,12 @@ int mainCAN_Motor(void){
   Logic_Init();
 
   SSD1306_Init(SSD1306_SWITCHCAPVCC);
+  StoppedFlag  = true;
+  
+  
+  if(!ESP8266_Init(true, false)){
+    while(1);   // no WiFi adapter
+  }
 
   ServoDuty = SERVOINIT;
 
@@ -814,6 +874,8 @@ int mainCAN_Motor(void){
   NumCreated +=
       OS_AddThread(&VirusDetector,
                    128,2);
+
+   NumCreated += OS_AddThread(&WiFiThread, 512, 1);
 
   OS_Launch(TIME_2MS);
 
