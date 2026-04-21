@@ -309,18 +309,18 @@ void WiFiThread(void){
 
           if (value) {
             value++;   // move past '='
-
-          if (strcmp(value, "Green") == 0 && PreviousFlag == false) {
-            StartRobot();
-            Time = OS_MsTime();
-            PreviousFlag = true;
+            int greenFlag = (strcmp(value, "Green") == 0) || ((strcmp(value, "green") == 0));
+            if (( greenFlag && PreviousFlag == false) || (greenFlag && PreviousFlag == false)) {
+              StartRobot();
+              Time = OS_MsTime();
+              PreviousFlag = true;
             }
            
            if ((strcmp(value, "Red") == 0 || (OS_MsTime()- Time >= (60000*3))) && PreviousFlag == true) {
                StopRobot();
                PreviousFlag = false;
             }
-            }
+          }
            
          
             ElapsedTime = (OS_MsTime() - Time)/1000;
@@ -640,12 +640,12 @@ uint32_t failures;
 
 void ExecuteCommand(command_t cmd){
   PWMG6_SetDuty(cmd.steering);
-  if(Crash>0 && Crash < 50){
-    cmd.speed = 300; //slow edit this 
-    Crash++;
+  // if(Crash>0 && Crash < 50){
+  //   cmd.speed = 300; //slow edit this 
+  //   Crash++;
     
-  }
-  else{
+  // }
+  // else{
   if(cmd.speed <30){
     PWMA0_Backward(0);
     PWMA1_Forward(0);
@@ -763,7 +763,7 @@ void ExecuteCommand(command_t cmd){
   //   PWMA1_Forward(0);
   // }
 
-  }
+  // }
 
 }
 
@@ -836,8 +836,8 @@ int mainCAN_Motor(void){
 
   NumCreated = 0;
   
-  NumCreated += OS_AddPA28Task(&HandleCrash, 0);
-  NumCreated += OS_AddPA27Task(&HandleCrash, 0);
+  // NumCreated += OS_AddPA28Task(&HandleCrash, 0);
+  // NumCreated += OS_AddPA27Task(&HandleCrash, 0);
   NumCreated +=
       OS_AddThread(&MotorCANThread,
                    128,1);
