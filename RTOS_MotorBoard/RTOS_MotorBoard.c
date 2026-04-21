@@ -121,7 +121,7 @@ void HandleCrash(void){
 void S2Push(void){
   if(StoppedFlag==1){
     StartRobot();
-    PreviousFlag = true;
+    PreviousFlag = false;
   }
 }
 //--------------end of Task 2-----------------------------
