@@ -650,7 +650,7 @@ void Robot(void){
     // crosstrackError = (leftError + rightError) / 2;
       
     // Constant values in millimeters
-    #define FRONTMARGIN 700  // You are allowed to get this close to the front wall before we start turning.
+    #define FRONTMARGIN 750  // You are allowed to get this close to the front wall before we start turning.
 
     #define TFLUNAMIN 0
     #define TFLUNAMAX 8000
@@ -658,16 +658,16 @@ void Robot(void){
     #define MINSPEED 4000
     #define MAXSPEED 10000
     
-    #define LEFTTURN 2450 // 2450
+    #define LEFTTURN 2400 // 2450
     #define CENTER 2900
-    #define RIGHTTURN 3450 // 3450
+    #define RIGHTTURN 3500 // 3450
     
     #define LEFTDIFFERENTIAL -2000
     #define CENTERDIFFERENTIAL 0
     #define RIGHTDIFFERENTIAL 2000 
 
-    #define MAX_ERROR_MM 250
-    #define MIN_ERROR_MM -250
+    #define MAX_ERROR_MM 200
+    #define MIN_ERROR_MM -200
     
     /* ERROR CALCULATION */
     frontError = calculate_front_heading_error(LunaLeft, LunaRight);
