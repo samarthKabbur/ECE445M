@@ -30,23 +30,16 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef enum direction {
-  weak_left = 0,
-  strong_left,  //1
-  straight, //2 
-  strong_right, //3
-  weak_right  // 4
-} direction_t;
+bool StoppedFlag = false;
+bool PreviousFlag = false;
 
-typedef enum speed {
-  stop = 0,
-  slow, // 1
-  medium, // 2
-  fast  // 3
-} speed_t;
-
-
-
+void StopRobot(void) {
+    StoppedFlag = true;
+}
+void StartRobot(void){
+ 
+  StoppedFlag = false;
+}
 
 // PA10 is UART0 Tx    index 20 in IOMUX PINCM table
 // PA11 is UART0 Rx    index 21 in IOMUX PINCM table
@@ -126,9 +119,9 @@ void HandleCrash(void){
 // Adds another Robot foreground task
 // background threads execute once and return
 void S2Push(void){
-  if(Running==0){
-    Running = 1;  // prevents you from starting two test threads
-    // NumCreated += OS_AddThread(&Robot,128,1);  // test eDisk
+  if(StoppedFlag==1){
+    StartRobot();
+    PreviousFlag = true;
   }
 }
 //--------------end of Task 2-----------------------------
@@ -231,25 +224,11 @@ char LOGDATA[256] =
   "systick=0&addthread=0&jitter=0 "
   "HTTP/1.0\r\nHOST: embedded.ece.utexas.edu\r\n\r\n";
 
-  char Status[16];
-  uint32_t StartTime,EndTime,ElapsedTime;
-  extern uint32_t SysTickElapsed;
-  extern uint32_t AddThreadElapsed;
-  uint32_t Time;
-
-  bool StoppedFlag = false;
-  bool PreviousFlag = false;
-
-void StopRobot(void) {
-    StoppedFlag = true;
-}
-void StartRobot(void){
- 
-  StoppedFlag = false;
-}
-
-
-
+char Status[16];
+uint32_t StartTime,EndTime,ElapsedTime;
+extern uint32_t SysTickElapsed;
+extern uint32_t AddThreadElapsed;
+uint32_t Time;
 
 void WiFiThread(void){
   char *s;
@@ -850,6 +829,7 @@ int mainCAN_Motor(void){
       OS_AddThread(&VirusDetector,
                    128,2);
 
+  OS_AddS2Task(&S2Push,1);      // fall of PB21
 
   OS_Launch(TIME_2MS);
 
