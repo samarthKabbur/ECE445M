@@ -650,7 +650,7 @@ void Robot(void){
     // crosstrackError = (leftError + rightError) / 2;
       
     // Constant values in millimeters
-    #define FRONTMARGIN 1000  // You are allowed to get this close to the front wall before we start turning.
+    #define FRONTMARGIN 700  // You are allowed to get this close to the front wall before we start turning.
 
     #define TFLUNAMIN 0
     #define TFLUNAMAX 8000
@@ -662,12 +662,12 @@ void Robot(void){
     #define CENTER 2900
     #define RIGHTTURN 3450 // 3450
     
-    #define LEFTDIFFERENTIAL -1500
+    #define LEFTDIFFERENTIAL -2000
     #define CENTERDIFFERENTIAL 0
-    #define RIGHTDIFFERENTIAL 1500 
+    #define RIGHTDIFFERENTIAL 2000 
 
-    #define MAX_ERROR_MM 200
-    #define MIN_ERROR_MM -200
+    #define MAX_ERROR_MM 250
+    #define MIN_ERROR_MM -250
     
     /* ERROR CALCULATION */
     frontError = calculate_front_heading_error(LunaLeft, LunaRight);
@@ -687,7 +687,7 @@ void Robot(void){
     } else { 
       int32_t pid_output = PID_Compute(&steering_pid_front, 0, crosstrackError, dt);
 
-      steering = CENTER + pid_output;
+      steering = CENTER + pid_output / 2;
       
       differential = CENTERDIFFERENTIAL + pid_output;
     }
