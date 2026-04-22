@@ -655,8 +655,10 @@ void Robot(void){
     #define TFLUNAMIN 0
     #define TFLUNAMAX 8000
     
-    #define MINSPEED 4000
-    #define MAXSPEED 10000
+    #define MINSPEEDONSTRAIGHT 6000
+    #define MAXSPEEDONSTRAIGHT 10000
+    #define MINSPEEDONCORNER 4000
+    #define MAXSPEEDONCORNER 8000
     
     #define LEFTTURN 2400 // 2450
     #define CENTER 2900
@@ -669,14 +671,28 @@ void Robot(void){
     #define MAX_ERROR_MM 200
     #define MIN_ERROR_MM -200
     
+     
     /* ERROR CALCULATION */
     frontError = calculate_front_heading_error(LunaLeft, LunaRight);
     
     // New: Calculate how far off-center the car is
     crosstrackError = IRDistanceLeft - IRDistanceRight; 
 
+    int sideLunaError = LunaRight - LunaLeft; 
+    speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEEDONCORNER, MAXSPEEDONCORNER);
+    if(sideLunaError > 4000){
+      steering = RIGHTTURN;
+      differential = RIGHTDIFFERENTIAL;
+      
+    }
+    else if(sideLunaError < -4000){
+      steering = LEFTTURN;
+      differential = LEFTDIFFERENTIAL;
+    }
+    
+
     /* PID & ACTUATION LOGIC */
-    if (LunaCenter < FRONTMARGIN) { 
+    else if (LunaCenter < FRONTMARGIN) { 
       // Approaching a corner: Use front sensors directly
       steering = map(frontError, MIN_ERROR_MM, MAX_ERROR_MM, LEFTTURN, RIGHTTURN);
       
@@ -685,19 +701,18 @@ void Robot(void){
       steering_pid_front.integral = 0; 
 
     } else { 
+      
       int32_t pid_output = PID_Compute(&steering_pid_front, 0, crosstrackError, dt);
 
-      steering = CENTER + pid_output / 2;
-      
+      // steering = CENTER + pid_output / 2;
+      steering = CENTER;
+      speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEEDONSTRAIGHT, MAXSPEEDONSTRAIGHT);
       differential = CENTERDIFFERENTIAL + pid_output;
     }
 
     // Hardware protection limits
     steering = clamp(steering, LEFTTURN, RIGHTTURN);
     differential = clamp(differential, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
-
-    // Speed Vector Generation
-    speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEED, MAXSPEED);
     
     // Send data to display and motorboard
     command.steering = steering;
