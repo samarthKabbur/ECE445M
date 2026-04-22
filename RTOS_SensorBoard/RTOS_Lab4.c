@@ -586,13 +586,13 @@ void Robot(void){
   uint32_t last_time = OS_MsTime();
   
   // Initialize PID parameters
-  PID_t steering_pid_front;
-  steering_pid_front.scale = 100;
-  steering_pid_front.Kp = 1 * steering_pid_front.scale / 2; 
-  steering_pid_front.Ki = 0 * steering_pid_front.scale;
-  steering_pid_front.Kd = 2 * steering_pid_front.scale;
-  steering_pid_front.integral = 0;
-  steering_pid_front.prev_error = 0;
+  PID_t steering_pid;
+  steering_pid.scale = 100;
+  steering_pid.Kp = 1 * steering_pid.scale; 
+  steering_pid.Ki = 0 * steering_pid.scale;
+  steering_pid.Kd = 1 * steering_pid.scale / 10;
+  steering_pid.integral = 0;
+  steering_pid.prev_error = 0;
   /* END INIT */
 
   while (true) { // TODO: Attempt to reverse and restart on a stop using another thread
@@ -664,9 +664,11 @@ void Robot(void){
     #define CENTER 2900
     #define RIGHTTURN 3500 // 3450
     
-    #define LEFTDIFFERENTIAL -2000
+    #define LEFTDIFFERENTIAL_ONCORNER -3000
+    #define LEFTDIFFERENTIAL_ONSTRAIGHT -2000
     #define CENTERDIFFERENTIAL 0
-    #define RIGHTDIFFERENTIAL 2000 
+    #define RIGHTDIFFERENTIAL_ONCORNER 3000 
+    #define RIGHTDIFFERENTIAL_ONSTRAIGHT 2000
 
     #define MAX_ERROR_MM 200
     #define MIN_ERROR_MM -200
@@ -674,37 +676,24 @@ void Robot(void){
      
     /* ERROR CALCULATION */
     frontError = calculate_front_heading_error(LunaLeft, LunaRight);
-    
-    // New: Calculate how far off-center the car is
     crosstrackError = IRDistanceLeft - IRDistanceRight; 
 
     int sideLunaError = LunaRight - LunaLeft; 
     speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEEDONCORNER, MAXSPEEDONCORNER);
-    if(sideLunaError > 4000){
+    if(sideLunaError > 4000){ // Right turn Corner
       steering = RIGHTTURN;
-      differential = RIGHTDIFFERENTIAL;
-      
-    }
-    else if(sideLunaError < -4000){
+      differential = RIGHTDIFFERENTIAL_ONCORNER;
+    } else if(sideLunaError < -4000){ // Left Turn Corner
       steering = LEFTTURN;
-      differential = LEFTDIFFERENTIAL;
-    }
-    
-
-    /* PID & ACTUATION LOGIC */
-    else if (LunaCenter < FRONTMARGIN) { 
-      // Approaching a corner: Use front sensors directly
+      differential = LEFTDIFFERENTIAL_ONCORNER;
+    } else if (LunaCenter < FRONTMARGIN) { // General Backup Corner
       steering = map(frontError, MIN_ERROR_MM, MAX_ERROR_MM, LEFTTURN, RIGHTTURN);
+      differential = map(frontError, MIN_ERROR_MM, MAX_ERROR_MM, LEFTDIFFERENTIAL_ONCORNER, RIGHTDIFFERENTIAL_ONCORNER);
       
-      differential = map(frontError, MIN_ERROR_MM, MAX_ERROR_MM, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
-      
-      steering_pid_front.integral = 0; 
+      steering_pid.integral = 0; 
 
-    } else { 
-      
-      int32_t pid_output = PID_Compute(&steering_pid_front, 0, crosstrackError, dt);
-
-      // steering = CENTER + pid_output / 2;
+    } else { // Straight
+      int32_t pid_output = PID_Compute(&steering_pid, 0, crosstrackError * 2, dt);
       steering = CENTER;
       speed = map(LunaCenter, TFLUNAMIN, TFLUNAMAX, MINSPEEDONSTRAIGHT, MAXSPEEDONSTRAIGHT);
       differential = CENTERDIFFERENTIAL + pid_output;
@@ -712,7 +701,7 @@ void Robot(void){
 
     // Hardware protection limits
     steering = clamp(steering, LEFTTURN, RIGHTTURN);
-    differential = clamp(differential, LEFTDIFFERENTIAL, RIGHTDIFFERENTIAL);
+    differential = clamp(differential, LEFTDIFFERENTIAL_ONCORNER, RIGHTDIFFERENTIAL_ONCORNER);
     
     // Send data to display and motorboard
     command.steering = steering;
@@ -743,8 +732,13 @@ void Debug_Print() {
   }
 
   ST7735_Message(0,1,"Time(s) =",OS_MsTime() / 1000); 
-  ST7735_Message(0,2,"Speed =",command.speed);
-  ST7735_Message(0,4,"Steer =",command.steering); 
+  if (command.steering == LEFTTURN) {
+    ST7735_Message(0,2,"Left Turn   ",0); 
+  } else if (command.steering == RIGHTTURN) {
+    ST7735_Message(0,2,"Right Turn   ",1); 
+  } else if (command.steering == CENTER) {
+    ST7735_Message(0,2," Straight    ",2); 
+  }
   UART_OutString("\r\n");
   UART_OutSDec(OS_MsTime() / 1000); UART_OutString("     | ");
   UART_OutSDec(LunaCenter); UART_OutString("           | ");
