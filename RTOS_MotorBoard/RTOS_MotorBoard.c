@@ -41,31 +41,8 @@ void StartRobot(void){
   StoppedFlag = false;
 }
 
-// PA10 is UART0 Tx    index 20 in IOMUX PINCM table
-// PA11 is UART0 Rx    index 21 in IOMUX PINCM table
-// Insert jumper J25: Connects PA10 to XDS_UART
-// Insert jumper J26: Connects PA11 to XDS_UART
-//  PA0 is red LED1,   index 0 in IOMUX PINCM table, negative logic
-// PB22 is BLUE LED2,  index 49 in IOMUX PINCM table
-// PB26 is RED LED2,   index 56 in IOMUX PINCM table
-// PB27 is GREEN LED2, index 57 in IOMUX PINCM table
-// PA18 is S1 positive logic switch,  conflict with TFLuna1, so S1 will not be used
-// PB21 is S2 negative logic switch,  used for aperiodic task
-// IR analog distance sensors
-//   30 cm GP2Y0A41SK0F or 80 cm long range GP2Y0A21YK0F 
-//   PA26 Right  ADC0_1
-//   PA24 Center ADC0_3, used in Labs 1,2,3,4
-//   PA22 Left   ADC0_7
-//   PA27 Extra  ADC0_0
 
-// RTOS sensor board supported three TF-Luna sensors
-//    Serial TxD: PA17 is UART1 Tx (MSPM0 to TFLuna1)
-//    Serial RxD: PA18 is UART1 Rx (TFLuna1 to MSPM0), conflict with LaunchPad S1
-//    Serial TxD: PB17 is UART2 Tx (MSPM0 to TFLuna2), used in Labs 1,2,3,4
-//    Serial RxD: PB18 is UART2 Rx (TFLuna2 to MSPM0), used in Labs 1,2,3,4
-//    Serial TxD: PB12 is UART3 Tx (MSPM0 to TFLuna3), 
-//    Serial RxD: PB13 is UART3 Rx (TFLuna3 to MSPM0), shared with LD19 Lidar 
-//UART3 is shared between LD19 and TFLuna3 (can have either but not both)
+
 
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
 uint32_t Running;           // true while robot is running
@@ -109,8 +86,15 @@ Sema4_t LCDFree;  // SDC and LCD sharing
 int Crash=0;
 void HandleCrash(void){
   Crash = 1;
-  OS_Kill();
+  //OS_Kill();
 } 
+
+// void PA28Push(void){ // real time task
+//   if(ArmCrash){
+//     ArmCrash = 0; // debounce
+//     NumCreated += OS_AddThread(&HandleCrash,128,1);  // test robot crash
+//   }
+// } 
 
 
 
@@ -124,20 +108,7 @@ void S2Push(void){
     PreviousFlag = false;
   }
 }
-//--------------end of Task 2-----------------------------
- 
-//******** Display *************** 
-// foreground thread, accepts data from consumer
-// displays results on the LCD
-// inputs:  none                            
-// outputs: none
-void Display(void){ 
-        // toggle PB1
- 
-  OS_Kill();  // done
-} 
 
-//--------------end of Task 3-----------------------------
 
 //------------------Task 4--------------------------------
 // foreground thread that runs without waiting or sleeping
@@ -352,79 +323,9 @@ int mainWifi(void){
 
 
 //*******************final user main DEMONTRATE THIS TO TA**********
-int realmain(void){     // realmain
-  //   OS_Init();
-  // OS_Init();        // initialize, disable interrupts
 
-  // Logic_Init();
-
-  // SSD1306_Init(SSD1306_SWITCHCAPVCC);
-
-  // ServoDuty = SERVOINIT;
-
-  // PWMG6_Init(PWMUSEBUSCLK,39,
-  //             SERVOPERIOD,
-  //             SERVOINIT);
-
-  // // CAN setup
-  // OS_CAN_Init(1);
-  // OS_InitSemaphore(&CAN_Available,0);
-
-  // // Motor PWM setup
-  // PWMA0_Init(PWMUSEBUSCLK,39,
-  //             MOTORPERIOD,
-  //             2500,7500);
-  // PWMA0_Break();
-
-  // PWMA1_Init(PWMUSEBUSCLK,39,
-  //             MOTORPERIOD,
-  //             2500,7500);
-  // PWMA1_Break();
-
-  // // 2. Initialize ESP8266
-  // if(!ESP8266_Init(true, false)){
-  //   while(1);   // no WiFi adapter
-  // }
-
-  // DataLost = 0;     // lost data between producer and consumer
-  // FilterWork = 0;
-  // Jitter3_Init();
-  // // initialize communication channels
-  // OS_MailBox_Init();
-  // OS_Fifo_Init(256);    // ***note*** 4 is not big enough*****
-
-  // // hardware init
-  // ADC0_Init(3,ADCVREF_VDDA);  // PA24 Center ADC0_3, sampling in DAS() 
-	// OS_InitSemaphore(&LCDFree, 1);
-  // //attach background tasks
-  // OS_AddS2Task(&S2Push,1);      // fall of PB21
-  // OS_AddPA28Task(&PA28Push,1);  // fall of PA28
-  // OS_AddPeriodicThread(&DAS,PERIOD/80000,0); // 1 kHz real time sampling of ADC0_3
-  // OS_AddPeriodicThread(&disk_timerproc,1,0);   // time out routines for disk
-  
-	// // create initial foreground threads
-  // NumCreated = 0;
-
-  // // CAN thread
-  // NumCreated += OS_AddThread(&MotorCANThread, 128, 1);
-  
-  // // 3. Add WiFi thread (globals-only version)
-  // NumCreated += OS_AddThread(&WiFiThread, 128, 1);
-  // NumCreated += OS_AddThread(&VirusDetector, 128, 2);
-  // NumCreated += OS_AddThread(&Interpreter,128,1); 
-  // NumCreated += OS_AddThread(&VirusDetector,128,2);
- 
-
-  // OS_Launch(TIME_2MS);
-
-  // OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
-  return 0;            // this never executes
-}
 
 // ********************* Motors  ******************//
-
-
-
 
 
 uint32_t Duty;
@@ -441,166 +342,11 @@ uint32_t ServoDuty; // 2000,2250,2500,2750,3000,3250,3500,3750,4000
 
 
 
-void SSD1306_Display(void){
-  SSD1306_SetCursor(0,3);
-  if(Duty == 0){
-    SSD1306_OutString("Motor break         ");
-    SSD1306_SetCursor(0,4);
-    SSD1306_OutString("                    ");
-  }else{
-    SSD1306_OutString("Motor Period=       ");
-    SSD1306_SetCursor(13,3);SSD1306_OutUDec(MOTORPERIOD);
-    SSD1306_SetCursor(0,4);
-    SSD1306_OutString("Motor Duty =        ");
-    SSD1306_SetCursor(13,4);SSD1306_OutUDec(Duty);
-  }
-  SSD1306_SetCursor(0,5);
-  SSD1306_OutString("Servo Period=       ");
-  SSD1306_SetCursor(13,5);SSD1306_OutUDec(SERVOPERIOD);
-  SSD1306_SetCursor(0,6);
-  SSD1306_OutString("Servo Duty =        ");
-  SSD1306_SetCursor(13,6);SSD1306_OutUDec(ServoDuty);
-}
-
-uint32_t Array[20] = {2750, 2800, 2850, 2900, 2950, 3000, 3050, 3100, 3150, 3200, 
-3250, 3200, 3150, 3100, 3050, 3000, 2950, 2900, 2850, 2800};
-uint8_t count = 0;
-
-void RunForward(void){   uint32_t sw2,lasts2;
-  uint32_t sw1,lasts1;
-  PWMA0_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA0_Break(); // high, high, break mode
-  PWMA1_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA1_Break(); // high, high, break mode
-  Duty = MOTORMIN;
-  lasts2 = (~(GPIOB->DIN31_0)) & S2;
-  while(1){   
-    while (StoppedFlag) {
-      PWMG6_SetDuty(ServoDuty);
-      PWMA0_Forward(0);
-      PWMA1_Backward(0); 
-    }
-    Clock_Delay(1000000); // debounce switch
-    sw2 = (~(GPIOB->DIN31_0)) & S2;
-    sw1 = GPIOA->DIN31_0 & S1;
-    if(sw2 && (lasts2==0)){ // touch s2
-      Duty = Duty+MOTORCHANGE;
-      if(Duty > MOTORMAX){
-        Duty = MOTORMIN;
-      }
-      SSD1306_Display();
-      PWMA0_Backward(Duty);
-      PWMA1_Forward(Duty);
-    }
-     // touch s1
-    ServoDuty = Array[count];
-    count = (count + 1) % 20;
-    SSD1306_Display();
-    PWMG6_SetDuty(ServoDuty);
-    
-    lasts2 = sw2;
-    lasts1 = sw1;
-  }
-}
-
-// scope on PB1 PB4, spins with left motor backward
-// PB4 is high , PB1 is Duty (time low)
-// scope on PB8 PB9, spins with right motor backward
-// PB8 is high , PB9 is Duty (time low)
-// PB6 1ms to 2ms pulse high, 20ms period
-void RunBackward(void){   uint32_t sw2,lasts2;
-uint32_t sw1,lasts1;
-  PWMA0_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA0_Break(); // high, high, break mode
-  PWMA1_Init(PWMUSEBUSCLK,39,MOTORPERIOD,2500,7500); // 200Hz
-  PWMA1_Break(); // high, high, break mode
-  Duty = MOTORMIN;
-  lasts2 = (~(GPIOB->DIN31_0)) & S2;
-  while(1){   
-    while (StoppedFlag) {
-      PWMG6_SetDuty(ServoDuty);
-      PWMA0_Forward(0);
-      PWMA1_Backward(0);   
-    } 
-    Clock_Delay(1000000); // debounce switch
-    sw1 = GPIOA->DIN31_0 & S1;
-    sw2 = (~(GPIOB->DIN31_0)) & S2;
-    if(sw2 && (lasts2==0)){ // touch s2
-      Duty = Duty+MOTORCHANGE;
-      if(Duty > MOTORMAX){
-        Duty = MOTORMIN;
-      }
-      SSD1306_Display();
-      PWMA0_Forward(Duty);
-      PWMA1_Backward(Duty);   
-   }
-    ServoDuty = Array[count];
-    count = (count + 1) % 20;
-    SSD1306_Display();
-    PWMG6_SetDuty(ServoDuty);
-    
-    lasts2 = sw2;
-    lasts1 = sw1;
-  }
-
-}
-int mainMotor(void) {
-  //uint32_t  sw2 = (~(GPIOB->DIN31_0)) & S2;
-  SSD1306_SetCursor(0,0);
-  SSD1306_OutString("ECE445M motor test\n");  
-  ServoDuty = SERVOINIT;    // 1.5ms
-// period is 20ms
-// change is 0.125ms
-  PWMG6_Init(PWMUSEBUSCLK,39,SERVOPERIOD,SERVOINIT); // 50Hz, 1.5ms
-
-  SSD1306_Display();
-  SSD1306_SetCursor(0,1);
-  NumCreated += OS_AddPA28Task(&StopRobot, 0);
-  NumCreated += OS_AddPA27Task(&StopRobot, 0);
-  NumCreated += OS_AddThread(&RunForward, 256, 1);
-
-  // 5. Launch OS
-  OS_Launch(TIME_2MS);
-
-  return 0;
-}
-
 //*******************CAN TEST**********
 uint32_t CANData;
 uint32_t id;
 uint32_t failures;
-// void ReceiveCAN(void)
-// {
-//   while (true)
-//   {
-//     OS_Wait(&CAN_Available);
-//     // while (!CAN_Get_ID(&CANData, &id)) { 
-//     while (!CAN_Get(&CANData)) { 
-//       OS_Sleep(1000);
-//     }
-//     TogglePB4();
-//     SSD1306_SetCursor(0,0);
-//     SSD1306_OutString("CAN Received");
-//     SSD1306_SetCursor(0,1);
-//     SSD1306_OutUDec(CANData);
-//   }
-// }
 
-// int TestmainCAN(void)
-// {
-//   OS_Init();  
-//   Logic_Init();
-//   OS_CAN_Init(1);
-//   OS_InitSemaphore(&CAN_Available, 0);
-//   SSD1306_Init(SSD1306_SWITCHCAPVCC);
-
-//   NumCreated = 0;
-//   NumCreated += OS_AddThread(&ReceiveCAN, 128, 1);
-//   NumCreated += OS_AddThread(&VirusDetector, 128, 2);
-
-//   OS_Launch(TIME_2MS);
-//   return 0;
-// }
 
 //*************** Can and Motor Test ****************/
 
@@ -618,13 +364,20 @@ uint32_t failures;
 //    A1 is left
 
 void ExecuteCommand(command_t cmd){
-  PWMG6_SetDuty(cmd.steering);
-  // if(Crash>0 && Crash < 50){
-  //   cmd.speed = 300; //slow edit this 
-  //   Crash++;
+  //PWMG6_SetDuty(cmd.steering);
+     if(Crash>0 && Crash < 5){
+     cmd.speed = 4000; //slow edit this 
+     PWMG6_SetDuty(SERVO_CENTER);
+     PWMA0_Forward(cmd.speed); // want this to go backwards
+    PWMA1_Backward(cmd.speed);
     
-  // }
-  // else{
+    
+     
+     Crash++;
+      }
+      
+  else{
+  PWMG6_SetDuty(cmd.steering);
   if(cmd.speed <30){
     PWMA0_Backward(0);
     PWMA1_Forward(0);
@@ -648,101 +401,9 @@ void ExecuteCommand(command_t cmd){
   
   PWMA0_Backward(minus);
   PWMA1_Forward(plus);
-  
-  
-  
-  
-  
-  
+ 
 
-  
-
-  //   case weak_left:
-  //     leftDuty  = BASE_SPEED - WEAK_DELTA;
-  //     rightDuty = BASE_SPEED + WEAK_DELTA;
-     
-  //       ServoDuty = SERVO_CENTER;
-      
-  //      PWMG6_SetDuty(ServoDuty);
-  //     break;
-
-  //   case strong_left:
-  //     leftDuty  = BASE_SPEED - STRONG_DELTA;
-  //     rightDuty = BASE_SPEED + STRONG_DELTA;
-  //     ServoDuty = SERVO_STRONG_LEFT;
-      
-  //      PWMA0_Backward(rightDuty);
-  //     PWMA1_Forward(leftDuty);
-  //     PWMG6_SetDuty(ServoDuty);
-  //     break;
-
-  //   case straight:
-  //     leftDuty  = BASE_SPEED;
-  //     rightDuty = BASE_SPEED;
-      
-  //     ServoDuty = SERVO_CENTER;
-  //     PWMA0_Backward(rightDuty);
-  //     PWMA1_Forward(leftDuty);
-  //     PWMG6_SetDuty(ServoDuty);
-
-  //     switch (cmd.speed)
-  //     {
-  //       case stop:
-  //         PWMA0_Backward(0);
-  //         PWMA1_Forward(0);
-  //         break;
-  //       case slow:
-  //         PWMA0_Backward(BASE_SPEED - WEAK_DELTA);
-  //         PWMA1_Forward(BASE_SPEED - WEAK_DELTA);
-  //         break;
-  //       case medium:
-  //         PWMA0_Backward(BASE_SPEED);
-  //         PWMA1_Forward(BASE_SPEED);
-  //         break;
-  //       case fast:
-  //         PWMA0_Backward(BASE_SPEED + WEAK_DELTA);
-  //         PWMA1_Forward(BASE_SPEED + WEAK_DELTA);
-  //         break;
-  //     }
-  //     break;
-
-  //   case strong_right:
-  //     leftDuty  = BASE_SPEED + STRONG_DELTA;
-  //     rightDuty = BASE_SPEED - STRONG_DELTA;
-      
-  //     ServoDuty = SERVO_STRONG_RIGHT;
-  //     PWMA0_Backward(rightDuty);
-  //     PWMA1_Forward(leftDuty);
-  //     PWMG6_SetDuty(ServoDuty);
-  //     break;
-
-  //   case weak_right:
-  //     leftDuty  = BASE_SPEED + WEAK_DELTA;
-  //     rightDuty = BASE_SPEED - WEAK_DELTA;
-      
-  //      ServoDuty = SERVO_CENTER;
-  //      PWMA0_Backward(rightDuty);
-  //     PWMA1_Forward(leftDuty);
-  //      PWMG6_SetDuty(ServoDuty);
-  //     break;
-
-  //   default:
-  //    leftDuty  = BASE_SPEED;
-  //     rightDuty = BASE_SPEED;
-      
-  //     PWMA0_Backward(rightDuty);
-  //     PWMA1_Forward(leftDuty);
-      
-  //     break;
-  // }
-
-  // if (cmd.speed == stop)
-  // {
-  //   PWMA0_Backward(0);
-  //   PWMA1_Forward(0);
-  // }
-
-  // }
+   }
 
 }
 
@@ -802,21 +463,12 @@ int mainCAN_Motor(void){
   OS_CAN_Init(1);
   OS_InitSemaphore(&CAN_Available,0);
 
-  // // Motor PWM setup
-  // PWMA0_Init(PWMUSEBUSCLK,39,
-  //             MOTORPERIOD,
-  //             0,0);
-  // PWMA0_Break();
 
-  // PWMA1_Init(PWMUSEBUSCLK,39,
-  //             MOTORPERIOD,
-  //             0,0);
-  // PWMA1_Break();
 
   NumCreated = 0;
-  
-  // NumCreated += OS_AddPA28Task(&HandleCrash, 0);
-  // NumCreated += OS_AddPA27Task(&HandleCrash, 0);
+   //OS_AddPA28Task(&PA28Push,1);  // fall of PA28
+  NumCreated += OS_AddPA28Task(&HandleCrash, 0);
+  NumCreated += OS_AddPA27Task(&HandleCrash, 0);
   NumCreated +=
       OS_AddThread(&MotorCANThread,
                    128,1);
@@ -835,8 +487,6 @@ int mainCAN_Motor(void){
 
   return 0;
 
-
-
   
 }
 
@@ -848,8 +498,5 @@ int main(void) { 			// main
   __disable_irq();
   Clock_Init80MHz(0); // no clock out to pin
   LaunchPad_Init();   // LaunchPad_Init must be called once and before other I/O initializations
-  
-  
-  
   mainCAN_Motor();
 }

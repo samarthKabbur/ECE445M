@@ -91,6 +91,7 @@ int NumThreads; //for allocated  foreground threads
 tcb_t *RunPt; // points to the stack pointer
 tcb_t *NextThreadPt;
 int32_t Stacks[MAXTHREADS][STACKSIZE];  // creates 3 * 400 byte stack (uses 1.2kb of memory)
+uint32_t status;
 
 /* BACKGROUND PERIODIC THREADS 
 - scheduled by TimerG8
@@ -118,7 +119,7 @@ typedef struct button_task {
   int priority; 
 } button_task_t;
 
-#define MAX_BUTTON_THREADS 128  // arbritrary value, TODO change if needed
+#define MAX_BUTTON_THREADS 60 // arbritrary value, TODO change if needed
 int NumButtonThreads; // for allocated button threads
 button_task_t s2_button_threads[MAX_BUTTON_THREADS];
 button_task_t s1_button_threads[MAX_BUTTON_THREADS];
@@ -138,18 +139,7 @@ typedef struct mailbox {
 mailbox_t mailbox;
 
 /* GLOBAL FIFO */
-// #define FIFOSIZE 256 // can be any size
 
-// typedef struct fifo {
-//   uint32_t volatile PutI; // put index
-//   uint32_t volatile GetI; // get index
-//   uint32_t data[FIFOSIZE];
-//   Sema4_t current_size; // 0 means FIFO is empty, > 0 means fifo has data
-//   Sema4_t mutex; // 1 means available, 0 means busy
-//   Sema4_t room_left;
-//   uint32_t size;
-//   uint32_t lost_data;
-// } fifo_t;
 
 fifo_t fifo;
 
@@ -180,6 +170,7 @@ void OS_ClearMsTime(void){
 uint32_t OS_MsTime(void){
   // put Lab 1 solution here
   //Return TimeMSG8/G7 for check
+  
   return TimeMs;
 };
 
@@ -208,80 +199,7 @@ int isThreadAvailable(tcb_t *RunPt) {
   return ((RunPt->sleep_st == 0) && (RunPt->blocked_ptr == 0) && (RunPt->Status == Active));
 }
 
-// void Scheduler(void) {
-//   //want to run bestPt
-//   int max = 255;
-//   tcb_t *start = RunPt->next; //have to do next bc otherwise gets wrong stack
-//   tcb_t *pt = RunPt->next;
-//   tcb_t *bestPt =0;
-//   do{
-//     if(isThreadAvailable(pt)){ // thread is not sleeping and not blocked
-//       if(pt->priority < max|| bestPt ==0){
-//         max = pt->priority; //changes highest priorty to current priority 
-//         bestPt = pt;
-//       }
-//     }
-//     pt = pt->next; //skips at least one
-//   }while(pt != start);
-//   //hopefully at least one runnable thread
 
-
-
-//       // round robin within same priority
-//       pt = bestPt->next;
-//       while(pt != bestPt){
-//         if(isThreadAvailable(pt) && pt->priority == max){
-//             bestPt = pt;
-//             break;
-//         }
-//         pt = pt->next;
-//     }
-
-
-//       RunPt  = bestPt;
-
-
-
-// }
-//probably want to add to blocked before remover from active 
-
-// void Scheduler(void) {
-
-//   tcb_t *currentPt = RunPt;
-
-//   // if the thread is to be blocked move it to the blocked LL
-//   // otherwise remove it if it needs to be killed
-//   if (currentPt->blocked_st != 0) {
-//     Sema4_t *semaPt = (Sema4_t *)currentPt->blocked_st;
-//     RemoveFromActive(currentPt);
-//     AddToBlocked(semaPt, currentPt);
-//   } else if (currentPt->Status == Free) {
-//     RemoveFromActive(currentPt);
-//   }
-
-//   // priority scheduling from mains thread pool
-//   int max = 255;
-//   tcb_t *start = RunPt->next; 
-//   tcb_t *pt = RunPt->next;
-//   tcb_t *bestPt = 0;
-
-//   do {
-//     if (isThreadAvailable(pt)) { 
-//       if (pt->priority < max || bestPt == 0) {
-//         max = pt->priority; 
-//         bestPt = pt;
-//       }
-//     }
-//     pt = pt->next; 
-//   } while(pt != start);
-
-//   if (bestPt) {
-//       RunPt = bestPt;
-//   }
-
-
-
-// }
 
 // TODO: probably want to add to blocked before remover from active 
 void Scheduler(void) {
@@ -329,12 +247,27 @@ void EdgeTriggered_Init(void){
   NVIC->ISER[0] = 1 << 1; // Group1 interrupt
   
   IOMUX->SECCFG.PINCM[PA28INDEX] = (uint32_t) 0x00060081; // input, pull up
-  // Falling edge on PA28
+ 
+  // // Falling edge on PA28
   GPIOA->POLARITY31_16 = 0x02000000;
   // Clear prior interrupt
   GPIOA->CPU_INT.ICLR = (1U << 28);
   // Arm interrupt
   GPIOA->CPU_INT.IMASK |= (1U << 28);
+  // Falling edge on PA27 and PA28
+  // GPIOA->POLARITY31_16 |= 0x03000000;
+
+  // // Clear prior interrupts
+  // GPIOA->CPU_INT.ICLR = (1U << 27) | (1U << 28);
+
+  // // Arm interrupts
+  // GPIOA->CPU_INT.IMASK |= (1U << 27) | (1U << 28);
+  IOMUX->SECCFG.PINCM[PA27INDEX] = (uint32_t) 0x00060081; // input, pull up
+  GPIOA->POLARITY31_16 &= ~(3U << 22);
+  GPIOA->POLARITY31_16 |= (3U << 22);
+  GPIOA->CPU_INT.ICLR = (1U << 27);
+  GPIOA->CPU_INT.IMASK |= (1U << 27);
+  
 }
 
 

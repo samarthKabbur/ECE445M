@@ -211,6 +211,7 @@ int OS_AddS1Task(void(*task)(void), uint32_t priority);
 //           determines the relative priority of these threads
 int OS_AddS2Task(void(*task)(void), uint32_t priority);
 
+int OS_AddPA27Task(void(*task)(void), uint32_t priority);
 // ******** OS_AddPA28Task *************** 
 // add a background task to run whenever the bump (PA28) button is pushed
 // Inputs: pointer to a void/void background function
