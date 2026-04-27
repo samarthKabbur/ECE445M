@@ -55,6 +55,8 @@ uint32_t ServoDuty; // 2000,2250,2500,2750,3000,3250,3500,3750,4000
 #define SERVOPERIOD 40000  // 20ms
 #define SERVOCHANGE 250    // 0.125ms
 
+uint32_t BumpPress = 0;
+
 
 //for debugging 
 #define TogglePA8() (GPIOA->DOUTTGL31_0 = (1<<8))
@@ -359,23 +361,6 @@ tcb_t* RemoveHighestPriorityFromBlocked(Sema4_t *semaPt) {
 
   int maxPriority = 255; 
 
-  // find highest priority from within blocked list
-  // while (pt != 0) {
-  //   if (pt->priority < maxPriority) {
-  //     maxPriority = pt->priority;
-  //     bestPt = pt;
-  //     bestPrev = prev;
-  //   }
-  //   prev = pt;
-  //   pt = pt->next;
-  // }
-  // if (bestPt != 0) {
-  //   if (bestPrev == 0) {
-  //     semaPt->BlockedPt = bestPt->next;
-  //   } else {
-  //     bestPrev->next = bestPt->next;
-  //   }
-  // }
   for (int i = 0; i < NumThreads; i++) {
     if (tcbs[i].Status == Blocked && tcbs[i].blocked_ptr == semaPt) {
       if (tcbs[i].priority < maxPriority) {
@@ -835,53 +820,7 @@ void TIMG7_IRQHandler(void){
   }
 }
 
-/*
 
-void TIMA1_IRQHandler(void){
-  if((TIMA1->CPU_INT.IIDX) == 1){ // this will acknowledge
-    if (!StoppedFlag) {
-    Duty = Duty+MOTORCHANGE;
-      if(Duty > MOTORMAX){
-        Duty = MOTORMIN;
-      }
-    PWMA1_Forward(Duty);
-    }
-    else {
-      PWMA1_Forward(0);
-    }
-  }
-}
-
-void TIMA0_IRQHandler(void){
-  if((TIMA0->CPU_INT.IIDX) == 1){ // this will acknowledge
-    if (!StoppedFlag) {
-    Duty = Duty+MOTORCHANGE;
-      if(Duty > MOTORMAX){
-        Duty = MOTORMIN;
-      }
-    PWMA0_Backward(Duty);
-    }
-    else {
-      PWMA0_Backward(0);
-    }
-  }
-}
-
-
-uint32_t Array[20] = {2750, 2800, 2850, 2900, 2950, 3000, 3050, 3100, 3150, 3200, 
-3250, 3200, 3150, 3100, 3050, 3000, 2950, 2900, 2850, 2800};
-uint8_t count = 0;
-
-void TIMG6_IRQHandler(void){ 
-  if((TIMG6->CPU_INT.IIDX) == 1){ // this will acknowledge
-  if (!StoppedFlag) {
-      count = (count + 1) % 20;
-    }
-    PWMG6_SetDuty(Array[count]);
-  }
-}
-
-*/
 //----------------------------------------------------------------------------
 //  Edge triggered Interrupt Handler
 //  Rising edge of PA18 (S1) 
@@ -903,6 +842,7 @@ void GROUP1_IRQHandler(void){
   }
   
   if(GPIOA->CPU_INT.RIS&(1<<28)){ // PA28
+    BumpPress |= (1<<0);  // set bit0 (01)
     TogglePA8();
     GPIOA->CPU_INT.ICLR = 1<<28;
     for (int i = 0; i < MAX_BUTTON_THREADS ; i++) {
@@ -913,7 +853,7 @@ void GROUP1_IRQHandler(void){
   }
 
    if(GPIOA->CPU_INT.RIS&(1<<27)){ // PA27
-
+    BumpPress |= (1<<1);   // set bit1 (10)
     GPIOA->CPU_INT.ICLR = 1<<27;
     for (int i = 0; i < MAX_BUTTON_THREADS ; i++) {
       if (pa27_button_threads[i].Status == Active) {
@@ -1203,25 +1143,6 @@ void OS_Fifo_Init(uint32_t size){
 //          false if data not saved, because it was full
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
-// int OS_Fifo_Put(uint32_t data){
-//   // put Lab 2 (and beyond) solution here
-//   if (fifo.current_size.Value == FIFOSIZE ) {
-//     fifo.lost_data++;
-//     return 0; // fail if fifo is full
-//   }
-//   // if ((fifo.putPt + 1 == fifo.getPt) || (fifo.putPt + 1 == &fifo.data[FIFOSIZE] && fifo.getPt == &fifo.data[0])){
-//   //     return 0;
-//   //   }
-//   *(fifo.putPt) = data;
-//   fifo.putPt++;
-
-//   if (fifo.putPt == &fifo.data[FIFOSIZE]) {
-//     fifo.putPt = &fifo.data[0]; // wrap
-//   }
-
-//   OS_Signal(&fifo.current_size);
-//   return 1;
-// }
 int OS_Fifo_Put(uint32_t data){
   long sr;
   OSCRITICAL_ENTER(sr);

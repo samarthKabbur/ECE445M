@@ -47,6 +47,7 @@ void StartRobot(void){
 // **** OS must run disk_timerproc();  at 1000Hz, every 1ms *****
 uint32_t Running;           // true while robot is running
 uint32_t NumCreated;   // number of foreground threads created
+extern uint32_t BumpPress;
 
 //---------------------User debugging-----------------------
 
@@ -86,7 +87,7 @@ Sema4_t LCDFree;  // SDC and LCD sharing
 int Crash=0;
 void HandleCrash(void){
   Crash = 1;
-  //OS_Kill();
+  
 } 
 
 // void PA28Push(void){ // real time task
@@ -165,10 +166,10 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 //--------------For Wifi-----------------------------
 
 // 1) Robot name (up to 10 chars)
-char Name[11] = "Robot17";
+char Name[11] = "George";
 
 // 2) Bump sensors: "00", "01", "10", or "11"
-char Bump[3] = "00";
+//char Bump[3] = "00";
 
 // 3) Steering pulse width (2000–4000)
 char Steering[6] = "3000";
@@ -186,7 +187,7 @@ char SysTickStr[16] = "0";
 char AddThreadStr[16] = "0";
 
 // 8) MaxJitter (ASCII)
-char JitterStr[16] = "0";
+char JitterStr[16] = "373";
 
 // Buffer for the full GET request
 char LOGDATA[256] =
@@ -199,10 +200,14 @@ char Status[16];
 uint32_t StartTime,EndTime,ElapsedTime;
 extern uint32_t SysTickElapsed;
 extern uint32_t AddThreadElapsed;
+uint32_t LeftMotor;
+uint32_t RightMotor;
+uint32_t SteeringNum;
 uint32_t Time;
 
 void WiFiThread(void){
   char *s;
+  char Bump[3] = "00";
  
   if(!ESP8266_Connect(true)){
     SSD1306_DrawString(0,16,"No Wifi network",SSD1306_WHITE);
@@ -217,6 +222,12 @@ void WiFiThread(void){
   for(;;){
       snprintf(SysTickStr, sizeof(SysTickStr), "%u", SysTickElapsed);
       snprintf(AddThreadStr, sizeof(AddThreadStr), "%u", AddThreadElapsed);
+      snprintf(Steering, sizeof(Steering), "%u", SteeringNum);
+      snprintf(Right, sizeof(Right), "%u",RightMotor );
+      snprintf(Left, sizeof(Left), "%u",LeftMotor );
+      Bump[0] = (BumpPress & 0x02) ? '1' : '0';
+      Bump[1] = (BumpPress & 0x01) ? '1' : '0';
+      
 
     // Build GET request directly from global ASCII strings
     snprintf(LOGDATA, sizeof(LOGDATA),
@@ -266,7 +277,7 @@ void WiFiThread(void){
               PreviousFlag = true;
             }
            
-           if ((strcmp(value, "Red") == 0 || (OS_MsTime()- Time >= (60000*3))) && PreviousFlag == true) {
+           if ((strcmp(value, "Red") == 0 || strcmp(value, "red") == 0 ) && PreviousFlag == true) {
                StopRobot();
                PreviousFlag = false;
             }
@@ -362,29 +373,36 @@ uint32_t failures;
 #define SERVO_STRONG_RIGHT  3450
 //  A0 is right
 //    A1 is left
+int IncreaseSpeed = 1500;
 
 void ExecuteCommand(command_t cmd){
   //PWMG6_SetDuty(cmd.steering);
      if(Crash>0 && Crash < 5){
-     cmd.speed = 4000; //slow edit this 
-     PWMG6_SetDuty(SERVO_CENTER);
-     PWMA0_Forward(cmd.speed); // want this to go backwards
+    cmd.speed = 6500; //slow edit this 
+    PWMG6_SetDuty(SERVO_CENTER);
+    PWMA0_Forward(cmd.speed); // want this to go backwards
     PWMA1_Backward(cmd.speed);
+    RightMotor = cmd.speed;
+    LeftMotor = cmd.speed;
+    SteeringNum = SERVO_CENTER;
     
     
      
      Crash++;
       }
       
+      
   else{
+
+    BumpPress = 0;
   PWMG6_SetDuty(cmd.steering);
   if(cmd.speed <30){
     PWMA0_Backward(0);
     PWMA1_Forward(0);
   }
   
-  int minus = cmd.speed-cmd.differentials;
-  int plus = cmd.speed+cmd.differentials;
+  int minus = cmd.speed-cmd.differentials + IncreaseSpeed;
+  int plus = cmd.speed+cmd.differentials + IncreaseSpeed;
   if(minus<0){
     minus = 0;
     
@@ -392,18 +410,23 @@ void ExecuteCommand(command_t cmd){
   if(plus<0){
     plus = 0;
   }
-  if(minus>10000){
-    minus = 10000;
+  if(minus>9999){
+    minus = 9999;
   }
-  if(plus>10000){
-    plus = 10000;
+  if(plus>9999){
+    plus = 9999;
   }
   
   PWMA0_Backward(minus);
   PWMA1_Forward(plus);
+  RightMotor = minus;
+  LeftMotor = plus;
+  SteeringNum = cmd.steering;
  
 
    }
+   
+   
 
 }
 
